@@ -1,6 +1,5 @@
 #include "H.h"
-//#define TEST_PARSEINPUT
-#define REDIRECT
+
 vector<SoldServer> sold_servers;
 unordered_map<string, SoldVM> VM_type2info;
 vector<vector<RequestData>> request_datas;
@@ -97,16 +96,43 @@ void ParseInput() {
     }
 #endif
 }
+void Migration() {
 
+}
+void AddVm() {
+
+}
+void DeleteVm() {
+
+}
 void SolveProblem() {
-
-    if (/*add*/) {
-
-    } else {  // del
-
+    CMP cmp;
+    int day_num = request_datas.size();
+    for (int i = 0; i < day_num; ++i) {
+        Migration();
+        int request_num = request_datas[i].size();
+        for (int j = 0; j < request_num; ++j) {
+            string operation = request_datas[i][j].operation;
+            if (operation == "add") {
+                string VM_type = request_datas[i][j].VM_type;
+                int VM_ID = request_datas[i][j].VM_ID;
+                vector<RequestData> continuous_add_requests;
+                while (j < request_num && request_datas[i][j].operation == "add") {
+                    continuous_add_requests.emplace_back(request_datas[i][j]);
+                    ++j;
+                }
+                --j;
+                sort(continuous_add_requests.begin(), continuous_add_requests.end(), cmp.Continuous);
+                for (auto request : continuous_add_requests) {
+                    AddVm();
+                }
+            }
+            else {
+                DeleteVm();
+            }
+        }
     }
 }
-
 void Print() {
 
 }

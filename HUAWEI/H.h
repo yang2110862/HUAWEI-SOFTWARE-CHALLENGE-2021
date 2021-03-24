@@ -6,6 +6,10 @@
 #include <ctime>
 #include <fstream>
 using namespace std;
+
+//#define TEST_PARSEINPUT
+#define REDIRECT
+
 struct SoldServer {   
     string server_type;
     int cpu_cores;
@@ -33,4 +37,15 @@ struct PurchasedServer {
     int A_remain_memory_size;
     int B_remain_core_num;
     int B_remain_memory_size;
+};
+
+class Evaluate {
+public:
+
+};
+class CMP {
+public:
+    static bool Continuous () {
+        
+    }
 };
