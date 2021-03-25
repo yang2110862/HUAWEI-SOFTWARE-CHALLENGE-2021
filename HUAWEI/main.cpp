@@ -6,6 +6,7 @@ unordered_map<int, VmIdInfo> vm_id2info;
 vector<vector<RequestData>> request_datas;
 vector<PurchasedServer*> purchase_servers;
 unordered_map<string, vector<PurchasedServer*>> purchase_infos;
+int number = 0; //给服务器编号
 void ParseServerInfo() {
     int server_num;
     cin >> server_num;
@@ -242,6 +243,29 @@ void DeleteVm(int vm_id) {
         cerr << "DeleError";
     }
 }
+void Print(vector<int>& vm_ids) {
+    int purchase_type_num = purchase_infos.size();
+    cout << "(purchase, " << purchase_type_num << ')' << endl;
+    for (auto purchase_info : purchase_infos) {
+        cout << '(' << purchase_info.first << ", " << purchase_info.second.size() << endl;
+    }
+    cout << "(migration, 0)" << endl;
+    for (auto vm_id : vm_ids) {
+        string node = vm_id2info[vm_id].node;
+        if (node == "C") {
+            cout << '(' << vm_id2info[vm_id].purchase_server->server_id << ')' << endl;
+        } else {
+            cout << '(' << vm_id2info[vm_id].purchase_server->server_id << ", " << node << ' ' << endl;
+        }
+    }
+}
+void numbering() {
+    for (auto purchase_info : purchase_infos) {
+        for (auto server : purchase_info.second) {
+            server->server_id == number++；
+        }
+    }
+}
 void SolveProblem() {
     Cmp cmp;
     sort(sold_servers.begin(), sold_servers.end(), cmp.SoldServers);
@@ -249,6 +273,12 @@ void SolveProblem() {
     for (int i = 0; i < day_num; ++i) {
         Migration();
         int request_num = request_datas[i].size();
+        vector<int> vm_ids;
+        for (int j = 0; j < request_num; ++j) {       //把请求添加的虚拟机ID有序存起来
+            if (request_datas[i][j].operation == "add") {
+                vm_ids.emplace_back(request_datas[i][j].vm_id);
+            }
+        }
         for (int j = 0; j < request_num; ++j) {
             string operation = request_datas[i][j].operation;
             vector<RequestData> continuous_add_requests;
@@ -272,11 +302,11 @@ void SolveProblem() {
                 DeleteVm(vm_id);
             }
         }
+        Numbering(); //给购买了的服务器编号
+        Print(vm_ids);
     }
 }
-void Print() {
 
-}
 int main(int argc, char* argv[]) {
 #ifdef REDIRECT
     freopen("train.txt", "r", stdin);
@@ -285,8 +315,6 @@ int main(int argc, char* argv[]) {
 
     ParseInput();
     SolveProblem();
-    //Print();
-
 #ifdef REDIRECT
     fclose(stdin);
     fclose(stdout);
