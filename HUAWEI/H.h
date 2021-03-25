@@ -61,17 +61,24 @@ struct AddData {
 };
 class Evaluate {
 public:
-    bool PurchasedServerAB(PurchasedServer* purchase_server) {  //评价要不要插到双节点
-
-        return true;
+    bool PurchasedServerAB(PurchasedServer* purchased_server, int cpu_cores, int memory_size) {  //评价要不要插到双节点
+        if (purchased_server->A_remain_core_num >= cpu_cores && purchased_server->A_remain_memory_size >= memory_size
+            && purchased_server->B_remain_core_num >= cpu_cores && purchased_server->B_remain_memory_size >= memory_size){
+                return true;
+            }
+        return false;
     }
-    bool PurchasedServerA(PurchasedServer* purchase_server) {  //评价要不要插到A节点
-        
-        return true;
+    bool PurchasedServerA(PurchasedServer* purchased_server, int cpu_cores, int memory_size) {  //评价要不要插到A节点
+        if (purchased_server->A_remain_core_num >= cpu_cores && purchased_server->A_remain_memory_size >= memory_size) {
+            return true;
+        }
+        return false;
     }
-    bool PurchasedServerB(PurchasedServer* purchase_server) {  //评价要不要插到B节点
-        
-        return true;
+    bool PurchasedServerB(PurchasedServer* purchased_server, int cpu_cores, int memory_size) {  //评价要不要插到B节点
+        if (purchased_server->B_remain_core_num >= cpu_cores && purchased_server->B_remain_memory_size >= memory_size) {
+            return true;
+        }
+        return false;
     }
 };
 class Cmp {

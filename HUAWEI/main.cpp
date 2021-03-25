@@ -113,7 +113,7 @@ void AddVm(AddData& add_data) {
             if (isDeploy) {
                 break;
             }
-            if (evaluate.PurchasedServerAB(purchase_server)) {
+            if (evaluate.PurchasedServerAB(purchase_server, cpu_cores, memory_size)) {
                 isDeploy = true;
                 purchase_server->A_remain_core_num -= cpu_cores;
                 purchase_server->A_remain_memory_size -= memory_size;
@@ -163,7 +163,7 @@ void AddVm(AddData& add_data) {
             if (isDeploy) {
                 break;
             }
-            if (evaluate.PurchasedServerA(purchase_server)) {
+            if (evaluate.PurchasedServerA(purchase_server, cpu_cores, memory_size)) {
                 isDeploy = true;
                 purchase_server->A_remain_core_num -= cpu_cores;
                 purchase_server->A_remain_memory_size -= memory_size;
@@ -175,7 +175,7 @@ void AddVm(AddData& add_data) {
                 vm_id2info[add_data.vm_id].memory_size = memory_size;
                 vm_id2info[add_data.vm_id].node = "A";
                 break;
-            } else if (evaluate.PurchasedServerB(purchase_server)) {
+            } else if (evaluate.PurchasedServerB(purchase_server, cpu_cores, memory_size)) {
                 isDeploy = true;
                 purchase_server->B_remain_core_num -= cpu_cores;
                 purchase_server->B_remain_memory_size -= memory_size;
@@ -247,7 +247,7 @@ void Print(vector<int>& vm_ids) {
     int purchase_type_num = purchase_infos.size();
     cout << "(purchase, " << purchase_type_num << ')' << endl;
     for (auto purchase_info : purchase_infos) {
-        cout << '(' << purchase_info.first << ", " << purchase_info.second.size() << endl;
+        cout << '(' << purchase_info.first << ", " << purchase_info.second.size() << ')' << endl;
     }
     cout << "(migration, 0)" << endl;
     for (auto vm_id : vm_ids) {
@@ -255,14 +255,14 @@ void Print(vector<int>& vm_ids) {
         if (node == "C") {
             cout << '(' << vm_id2info[vm_id].purchase_server->server_id << ')' << endl;
         } else {
-            cout << '(' << vm_id2info[vm_id].purchase_server->server_id << ", " << node << ' ' << endl;
+            cout << '(' << vm_id2info[vm_id].purchase_server->server_id << ", " << node << ')' << endl;
         }
     }
 }
-void numbering() {
+void Numbering() {
     for (auto purchase_info : purchase_infos) {
         for (auto server : purchase_info.second) {
-            server->server_id == number++；
+            server->server_id == number++;
         }
     }
 }
@@ -274,16 +274,15 @@ void SolveProblem() {
         Migration();
         int request_num = request_datas[i].size();
         vector<int> vm_ids;
-        for (int j = 0; j < request_num; ++j) {       //把请求添加的虚拟机ID有序存起来
+        for (int j = 0; j < request_num; ++j) {       //把请求添加的虚拟机ID有序存起来   !!可能有bug
             if (request_datas[i][j].operation == "add") {
                 vm_ids.emplace_back(request_datas[i][j].vm_id);
             }
         }
         for (int j = 0; j < request_num; ++j) {
             string operation = request_datas[i][j].operation;
-            vector<RequestData> continuous_add_requests;
             vector<AddData> continuous_add_datas;
-            while (operation == "add" && j < request_num - 1) {
+            while (operation == "add" && j < request_num) {
                 string vm_name = request_datas[i][j].vm_name;
                 int deployment_way = vm_name2info[vm_name].deployment_way;
                 int cpu_cores = vm_name2info[vm_name].cpu_cores;
@@ -291,11 +290,17 @@ void SolveProblem() {
                 int vm_id = request_datas[i][j].vm_id;
                 continuous_add_datas.emplace_back(deployment_way, cpu_cores, memory_size, vm_id, vm_name);
                 ++j;
+                if (j == request_num) {
+                    break;
+                }
                 operation = request_datas[i][j].operation;
             }
             sort(continuous_add_datas.begin(), continuous_add_datas.end(), cmp.ContinuousADD);
             for (auto add_data : continuous_add_datas) {
                 AddVm(add_data);
+            }
+            if (j == request_num) {
+                    break;
             }
             if (operation == "del") {
                 int vm_id = request_datas[i][j].vm_id;
@@ -312,7 +317,6 @@ int main(int argc, char* argv[]) {
     freopen("train.txt", "r", stdin);
     freopen("out.txt", "w", stdout); 
 #endif
-
     ParseInput();
     SolveProblem();
 #ifdef REDIRECT
