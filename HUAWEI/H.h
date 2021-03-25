@@ -9,7 +9,7 @@
 using namespace std;
 
 //#define TEST_PARSEINPUT
-#define REDIRECT
+//#define REDIRECT
 
 struct SoldServer {   
     string server_name;
