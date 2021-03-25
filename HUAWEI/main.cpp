@@ -75,19 +75,19 @@ void ParseInput() {
     ParseRequest();
 #ifdef TEST_PARSEINPUT
     cout << sold_servers.size() << endl;
-    for (auto sold_server : sold_servers) {
+    for (auto&& sold_server : sold_servers) {
         cout << sold_server.server_name << " " << sold_server.cpu_cores << " " << sold_server.memory_size 
         << " " << sold_server.hardware_cost << " " << sold_server.daily_energy_cost << endl;
     }
     cout << vm_name2info.size() << endl;
-    for (auto vm : vm_name2info) {
+    for (auto& vm : vm_name2info) {
         cout << vm.first << " " << vm.second.cpu_cores << " " << vm.second.memory_size << " "
         << vm.second.deployment_way << endl;
     }
     cout << request_datas.size() << endl;
-    for (auto request : request_datas) {
+    for (auto& request : request_datas) {
         cout << request.size() << endl;
-        for (auto data : request) {
+        for (auto& data : request) {
             if (data.operation == "add") {
                 cout << data.operation << " " << data.vm_name << " " << data.vm_id << endl;
             } else if (data.operation == "del") {
@@ -109,7 +109,7 @@ void AddVm(AddData& add_data) {
     if (deployment_way == 1) { //双节点部署
         int cpu_cores = add_data.cpu_cores;
         int memory_size = add_data.memory_size;
-        for (auto purchase_server : purchase_servers) {
+        for (auto& purchase_server : purchase_servers) {
             if (isDeploy) {
                 break;
             }
@@ -129,7 +129,7 @@ void AddVm(AddData& add_data) {
                 break;
             }
         }
-        for (auto sold_server : sold_servers) {
+        for (auto& sold_server : sold_servers) {
             if (isDeploy) {
                 break;
             }
@@ -159,7 +159,7 @@ void AddVm(AddData& add_data) {
     } else {       //单节点部署
         int cpu_cores = add_data.cpu_cores;
         int memory_size = add_data.memory_size;
-        for (auto purchase_server : purchase_servers) {
+        for (auto& purchase_server : purchase_servers) {
             if (isDeploy) {
                 break;
             }
@@ -191,7 +191,7 @@ void AddVm(AddData& add_data) {
                 continue;
             }
         }
-        for (auto sold_server : sold_servers) {
+        for (auto& sold_server : sold_servers) {
             if (isDeploy) {
                 break;
             }
@@ -246,11 +246,11 @@ void DeleteVm(int vm_id) {
 void Print(vector<int>& vm_ids) {
     int purchase_type_num = purchase_infos.size();
     cout << "(purchase, " << purchase_type_num << ')' << endl;
-    for (auto purchase_info : purchase_infos) {
+    for (auto& purchase_info : purchase_infos) {
         cout << '(' << purchase_info.first << ", " << purchase_info.second.size() << ')' << endl;
     }
     cout << "(migration, 0)" << endl;
-    for (auto vm_id : vm_ids) {
+    for (auto& vm_id : vm_ids) {
         string node = vm_id2info[vm_id].node;
         if (node == "C") {
             cout << '(' << vm_id2info[vm_id].purchase_server->server_id << ')' << endl;
@@ -260,9 +260,9 @@ void Print(vector<int>& vm_ids) {
     }
 }
 void Numbering() {
-    for (auto purchase_info : purchase_infos) {
-        for (auto server : purchase_info.second) {
-            server->server_id == number++;
+    for (auto& purchase_info : purchase_infos) {
+        for (auto& server : purchase_info.second) {
+            server->server_id = number++;
         }
     }
 }
@@ -296,7 +296,7 @@ void SolveProblem() {
                 operation = request_datas[i][j].operation;
             }
             sort(continuous_add_datas.begin(), continuous_add_datas.end(), cmp.ContinuousADD);
-            for (auto add_data : continuous_add_datas) {
+            for (auto& add_data : continuous_add_datas) {
                 AddVm(add_data);
             }
             if (j == request_num) {
