@@ -112,12 +112,12 @@ void AddVm(AddData& add_data) {
         int memory_size = add_data.memory_size;
         vector<PurchasedServer*> can_deploy_servers;
         for (auto& purchase_server : purchase_servers) {    //先筛选能用的服务器
-            if (purchase_server->A_remain_core_num >= cpu_cores && purchase_server->A_remain_memory_size < memory_size
-            && purchase_server->B_remain_core_num >= cpu_cores && purchase_server->B_remain_memory_size < memory_size) {
+            if (purchase_server->A_remain_core_num >= cpu_cores && purchase_server->A_remain_memory_size >= memory_size
+            && purchase_server->B_remain_core_num >= cpu_cores && purchase_server->B_remain_memory_size >= memory_size) {
                 can_deploy_servers.emplace_back(purchase_server);
             }
         }
-        sort(can_deploy_servers.begin(), can_deploy_servers.end(), cmp.CanDeploy);
+        //sort(can_deploy_servers.begin(), can_deploy_servers.end(), cmp.CanDeploy);
         for (auto& purchase_server : can_deploy_servers) {
             if (isDeploy) {
                 break;
@@ -130,11 +130,13 @@ void AddVm(AddData& add_data) {
                 purchase_server->B_remain_memory_size -= memory_size;
                 purchase_server->AB_vm_id.insert(add_data.vm_id);
 
-                vm_id2info[add_data.vm_id].purchase_server = purchase_server;
-                vm_id2info[add_data.vm_id].vm_name = add_data.vm_name;
-                vm_id2info[add_data.vm_id].cpu_cores = cpu_cores;
-                vm_id2info[add_data.vm_id].memory_size = memory_size;
-                vm_id2info[add_data.vm_id].node = "C";
+                VmIdInfo vm_id_info;
+                vm_id_info.purchase_server = purchase_server;
+                vm_id_info.vm_name = add_data.vm_name;
+                vm_id_info.cpu_cores = cpu_cores;
+                vm_id_info.memory_size = memory_size;
+                vm_id_info.node = "C";
+                vm_id2info[add_data.vm_id] = vm_id_info;
                 break;
             }
         }
@@ -156,11 +158,13 @@ void AddVm(AddData& add_data) {
                 purchase_servers.emplace_back(purchase_server);
                 purchase_infos[sold_server.server_name].emplace_back(purchase_server);
 
-                vm_id2info[add_data.vm_id].purchase_server = purchase_server;
-                vm_id2info[add_data.vm_id].vm_name = add_data.vm_name;
-                vm_id2info[add_data.vm_id].cpu_cores = cpu_cores;
-                vm_id2info[add_data.vm_id].memory_size = memory_size;
-                vm_id2info[add_data.vm_id].node = "C";
+                VmIdInfo vm_id_info;
+                vm_id_info.purchase_server = purchase_server;
+                vm_id_info.vm_name = add_data.vm_name;
+                vm_id_info.cpu_cores = cpu_cores;
+                vm_id_info.memory_size = memory_size;
+                vm_id_info.node = "C";
+                vm_id2info[add_data.vm_id] = vm_id_info;
                 //通过虚拟机ID，知道部署再哪个服务器的哪个端口
                 break;
             }
@@ -183,7 +187,7 @@ void AddVm(AddData& add_data) {
                 }
             }
         }
-        sort(can_deploy_servers.begin(), can_deploy_servers.end(), cmp.CanDeploy);
+        //sort(can_deploy_servers.begin(), can_deploy_servers.end(), cmp.CanDeploy);
         for (auto& purchase_server : can_deploy_servers) {
             if (isDeploy) {
                 break;
@@ -216,11 +220,13 @@ void AddVm(AddData& add_data) {
                 purchase_server->A_remain_memory_size -= memory_size;
                 purchase_server->A_vm_id.insert(add_data.vm_id);
 
-                vm_id2info[add_data.vm_id].purchase_server = purchase_server;
-                vm_id2info[add_data.vm_id].vm_name = add_data.vm_name;
-                vm_id2info[add_data.vm_id].cpu_cores = cpu_cores;
-                vm_id2info[add_data.vm_id].memory_size = memory_size;
-                vm_id2info[add_data.vm_id].node = "A";
+                VmIdInfo vm_id_info;
+                vm_id_info.purchase_server = purchase_server;
+                vm_id_info.vm_name = add_data.vm_name;
+                vm_id_info.cpu_cores = cpu_cores;
+                vm_id_info.memory_size = memory_size;
+                vm_id_info.node = "A";
+                vm_id2info[add_data.vm_id] = vm_id_info;
                 break;
             } else if (which_node == 'B') {
                 isDeploy = true;
@@ -228,11 +234,13 @@ void AddVm(AddData& add_data) {
                 purchase_server->B_remain_memory_size -= memory_size;
                 purchase_server->B_vm_id.insert(add_data.vm_id);
 
-                vm_id2info[add_data.vm_id].purchase_server = purchase_server;
-                vm_id2info[add_data.vm_id].vm_name = add_data.vm_name;
-                vm_id2info[add_data.vm_id].cpu_cores = cpu_cores;
-                vm_id2info[add_data.vm_id].memory_size = memory_size;
-                vm_id2info[add_data.vm_id].node = "B";
+                VmIdInfo vm_id_info;
+                vm_id_info.purchase_server = purchase_server;
+                vm_id_info.vm_name = add_data.vm_name;
+                vm_id_info.cpu_cores = cpu_cores;
+                vm_id_info.memory_size = memory_size;
+                vm_id_info.node = "B";
+                vm_id2info[add_data.vm_id] = vm_id_info;
                 break;
             } else {
                 continue;
@@ -256,11 +264,13 @@ void AddVm(AddData& add_data) {
                 purchase_servers.emplace_back(purchase_server);
                 purchase_infos[sold_server.server_name].emplace_back(purchase_server);
 
-                vm_id2info[add_data.vm_id].purchase_server = purchase_server;
-                vm_id2info[add_data.vm_id].vm_name = add_data.vm_name;
-                vm_id2info[add_data.vm_id].cpu_cores = cpu_cores;
-                vm_id2info[add_data.vm_id].memory_size = memory_size;
-                vm_id2info[add_data.vm_id].node = "A";
+                VmIdInfo vm_id_info;
+                vm_id_info.purchase_server = purchase_server;
+                vm_id_info.vm_name = add_data.vm_name;
+                vm_id_info.cpu_cores = cpu_cores;
+                vm_id_info.memory_size = memory_size;
+                vm_id_info.node = "A";
+                vm_id2info[add_data.vm_id] = vm_id_info;
                 //通过虚拟机ID，知道部署再哪个服务器的哪个端口
                 break;
             }

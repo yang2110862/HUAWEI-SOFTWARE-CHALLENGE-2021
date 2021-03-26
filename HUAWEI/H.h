@@ -160,8 +160,8 @@ public:
         return (a.cpu_cores + a.memory_size) * (a.deployment_way + 1) > (b.cpu_cores + b.memory_size) * (b.deployment_way + 1);
     }
     static bool CanDeploy (PurchasedServer* a, PurchasedServer* b) {
-        int use_ratio_a = (a->A_remain_core_num + a->A_remain_memory_size + a->B_remain_core_num + a->B_remain_memory_size) * 1.0 / (a->total_core_num + a->total_memory_size) * 2;
-        int use_ratio_b = (b->A_remain_core_num + b->A_remain_memory_size + b->B_remain_core_num + a->B_remain_memory_size) * 1.0 / (b->total_core_num + b->total_memory_size) * 2;
-        return use_ratio_a > use_ratio_b;
+        int surplus_ratio_a = (a->A_remain_core_num + a->A_remain_memory_size + a->B_remain_core_num + a->B_remain_memory_size) * 1.0 / (a->total_core_num + a->total_memory_size) * 2;
+        int surplus_ratio_b = (b->A_remain_core_num + b->A_remain_memory_size + b->B_remain_core_num + a->B_remain_memory_size) * 1.0 / (b->total_core_num + b->total_memory_size) * 2;
+        return surplus_ratio_a < surplus_ratio_b;
     }
 };
