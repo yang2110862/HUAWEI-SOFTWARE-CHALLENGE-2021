@@ -103,13 +103,22 @@ void Migration() {
 
 }
 void AddVm(AddData& add_data) {
+    Cmp cmp;
     bool isDeploy = false;
     Evaluate evaluate;  //创建一个评价类的实例
     int deployment_way = add_data.deployment_way;
     if (deployment_way == 1) { //双节点部署
         int cpu_cores = add_data.cpu_cores;
         int memory_size = add_data.memory_size;
-        for (auto& purchase_server : purchase_servers) {
+        vector<PurchasedServer*> can_deploy_servers;
+        for (auto& purchase_server : purchase_servers) {    //先筛选能用的服务器
+            if (purchase_server->A_remain_core_num >= cpu_cores && purchase_server->A_remain_memory_size < memory_size
+            && purchase_server->B_remain_core_num >= cpu_cores && purchase_server->B_remain_memory_size < memory_size) {
+                can_deploy_servers.emplace_back(purchase_server);
+            }
+        }
+        sort(can_deploy_servers.begin(), can_deploy_servers.end(), cmp.CanDeploy);
+        for (auto& purchase_server : can_deploy_servers) {
             if (isDeploy) {
                 break;
             }
@@ -159,11 +168,49 @@ void AddVm(AddData& add_data) {
     } else {       //单节点部署
         int cpu_cores = add_data.cpu_cores;
         int memory_size = add_data.memory_size;
-        for (auto& purchase_server : purchase_servers) {
+        vector<PurchasedServer*> can_deploy_servers;
+        for (auto& purchase_server : purchase_servers) {    //先筛选能用的服务器
+            if ((purchase_server->A_remain_core_num < cpu_cores || purchase_server->A_remain_memory_size < memory_size)
+            && (purchase_server->B_remain_core_num < cpu_cores || purchase_server->B_remain_memory_size < memory_size)) {
+                continue;
+            } else {
+                can_deploy_servers.emplace_back(purchase_server);
+                if (purchase_server->A_remain_core_num >= cpu_cores && purchase_server->A_remain_memory_size >= memory_size) {
+                    purchase_server->can_deploy_A = true;
+                }
+                if (purchase_server->B_remain_core_num >= cpu_cores && purchase_server->B_remain_memory_size >= memory_size) {
+                    purchase_server->can_deploy_B = true;
+                }
+            }
+        }
+        sort(can_deploy_servers.begin(), can_deploy_servers.end(), cmp.CanDeploy);
+        for (auto& purchase_server : can_deploy_servers) {
             if (isDeploy) {
                 break;
             }
-            if (evaluate.PurchasedServerA(purchase_server, cpu_cores, memory_size)) {
+            bool evaluate_A = evaluate.PurchasedServerA(purchase_server, cpu_cores, memory_size);
+            bool evaluate_B = evaluate.PurchasedServerB(purchase_server, cpu_cores, memory_size);
+            char which_node = 'C';
+            if (evaluate_A && evaluate_B) {
+                if (cpu_cores > memory_size) {
+                    if (purchase_server->A_remain_core_num >= purchase_server->B_remain_core_num) {
+                        which_node = 'A';
+                    } else {
+                        which_node = 'B';
+                    }
+                } else {
+                    if (purchase_server->A_remain_memory_size >= purchase_server->B_remain_memory_size) {
+                        which_node = 'A';
+                    } else {
+                        which_node = 'B';
+                    }
+                }
+            } else if (evaluate_A) {
+                which_node = 'A';
+            } else if (evaluate_B) {
+                which_node = 'B';
+            }
+            if (which_node == 'A') {
                 isDeploy = true;
                 purchase_server->A_remain_core_num -= cpu_cores;
                 purchase_server->A_remain_memory_size -= memory_size;
@@ -175,7 +222,7 @@ void AddVm(AddData& add_data) {
                 vm_id2info[add_data.vm_id].memory_size = memory_size;
                 vm_id2info[add_data.vm_id].node = "A";
                 break;
-            } else if (evaluate.PurchasedServerB(purchase_server, cpu_cores, memory_size)) {
+            } else if (which_node == 'B') {
                 isDeploy = true;
                 purchase_server->B_remain_core_num -= cpu_cores;
                 purchase_server->B_remain_memory_size -= memory_size;
