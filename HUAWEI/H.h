@@ -5,13 +5,13 @@
 #include <unordered_map>
 #include <ctime>
 #include <fstream>
-#include <cmath>
 #include <unordered_set>
+#include <cmath>
 using namespace std;
 
 //#define TEST_PARSEINPUT
-// #define REDIRECT_INPUT
-//#define REDIRECT_OUTPUT
+// #define REDIRECT
+
 struct SoldServer {   
     string server_name;
     int cpu_cores;
@@ -32,7 +32,7 @@ struct RequestData {
 };
 struct PurchasedServer {
     string server_name;
-    int server_id;
+    int server_id = -1;
     int total_core_num;
     int total_memory_size;
     int A_remain_core_num;
@@ -62,8 +62,16 @@ struct AddData {
     int vm_id;
     string vm_name;
 };
+struct MigrationInfo {
+    int vm_id;
+    PurchasedServer *server;
+    char node;
+    MigrationInfo() {}
+    MigrationInfo(int _vm_id, PurchasedServer *_server, char _node) : vm_id(_vm_id), server(_server), node(_node) {}
+};
+
 class Evaluate {
-private: 
+    private: 
     const double threshold1 = 4;
 
     const double threshold_abs1 = 10;
@@ -143,6 +151,30 @@ public:
             return true;
         }
         return false;
+    }
+public:
+    static bool CanMigrateTo(VmIdInfo *vm_info, PurchasedServer *original_server, PurchasedServer *target_server, char target_node) {
+        //if (target_server->A_vm_id.size() + target_server->B_vm_id.size() + target_server->AB_vm_id.size() <= 2) return false;
+        /*if (original_server == target_server) {
+            if (vm_id2info[vm_id].node == target_node) return false;
+            
+        }*/
+        int cpu_cores = vm_info->cpu_cores, memory_size = vm_info->memory_size;
+        int A_remain_core_num = target_server->A_remain_core_num, B_remain_core_num = target_server->B_remain_core_num;
+        int A_remain_memory_size = target_server->A_remain_memory_size, B_remain_memory_size = target_server->B_remain_memory_size;
+        bool fit_node_A = cpu_cores <= A_remain_core_num && memory_size <= A_remain_memory_size;
+        bool fit_node_B = cpu_cores <= B_remain_core_num && memory_size <= B_remain_memory_size;
+        if (target_node == 'C') {
+            return fit_node_A && fit_node_B;
+        } else if (target_node == 'A') {
+            if (!fit_node_A) return false;
+            else if (!fit_node_B) return true;
+            else return A_remain_core_num + A_remain_memory_size <= B_remain_core_num + B_remain_memory_size;
+        } else {
+            if (!fit_node_B) return false;
+            else if (!fit_node_A) return true;
+            else return A_remain_core_num + A_remain_memory_size >= B_remain_core_num + B_remain_memory_size;
+        }
     }
 };
 class Cmp {
