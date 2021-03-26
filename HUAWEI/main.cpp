@@ -204,7 +204,7 @@ void AddVm(AddData& add_data) {
                 purchase_server->A_remain_memory_size = sold_server.memory_size - memory_size;
                 purchase_server->B_remain_core_num = sold_server.cpu_cores;
                 purchase_server->B_remain_memory_size = sold_server.memory_size;
-                purchase_server->AB_vm_id.insert(add_data.vm_id);
+                purchase_server->A_vm_id.insert(add_data.vm_id);
                 purchase_server->server_name = sold_server.server_name;
                 purchase_servers.emplace_back(purchase_server);
                 purchase_infos[sold_server.server_name].emplace_back(purchase_server);
@@ -309,13 +309,14 @@ void SolveProblem() {
         }
         Numbering(); //给购买了的服务器编号
         Print(vm_ids);
+        purchase_infos.erase(purchase_infos.begin(), purchase_infos.end());
     }
 }
 
 int main(int argc, char* argv[]) {
 #ifdef REDIRECT
-    freopen("train.txt", "r", stdin);
-    freopen("out.txt", "w", stdout); 
+    freopen("training-1.txt", "r", stdin);
+    freopen("out1.txt", "w", stdout); 
 #endif
     ParseInput();
     SolveProblem();
