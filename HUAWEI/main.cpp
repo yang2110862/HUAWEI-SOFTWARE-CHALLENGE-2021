@@ -309,13 +309,14 @@ void SolveProblem() {
         }
         Numbering(); //给购买了的服务器编号
         Print(vm_ids);
+        purchase_infos.erase(purchase_infos.begin(), purchase_infos.end());
     }
 }
 
 int main(int argc, char* argv[]) {
 #ifdef REDIRECT
-    freopen("train.txt", "r", stdin);
-    freopen("out.txt", "w", stdout); 
+    freopen("training-1.txt", "r", stdin);
+    freopen("out1.txt", "w", stdout); 
 #endif
     ParseInput();
     SolveProblem();
