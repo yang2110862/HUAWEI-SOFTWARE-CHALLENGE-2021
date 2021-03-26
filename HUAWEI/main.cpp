@@ -117,12 +117,35 @@ void AddVm(AddData& add_data) {
                 can_deploy_servers.emplace_back(purchase_server);
             }
         }
-        //sort(can_deploy_servers.begin(), can_deploy_servers.end(), cmp.CanDeploy);
+        //cout << "can deploy nums : " << can_deploy_servers.size() << endl;
+        //sort(can_deploy_servers.begin(), can_deploy_servers.end(), cmp.CanDeployDouble);
         for (auto& purchase_server : can_deploy_servers) {
             if (isDeploy) {
                 break;
             }
-            if (evaluate.PurchasedServerAB(purchase_server, cpu_cores, memory_size)) {
+            if (evaluate.StrongPurchasedServerAB(purchase_server, cpu_cores, memory_size)) {
+                isDeploy = true;
+                purchase_server->A_remain_core_num -= cpu_cores;
+                purchase_server->A_remain_memory_size -= memory_size;
+                purchase_server->B_remain_core_num -= cpu_cores;
+                purchase_server->B_remain_memory_size -= memory_size;
+                purchase_server->AB_vm_id.insert(add_data.vm_id);
+
+                VmIdInfo vm_id_info;
+                vm_id_info.purchase_server = purchase_server;
+                vm_id_info.vm_name = add_data.vm_name;
+                vm_id_info.cpu_cores = cpu_cores;
+                vm_id_info.memory_size = memory_size;
+                vm_id_info.node = "C";
+                vm_id2info[add_data.vm_id] = vm_id_info;
+                break;
+            }
+        }
+        for (auto& purchase_server : can_deploy_servers) {
+            if (isDeploy) {
+                break;
+            }
+            if (evaluate.WeakPurchasedServerAB(purchase_server, cpu_cores, memory_size)) {
                 isDeploy = true;
                 purchase_server->A_remain_core_num -= cpu_cores;
                 purchase_server->A_remain_memory_size -= memory_size;
@@ -187,7 +210,7 @@ void AddVm(AddData& add_data) {
                 }
             }
         }
-        //sort(can_deploy_servers.begin(), can_deploy_servers.end(), cmp.CanDeploy);
+        //sort(can_deploy_servers.begin(), can_deploy_servers.end(), cmp.CanDeploySingle);
         for (auto& purchase_server : can_deploy_servers) {
             if (isDeploy) {
                 break;
@@ -371,14 +394,18 @@ void SolveProblem() {
 }
 
 int main(int argc, char* argv[]) {
-#ifdef REDIRECT
+#ifdef REDIRECT_INPUT
     freopen("training-1.txt", "r", stdin);
-    freopen("out1.txt", "w", stdout); 
+#endif
+#ifdef REDIRECT_OUTPUT
+    freopen("out2.txt", "w", stdout); 
 #endif
     ParseInput();
     SolveProblem();
-#ifdef REDIRECT
+#ifdef REDIRECT_INPUT
     fclose(stdin);
+#endif
+#ifdef REDIRECT_OUTPUT
     fclose(stdout);
 #endif
     return 0;

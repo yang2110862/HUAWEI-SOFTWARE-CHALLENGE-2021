@@ -10,8 +10,8 @@
 using namespace std;
 
 //#define TEST_PARSEINPUT
-//#define REDIRECT
-
+//#define REDIRECT_INPUT
+//#define REDIRECT_OUTPUT
 struct SoldServer {   
     string server_name;
     int cpu_cores;
@@ -93,12 +93,15 @@ private:
         return true;
     }
 public:
-    bool PurchasedServerAB(PurchasedServer* purchased_server, int cpu_cores, int memory_size) {  //评价要不要插到双节点
-        if (purchased_server->A_remain_core_num >= cpu_cores && purchased_server->A_remain_memory_size >= memory_size
-            && purchased_server->B_remain_core_num >= cpu_cores && purchased_server->B_remain_memory_size >= memory_size){
-                return true;
-            }
-        return false;
+    bool StrongPurchasedServerAB(PurchasedServer* purchased_server, int cpu_cores, int memory_size) {  //评价要不要插到双节点
+        if (purchased_server->AB_vm_id.size() == 0) {
+            return false;
+        }
+        return true;
+    }
+    bool WeakPurchasedServerAB(PurchasedServer* purchased_server, int cpu_cores, int memory_size) {  //评价要不要插到双节点
+        
+        return true;
     }
     bool PurchasedServerA(PurchasedServer* purchased_server, int cpu_cores, int memory_size) {  //评价要不要插到A节点
         if (purchased_server->A_remain_core_num >= cpu_cores && purchased_server->A_remain_memory_size >= memory_size) {
@@ -159,9 +162,14 @@ public:
         }*/
         return (a.cpu_cores + a.memory_size) * (a.deployment_way + 1) > (b.cpu_cores + b.memory_size) * (b.deployment_way + 1);
     }
-    static bool CanDeploy (PurchasedServer* a, PurchasedServer* b) {
-        int surplus_ratio_a = (a->A_remain_core_num + a->A_remain_memory_size + a->B_remain_core_num + a->B_remain_memory_size) * 1.0 / (a->total_core_num + a->total_memory_size) * 2;
-        int surplus_ratio_b = (b->A_remain_core_num + b->A_remain_memory_size + b->B_remain_core_num + a->B_remain_memory_size) * 1.0 / (b->total_core_num + b->total_memory_size) * 2;
+    static bool CanDeployDouble (PurchasedServer* a, PurchasedServer* b) {
+        double surplus_ratio_a = (a->A_remain_core_num + a->A_remain_memory_size + a->B_remain_core_num + a->B_remain_memory_size) * 1.0 / (a->total_core_num + a->total_memory_size) * 2;
+        double surplus_ratio_b = (b->A_remain_core_num + b->A_remain_memory_size + b->B_remain_core_num + b->B_remain_memory_size) * 1.0 / (b->total_core_num + b->total_memory_size) * 2;
+        return surplus_ratio_a < surplus_ratio_b;
+    }
+    static bool CanDeploySingle (PurchasedServer* a, PurchasedServer* b) {
+        double surplus_ratio_a = (a->A_remain_core_num + a->A_remain_memory_size + a->B_remain_core_num + a->B_remain_memory_size) * 1.0 / (a->total_core_num + a->total_memory_size) * 2;
+        double surplus_ratio_b = (b->A_remain_core_num + b->A_remain_memory_size + b->B_remain_core_num + b->B_remain_memory_size) * 1.0 / (b->total_core_num + b->total_memory_size) * 2;
         return surplus_ratio_a < surplus_ratio_b;
     }
 };
