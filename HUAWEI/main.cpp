@@ -103,17 +103,59 @@ void Migration() {
 
 }
 void AddVm(AddData& add_data) {
+    Cmp cmp;
     bool isDeploy = false;
     Evaluate evaluate;  //创建一个评价类的实例
     int deployment_way = add_data.deployment_way;
     if (deployment_way == 1) { //双节点部署
         int cpu_cores = add_data.cpu_cores;
         int memory_size = add_data.memory_size;
-        for (auto& purchase_server : purchase_servers) {
+        vector<PurchasedServer*> can_deploy_servers;
+        for (auto& purchase_server : purchase_servers) {    //先筛选能用的服务器
+            if (purchase_server->A_remain_core_num >= cpu_cores && purchase_server->A_remain_memory_size >= memory_size
+            && purchase_server->B_remain_core_num >= cpu_cores && purchase_server->B_remain_memory_size >= memory_size) {
+                can_deploy_servers.emplace_back(purchase_server);
+            }
+        }
+
+        double min_remain_rate = 2.0;
+        PurchasedServer* flag_server;
+        for (auto& purchase_server : can_deploy_servers) {  //遍历所有能用服务器 sai o x a
             if (isDeploy) {
                 break;
             }
-            if (evaluate.PurchasedServerAB(purchase_server, cpu_cores, memory_size)) {
+            double _cpu_remain_rate = (1.0*(purchase_server->A_remain_core_num - cpu_cores)/purchase_server->total_core_num + 1.0*(purchase_server->B_remain_core_num - cpu_cores)/ purchase_server->total_core_num) / 2;
+            double _memory_remain_rate = (1.0*(purchase_server->A_remain_memory_size - memory_size)/purchase_server->total_memory_size + 1.0*(purchase_server->B_remain_memory_size - memory_size) / purchase_server->total_memory_size) / 2;
+            // double _cpu_remain_rate = max(1.0*(purchase_server->A_remain_core_num - cpu_cores)/purchase_server->total_core_num , 1.0*(purchase_server->B_remain_core_num - cpu_cores)/ purchase_server->total_core_num) ;
+            // double _memory_remain_rate =  max(1.0*(purchase_server->A_remain_memory_size - memory_size)/purchase_server->total_memory_size , 1.0*(purchase_server->B_remain_memory_size - memory_size) / purchase_server->total_memory_size) ;
+            if(_cpu_remain_rate + _memory_remain_rate < min_remain_rate){
+                min_remain_rate = _cpu_remain_rate + _memory_remain_rate;
+                flag_server = purchase_server;
+            }
+
+        }
+        if(min_remain_rate != 2.0){
+            isDeploy = true;
+                flag_server->A_remain_core_num -= cpu_cores;
+                flag_server->A_remain_memory_size -= memory_size;
+                flag_server->B_remain_core_num -= cpu_cores;
+                flag_server->B_remain_memory_size -= memory_size;
+                flag_server->AB_vm_id.insert(add_data.vm_id);
+
+                VmIdInfo vm_id_info;
+                vm_id_info.purchase_server = flag_server;
+                vm_id_info.vm_name = add_data.vm_name;
+                vm_id_info.cpu_cores = cpu_cores;
+                vm_id_info.memory_size = memory_size;
+                vm_id_info.node = "C";
+                vm_id2info[add_data.vm_id] = vm_id_info;
+        }
+        
+        for (auto& purchase_server : can_deploy_servers) {
+            if (isDeploy) {
+                break;
+            }
+            if (evaluate.WeakPurchasedServerAB(purchase_server, cpu_cores, memory_size)) {
                 isDeploy = true;
                 purchase_server->A_remain_core_num -= cpu_cores;
                 purchase_server->A_remain_memory_size -= memory_size;
@@ -121,11 +163,13 @@ void AddVm(AddData& add_data) {
                 purchase_server->B_remain_memory_size -= memory_size;
                 purchase_server->AB_vm_id.insert(add_data.vm_id);
 
-                vm_id2info[add_data.vm_id].purchase_server = purchase_server;
-                vm_id2info[add_data.vm_id].vm_name = add_data.vm_name;
-                vm_id2info[add_data.vm_id].cpu_cores = cpu_cores;
-                vm_id2info[add_data.vm_id].memory_size = memory_size;
-                vm_id2info[add_data.vm_id].node = "C";
+                VmIdInfo vm_id_info;
+                vm_id_info.purchase_server = purchase_server;
+                vm_id_info.vm_name = add_data.vm_name;
+                vm_id_info.cpu_cores = cpu_cores;
+                vm_id_info.memory_size = memory_size;
+                vm_id_info.node = "C";
+                vm_id2info[add_data.vm_id] = vm_id_info;
                 break;
             }
         }
@@ -147,11 +191,13 @@ void AddVm(AddData& add_data) {
                 purchase_servers.emplace_back(purchase_server);
                 purchase_infos[sold_server.server_name].emplace_back(purchase_server);
 
-                vm_id2info[add_data.vm_id].purchase_server = purchase_server;
-                vm_id2info[add_data.vm_id].vm_name = add_data.vm_name;
-                vm_id2info[add_data.vm_id].cpu_cores = cpu_cores;
-                vm_id2info[add_data.vm_id].memory_size = memory_size;
-                vm_id2info[add_data.vm_id].node = "C";
+                VmIdInfo vm_id_info;
+                vm_id_info.purchase_server = purchase_server;
+                vm_id_info.vm_name = add_data.vm_name;
+                vm_id_info.cpu_cores = cpu_cores;
+                vm_id_info.memory_size = memory_size;
+                vm_id_info.node = "C";
+                vm_id2info[add_data.vm_id] = vm_id_info;
                 //通过虚拟机ID，知道部署再哪个服务器的哪个端口
                 break;
             }
@@ -159,38 +205,104 @@ void AddVm(AddData& add_data) {
     } else {       //单节点部署
         int cpu_cores = add_data.cpu_cores;
         int memory_size = add_data.memory_size;
-        for (auto& purchase_server : purchase_servers) {
+        vector<PurchasedServer*> can_deploy_servers;
+        for (auto& purchase_server : purchase_servers) {    //先筛选能用的服务器
+            if ((purchase_server->A_remain_core_num < cpu_cores || purchase_server->A_remain_memory_size < memory_size)
+            && (purchase_server->B_remain_core_num < cpu_cores || purchase_server->B_remain_memory_size < memory_size)) {
+                continue;
+            } else {
+                can_deploy_servers.emplace_back(purchase_server);
+                if (purchase_server->A_remain_core_num >= cpu_cores && purchase_server->A_remain_memory_size >= memory_size) {
+                    purchase_server->can_deploy_A = true;
+                }
+                if (purchase_server->B_remain_core_num >= cpu_cores && purchase_server->B_remain_memory_size >= memory_size) {
+                    purchase_server->can_deploy_B = true;
+                }
+            }
+        }
+        //sort(can_deploy_servers.begin(), can_deploy_servers.end(), cmp.CanDeploySingle);
+        double min_remain_rate = 2.0;
+        PurchasedServer* flag_server;
+        char which_node = 'C';
+        for (auto& purchase_server : can_deploy_servers) {
             if (isDeploy) {
                 break;
             }
-            if (evaluate.PurchasedServerA(purchase_server, cpu_cores, memory_size)) {
-                isDeploy = true;
-                purchase_server->A_remain_core_num -= cpu_cores;
-                purchase_server->A_remain_memory_size -= memory_size;
-                purchase_server->A_vm_id.insert(add_data.vm_id);
-
-                vm_id2info[add_data.vm_id].purchase_server = purchase_server;
-                vm_id2info[add_data.vm_id].vm_name = add_data.vm_name;
-                vm_id2info[add_data.vm_id].cpu_cores = cpu_cores;
-                vm_id2info[add_data.vm_id].memory_size = memory_size;
-                vm_id2info[add_data.vm_id].node = "A";
-                break;
-            } else if (evaluate.PurchasedServerB(purchase_server, cpu_cores, memory_size)) {
-                isDeploy = true;
-                purchase_server->B_remain_core_num -= cpu_cores;
-                purchase_server->B_remain_memory_size -= memory_size;
-                purchase_server->B_vm_id.insert(add_data.vm_id);
-
-                vm_id2info[add_data.vm_id].purchase_server = purchase_server;
-                vm_id2info[add_data.vm_id].vm_name = add_data.vm_name;
-                vm_id2info[add_data.vm_id].cpu_cores = cpu_cores;
-                vm_id2info[add_data.vm_id].memory_size = memory_size;
-                vm_id2info[add_data.vm_id].node = "B";
-                break;
-            } else {
-                continue;
-            }
+            bool evaluate_A = evaluate.PurchasedServerA(purchase_server, cpu_cores, memory_size);
+            bool evaluate_B = evaluate.PurchasedServerB(purchase_server, cpu_cores, memory_size);
+            
+            if(evaluate_A&&evaluate_B){
+                double _cpu_remain_rate = (1.0*(purchase_server->A_remain_core_num - cpu_cores)/purchase_server->total_core_num + 1.0*purchase_server->B_remain_core_num / purchase_server->total_core_num) / 2;
+                double _memory_remain_rate = (1.0*(purchase_server->A_remain_memory_size - memory_size)/purchase_server->total_memory_size + 1.0*purchase_server->B_remain_memory_size / purchase_server->total_memory_size) / 2;
+                //  double _cpu_remain_rate = max(1.0*(purchase_server->A_remain_core_num - cpu_cores)/purchase_server->total_core_num , 1.0*(purchase_server->B_remain_core_num)/ purchase_server->total_core_num) ;
+                // double _memory_remain_rate =  max(1.0*(purchase_server->A_remain_memory_size - memory_size)/purchase_server->total_memory_size , 1.0*(purchase_server->B_remain_memory_size) / purchase_server->total_memory_size) ;
+                if(_cpu_remain_rate + _memory_remain_rate < min_remain_rate){
+                    min_remain_rate = _cpu_remain_rate + _memory_remain_rate;
+                    flag_server = purchase_server;
+                    which_node = 'A';
+                }
+                _cpu_remain_rate = (1.0*(purchase_server->A_remain_core_num )/purchase_server->total_core_num + 1.0*(purchase_server->B_remain_core_num- cpu_cores) / purchase_server->total_core_num) / 2;
+                _memory_remain_rate = (1.0*(purchase_server->A_remain_memory_size)/purchase_server->total_memory_size + 1.0*(purchase_server->B_remain_memory_size- memory_size) / purchase_server->total_memory_size) / 2;
+                // _cpu_remain_rate = max(1.0*(purchase_server->A_remain_core_num )/purchase_server->total_core_num , 1.0*(purchase_server->B_remain_core_num - cpu_cores )/ purchase_server->total_core_num) ;
+                // _memory_remain_rate =  max(1.0*(purchase_server->A_remain_memory_size )/purchase_server->total_memory_size , 1.0*(purchase_server->B_remain_memory_size - memory_size ) / purchase_server->total_memory_size) ;
+                if(_cpu_remain_rate + _memory_remain_rate < min_remain_rate){
+                    min_remain_rate = _cpu_remain_rate + _memory_remain_rate;
+                    flag_server = purchase_server;
+                    which_node = 'B';
+                }
+            }else if (evaluate_A){
+                double _cpu_remain_rate = (1.0*(purchase_server->A_remain_core_num - cpu_cores)/purchase_server->total_core_num + 1.0*(purchase_server->B_remain_core_num) / purchase_server->total_core_num) / 2;
+                double _memory_remain_rate = (1.0*(purchase_server->A_remain_memory_size - memory_size)/purchase_server->total_memory_size + 1.0*(purchase_server->B_remain_memory_size) / purchase_server->total_memory_size) / 2;
+                //  double _cpu_remain_rate = max(1.0*(purchase_server->A_remain_core_num - cpu_cores)/purchase_server->total_core_num , 1.0*(purchase_server->B_remain_core_num )/ purchase_server->total_core_num) ;
+                // double _memory_remain_rate =  max(1.0*(purchase_server->A_remain_memory_size - memory_size)/purchase_server->total_memory_size , 1.0*(purchase_server->B_remain_memory_size ) / purchase_server->total_memory_size) ;      
+                if(_cpu_remain_rate + _memory_remain_rate < min_remain_rate){
+                    min_remain_rate = _cpu_remain_rate + _memory_remain_rate;
+                    flag_server = purchase_server;
+                    which_node = 'A';
+                }
+            }else if (evaluate_B){
+                double _cpu_remain_rate = (1.0*(purchase_server->A_remain_core_num )/purchase_server->total_core_num + 1.0*(purchase_server->B_remain_core_num- cpu_cores) / purchase_server->total_core_num) / 2;
+                double _memory_remain_rate = (1.0*(purchase_server->A_remain_memory_size)/purchase_server->total_memory_size + 1.0*(purchase_server->B_remain_memory_size- memory_size) / purchase_server->total_memory_size) / 2;
+                //  double _cpu_remain_rate = max(1.0*(purchase_server->A_remain_core_num )/purchase_server->total_core_num , 1.0*(purchase_server->B_remain_core_num - cpu_cores)/ purchase_server->total_core_num) ;
+                // double _memory_remain_rate =  max(1.0*(purchase_server->A_remain_memory_size )/purchase_server->total_memory_size , 1.0*(purchase_server->B_remain_memory_size - memory_size) / purchase_server->total_memory_size) ;
+                if(_cpu_remain_rate + _memory_remain_rate < min_remain_rate){
+                    min_remain_rate = _cpu_remain_rate + _memory_remain_rate;
+                    flag_server = purchase_server;
+                    which_node = 'B';
+                }
+            }  
+         
         }
+        if(min_remain_rate !=2.0){
+            if (which_node == 'A') {
+                isDeploy = true;
+                flag_server->A_remain_core_num -= cpu_cores;
+                flag_server->A_remain_memory_size -= memory_size;
+                flag_server->A_vm_id.insert(add_data.vm_id);
+
+                VmIdInfo vm_id_info;
+                vm_id_info.purchase_server = flag_server;
+                vm_id_info.vm_name = add_data.vm_name;
+                vm_id_info.cpu_cores = cpu_cores;
+                vm_id_info.memory_size = memory_size;
+                vm_id_info.node = "A";
+                vm_id2info[add_data.vm_id] = vm_id_info;
+            } else if (which_node == 'B') {
+                isDeploy = true;
+                flag_server->B_remain_core_num -= cpu_cores;
+                flag_server->B_remain_memory_size -= memory_size;
+                flag_server->B_vm_id.insert(add_data.vm_id);
+
+                VmIdInfo vm_id_info;
+                vm_id_info.purchase_server = flag_server;
+                vm_id_info.vm_name = add_data.vm_name;
+                vm_id_info.cpu_cores = cpu_cores;
+                vm_id_info.memory_size = memory_size;
+                vm_id_info.node = "B";
+                vm_id2info[add_data.vm_id] = vm_id_info;
+            } 
+        }
+        
         for (auto& sold_server : sold_servers) {
             if (isDeploy) {
                 break;
@@ -204,16 +316,19 @@ void AddVm(AddData& add_data) {
                 purchase_server->A_remain_memory_size = sold_server.memory_size - memory_size;
                 purchase_server->B_remain_core_num = sold_server.cpu_cores;
                 purchase_server->B_remain_memory_size = sold_server.memory_size;
+
                 purchase_server->A_vm_id.insert(add_data.vm_id);
                 purchase_server->server_name = sold_server.server_name;
                 purchase_servers.emplace_back(purchase_server);
                 purchase_infos[sold_server.server_name].emplace_back(purchase_server);
 
-                vm_id2info[add_data.vm_id].purchase_server = purchase_server;
-                vm_id2info[add_data.vm_id].vm_name = add_data.vm_name;
-                vm_id2info[add_data.vm_id].cpu_cores = cpu_cores;
-                vm_id2info[add_data.vm_id].memory_size = memory_size;
-                vm_id2info[add_data.vm_id].node = "A";
+                VmIdInfo vm_id_info;
+                vm_id_info.purchase_server = purchase_server;
+                vm_id_info.vm_name = add_data.vm_name;
+                vm_id_info.cpu_cores = cpu_cores;
+                vm_id_info.memory_size = memory_size;
+                vm_id_info.node = "A";
+                vm_id2info[add_data.vm_id] = vm_id_info;
                 //通过虚拟机ID，知道部署再哪个服务器的哪个端口
                 break;
             }
@@ -314,14 +429,18 @@ void SolveProblem() {
 }
 
 int main(int argc, char* argv[]) {
-#ifdef REDIRECT
-    freopen("training-1.txt", "r", stdin);
-    freopen("out1.txt", "w", stdout); 
+#ifdef REDIRECT_INPUT
+    freopen("/Users/wangtongling/Desktop/training-data/training-2.txt", "r", stdin);
+#endif
+#ifdef REDIRECT_OUTPUT
+    freopen("out2.txt", "w", stdout); 
 #endif
     ParseInput();
     SolveProblem();
-#ifdef REDIRECT
+#ifdef REDIRECT_INPUT
     fclose(stdin);
+#endif
+#ifdef REDIRECT_OUTPUT
     fclose(stdout);
 #endif
     return 0;
