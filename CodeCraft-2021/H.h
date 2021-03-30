@@ -11,8 +11,8 @@
 using namespace std;
 
 //#define TEST_PARSEINPUT
-// #define REDIRECT
-
+#define REDIRECT
+#define PRINTINFO
 struct SoldServer {
     string server_name;
     int cpu_cores;

@@ -17,3 +17,4 @@ bin/CodeCraft-2021
 build/CMakeFiles/Makefile2
 *.marks
 build/Makefile
+*.json
