@@ -106,31 +106,33 @@ void ParseInput() {
     }
 #endif
 }
+// 筛选出利用率较低的服务器，迁移走其中的虚拟机。
 bool NeedMigration(PurchasedServer *server) {
     if(server->A_vm_id.size() + server->B_vm_id.size() + server->AB_vm_id.size() == 0) return false;
-
     double _A_cpu_remain_rate = 1.0 * server->A_remain_core_num / server->total_core_num;
     double _B_cpu_remain_rate = 1.0 * server->B_remain_core_num / server->total_core_num;
     double _A_memory_remain_rate = 1.0 * server->A_remain_memory_size / server->total_memory_size;
     double _B_memory_remain_rate = 1.0 * server->B_remain_memory_size / server->total_memory_size;
-    double threadhold = 0.23;
-    if((_A_cpu_remain_rate > threadhold ) + (_A_memory_remain_rate > threadhold) + (_B_cpu_remain_rate > threadhold) + (_B_memory_remain_rate>threadhold) >=2)
-        return true;
-    else
-        return false;
+    double threadhold = 0.4; //减小能增加迁移数量。
+    return (_A_cpu_remain_rate > threadhold) + (_A_memory_remain_rate > threadhold) + (_B_cpu_remain_rate > threadhold)
+                    + (_B_memory_remain_rate > threadhold) >= 1;
 }
-//低于0.5 往高于0.5迁！！！
-
+// 筛选出几乎满了的服务器，不作为目标服务器。
+bool NearlyFull(PurchasedServer *server) {
+    double threshold = 0.07; //增大能去掉更多的服务器，减少时间；同时迁移次数会有轻微减少，成本有轻微增加。
+    return (1.0 * server->A_remain_core_num / server->total_core_num < threshold || 1.0 * server->A_remain_memory_size / server->total_memory_size < threshold)
+                    && (1.0 * server->B_remain_core_num / server->total_core_num < threshold || 1.0 * server->B_remain_memory_size / server->total_memory_size < threshold);
+}
 
 vector<MigrationInfo> Migration() {
-    int max_migration_num = vm_id2info.size() * 5 / 1000;
+    int max_migration_num = vm_id2info.size() * 30 / 1000;
     vector<MigrationInfo> migration_infos;
     // unordered_set<int> migrated_vms;
     unordered_set<int> happened_migtation_serverID;
     vector<PurchasedServer *> original_servers, target_servers;
     for (auto server : purchase_servers) {
-        target_servers.emplace_back(server);
         if (NeedMigration(server)) original_servers.emplace_back(server);
+        if (!NearlyFull(server)) target_servers.emplace_back(server);
         // else
         //     target_servers.emplace_back(server);
 
@@ -139,7 +141,7 @@ vector<MigrationInfo> Migration() {
         //     target_servers.emplace_back(server);
     }
     sort(original_servers.begin(),original_servers.end(),[](PurchasedServer* a,PurchasedServer*b) {
-        return a->A_vm_id.size() + a->B_vm_id.size() + a->AB_vm_id.size() <b->A_vm_id.size() + b->B_vm_id.size() + b->AB_vm_id.size() ;
+        return a->A_vm_id.size() + a->B_vm_id.size() + a->AB_vm_id.size() < b->A_vm_id.size() + b->B_vm_id.size() + b->AB_vm_id.size() ;
     });
 
     for (auto &original_server : original_servers) {
@@ -148,7 +150,7 @@ vector<MigrationInfo> Migration() {
         unordered_set<int> a_vms = original_server->A_vm_id;
         for (auto &vm_id : a_vms) {
             if (migration_infos.size() == max_migration_num) return migration_infos;
-            //if (!NeedMigration(original_server)) break;
+            // if (!NeedMigration(original_server)) break;
             // if (migrated_vms.find(vm_id) != migrated_vms.end()) continue;
             VmIdInfo *vm_info = &vm_id2info[vm_id];
             double min_rate = 2.0;
@@ -705,8 +707,8 @@ void SolveProblem() {
     Cmp cmp;
     sort(sold_servers.begin(), sold_servers.end(), cmp.SoldServers);
     for (int i = 0; i < total_days_num; ++i) {
-        vector<MigrationInfo> migration_infos;
-        // vector<MigrationInfo> migration_infos = Migration();
+        // vector<MigrationInfo> migration_infos;
+        vector<MigrationInfo> migration_infos = Migration();
         vector<RequestData> intraday_requests = request_datas.front();
         request_datas.pop();
         int request_num = intraday_requests.size();
