@@ -17,7 +17,10 @@ int now_req_num = 0;
 long long total_server_cost = 0;
 long long total_power_cost = 0;
 int total_migration_num = 0;
+
+#ifdef PRINTINFO
 clock_t _start,_end;
+#endif
 
 int number = 0; //给服务器编号
 //ifstream cin("training-2.txt");
@@ -752,7 +755,9 @@ void SolveProblem() {
 void PrintCostInfo(){
     cout<<"Server Num : "<<purchase_servers.size()<<endl;
     cout<<"Total Migration Num : " <<total_migration_num<<endl;
+    #ifdef PRINTINFO
     cout<<"Time: "<<double(_end - _start) / CLOCKS_PER_SEC<< " s"<<endl;
+    #endif
     cout<<"Total Cost : "<< to_string(total_server_cost)<<" + "<<to_string(total_power_cost) <<" = "<<total_power_cost + total_server_cost<<endl;
 }
 
@@ -763,10 +768,16 @@ int main(int argc, char* argv[]) {
     freopen("/Users/wangtongling/Desktop/training-data/training-2.txt", "r", stdin);
     // freopen("out1.txt", "w", stdout);
 #endif
+#ifdef PRINTINFO
     _start = clock();
+#endif
+
     ParseInput();
     SolveProblem();
+#ifdef PRINTINFO
     _end = clock();
+#endif
+
 #ifdef PRINTINFO
     PrintCostInfo();
 #endif
