@@ -122,7 +122,7 @@ bool NeedMigration(PurchasedServer *server) {
     double _B_cpu_remain_rate = 1.0 * server->B_remain_core_num / server->total_core_num;
     double _A_memory_remain_rate = 1.0 * server->A_remain_memory_size / server->total_memory_size;
     double _B_memory_remain_rate = 1.0 * server->B_remain_memory_size / server->total_memory_size;
-    double threadhold = 0.23;
+    double threadhold = 0.73;
     if((_A_cpu_remain_rate > threadhold ) + (_A_memory_remain_rate > threadhold) + (_B_cpu_remain_rate > threadhold) + (_B_memory_remain_rate>threadhold) >=2)
         return true;
     else
@@ -696,8 +696,8 @@ void SolveProblem() {
     sort(sold_servers.begin(), sold_servers.end(), cmp.SoldServers);
     for (int i = 0; i < total_days_num; ++i) {
         from_off_2_start.erase(from_off_2_start.begin(),from_off_2_start.end());
-        vector<MigrationInfo> migration_infos;
-        // vector<MigrationInfo> migration_infos = Migration();
+        // vector<MigrationInfo> migration_infos;
+        vector<MigrationInfo> migration_infos = Migration();
         vector<RequestData> intraday_requests = request_datas.front();
         request_datas.pop();
         int request_num = intraday_requests.size();

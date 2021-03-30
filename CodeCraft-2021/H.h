@@ -8,11 +8,13 @@
 #include <fstream>
 #include <unordered_set>
 #include <cmath>
+
 using namespace std;
 
-//#define TEST_PARSEINPUT
-#define REDIRECT
-#define PRINTINFO
+// #define TEST_PARSEINPUT
+// #define REDIRECT
+// #define PRINTINFO
+
 struct SoldServer {
     string server_name;
     int cpu_cores;
