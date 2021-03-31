@@ -12,8 +12,8 @@ int total_req_num  = 0;
 int now_req_num = 0;
 
 int number = 0; //给服务器编号
-//ifstream cin("training-2.txt");
-//ofstream cout("t2.txt");
+
+
 void ParseServerInfo() {
     int server_num;
     cin >> server_num;
@@ -333,52 +333,38 @@ vector<MigrationInfo> Migration() {
     return migration_infos;
 }
 void AddVm(AddData& add_data) {
-    Cmp cmp;
+    Load load;
+    Evaluate evaluate;
     bool deployed = false;
-    Evaluate evaluate;  //创建一个评价类的实例
     int deployment_way = add_data.deployment_way;
     if (deployment_way == 1) { //双节点部署
-    
-        int cpu_cores = add_data.cpu_cores;
-        int memory_size = add_data.memory_size;
-        double min_remain_rate = 2.0;
-        PurchasedServer* flag_server;
-        for (auto& purchase_server : purchase_servers) {
-            if (deployed) {
-                break;
-            }   //先筛选能用的服务器
+        double cpu_cores = add_data.cpu_cores;
+        double memory_size = add_data.memory_size;
+        double load_ratio = cpu_cores / memory_size;
+        double left, right;      //可接受比值左右浮动的范围，范围可表示为[...6,5,4,3,2, 1, 1/2,1/3,1/4,1/5,1/6...]
+        double threshold = 44;   //左右浮动阈值，先定的大一点
+        load.CalculateInterval(left, right, load_ratio, threshold);
+        PurchasedServer* flag_server = nullptr;
+        double priority = DBL_MAX;      //优先级越小说明优先级越高
+        for (auto& purchase_server : purchase_servers) { // 从已经购买的服务器里面挑选合适的部署
             if (purchase_server->A_remain_core_num >= cpu_cores && purchase_server->A_remain_memory_size >= memory_size
             && purchase_server->B_remain_core_num >= cpu_cores && purchase_server->B_remain_memory_size >= memory_size) {
-                // if(1.0 * now_req_num / total_req_num < 3.0 / 5 &&1.0 * now_req_num / total_req_num > 1.0 / 5 ) {
-                //     int _threadhold = 100;
-                //     int _threadhold_rate = 20;
-                //     int _A_remain_cpu = purchase_server->A_remain_core_num - cpu_cores;
-                //     int _B_remain_cpu = purchase_server->B_remain_core_num - cpu_cores;
-                //     int _A_remain_memory = purchase_server->A_remain_memory_size - memory_size;
-                //     int _B_remain_memory = purchase_server->B_remain_memory_size - memory_size;
-                //     if( _A_remain_memory ==0) {
-                //         if(_A_remain_cpu >= _threadhold) continue;
-                //     }
-                //     if(_B_remain_memory ==0) {
-                //         if(_B_remain_cpu >= _threadhold) continue;
-                //     }
-                //     if(1.0 * _A_remain_cpu  / _A_remain_memory > _threadhold_rate || 1.0 * _A_remain_cpu / _A_remain_memory < 1.0 / _threadhold_rate ||
-                //         1.0 * _B_remain_cpu  / _B_remain_memory > _threadhold_rate || 1.0 * _B_remain_cpu / _B_remain_memory < 1.0 / _threadhold_rate ) {
-                //             continue;
-                //     }
-                // }
-                
-
-                double _cpu_remain_rate = (1.0*(purchase_server->A_remain_core_num - cpu_cores)/purchase_server->total_core_num + 1.0*(purchase_server->B_remain_core_num - cpu_cores)/ purchase_server->total_core_num) / 2;
-                double _memory_remain_rate = (1.0*(purchase_server->A_remain_memory_size - memory_size)/purchase_server->total_memory_size + 1.0*(purchase_server->B_remain_memory_size - memory_size) / purchase_server->total_memory_size) / 2;
-                if(_cpu_remain_rate + _memory_remain_rate < min_remain_rate) {
-                    min_remain_rate = _cpu_remain_rate + _memory_remain_rate;
+                double server_ratio = 1.0 * min(purchase_server->A_remain_core_num, purchase_server->B_remain_core_num) / 
+                                        min(purchase_server->A_remain_memory_size, purchase_server->B_remain_memory_size);
+                if (server_ratio > left || server_ratio < right) {         //如果距离当前VM的ratio太远的话
+                    continue;
+                }
+                if (false) {          //可添加别的判断条件，比如导致cpu、memory浪费的情况。后面可再加
+                    continue;
+                }
+                double distance = load.CalculateDistance(load_ratio, server_ratio);
+                if (distance < priority) {        //可以加加上相同时的判断条件，后面再考虑
                     flag_server = purchase_server;
+                    priority = distance;
                 }
             }
         }
-
-        if(min_remain_rate != 2.0) {
+        if (flag_server != nullptr) {
             deployed = true;
             flag_server->A_remain_core_num -= cpu_cores;
             flag_server->A_remain_memory_size -= memory_size;
@@ -394,7 +380,6 @@ void AddVm(AddData& add_data) {
             vm_id_info.node = 'C';
             vm_id2info[add_data.vm_id] = vm_id_info;
         }
-
         double min_dense_cost = 99999999999999;
         SoldServer* flag_sold_server;
         for(auto& sold_server : sold_servers) {
@@ -437,37 +422,7 @@ void AddVm(AddData& add_data) {
             vm_id_info.node = 'C';
             vm_id2info[add_data.vm_id] = vm_id_info;
         }
-
-        // for (auto& sold_server : sold_servers) {
-        //     if (deployed) {
-        //         break;
-        //     }
-        //     if (sold_server.cpu_cores >= cpu_cores && sold_server.memory_size >= memory_size) {
-        //         deployed = true;
-        //         PurchasedServer* purchase_server = new PurchasedServer;
-        //         purchase_server->total_core_num = sold_server.cpu_cores;
-        //         purchase_server->total_memory_size = sold_server.memory_size;
-        //         purchase_server->A_remain_core_num = sold_server.cpu_cores - cpu_cores;
-        //         purchase_server->A_remain_memory_size = sold_server.memory_size - memory_size;
-        //         purchase_server->B_remain_core_num = sold_server.cpu_cores - cpu_cores;
-        //         purchase_server->B_remain_memory_size = sold_server.memory_size - memory_size;
-        //         purchase_server->AB_vm_id.insert(add_data.vm_id);
-        //         purchase_server->server_name = sold_server.server_name;
-        //         purchase_servers.emplace_back(purchase_server);
-        //         purchase_infos[sold_server.server_name].emplace_back(purchase_server);
-
-        //         VmIdInfo vm_id_info;
-        //         vm_id_info.purchase_server = purchase_server;
-        //         vm_id_info.vm_name = add_data.vm_name;
-        //         vm_id_info.cpu_cores = cpu_cores;
-        //         vm_id_info.memory_size = memory_size;
-        //         vm_id_info.node = "C";
-        //         vm_id2info[add_data.vm_id] = vm_id_info;
-        //         //通过虚拟机ID，知道部署再哪个服务器的哪个端口
-        //         break;
-        //     }
-        // }
-    } else {       //单节点部署
+    } else { //单节点部署
         int cpu_cores = add_data.cpu_cores;
         int memory_size = add_data.memory_size;
         vector<PurchasedServer*> can_deploy_servers;
@@ -614,37 +569,6 @@ void AddVm(AddData& add_data) {
             vm_id_info.node = 'A';
             vm_id2info[add_data.vm_id] = vm_id_info;
         }
-
-        // for (auto& sold_server : sold_servers) {
-        //     if (deployed) {
-        //         break;
-        //     }
-        //     if (sold_server.cpu_cores >= cpu_cores && sold_server.memory_size >= memory_size) {
-        //         deployed = true;
-        //         PurchasedServer* purchase_server = new PurchasedServer;
-        //         purchase_server->total_core_num = sold_server.cpu_cores;
-        //         purchase_server->total_memory_size = sold_server.memory_size;
-        //         purchase_server->A_remain_core_num = sold_server.cpu_cores - cpu_cores;
-        //         purchase_server->A_remain_memory_size = sold_server.memory_size - memory_size;
-        //         purchase_server->B_remain_core_num = sold_server.cpu_cores;
-        //         purchase_server->B_remain_memory_size = sold_server.memory_size;
-
-        //         purchase_server->A_vm_id.insert(add_data.vm_id);
-        //         purchase_server->server_name = sold_server.server_name;
-        //         purchase_servers.emplace_back(purchase_server);
-        //         purchase_infos[sold_server.server_name].emplace_back(purchase_server);
-
-        //         VmIdInfo vm_id_info;
-        //         vm_id_info.purchase_server = purchase_server;
-        //         vm_id_info.vm_name = add_data.vm_name;
-        //         vm_id_info.cpu_cores = cpu_cores;
-        //         vm_id_info.memory_size = memory_size;
-        //         vm_id_info.node = "A";
-        //         vm_id2info[add_data.vm_id] = vm_id_info;
-        //         //通过虚拟机ID，知道部署再哪个服务器的哪个端口
-        //         break;
-        //     }
-        // }
     }
 }
 void DeleteVm(int vm_id) {

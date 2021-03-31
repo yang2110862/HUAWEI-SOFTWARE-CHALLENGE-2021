@@ -8,6 +8,7 @@
 #include <fstream>
 #include <unordered_set>
 #include <cmath>
+#include <cfloat>
 using namespace std;
 
 //#define TEST_PARSEINPUT
@@ -204,5 +205,40 @@ public:
         double surplus_ratio_a = (a->A_remain_core_num + a->A_remain_memory_size + a->B_remain_core_num + a->B_remain_memory_size) * 1.0 / (a->total_core_num + a->total_memory_size) * 2;
         double surplus_ratio_b = (b->A_remain_core_num + b->A_remain_memory_size + b->B_remain_core_num + b->B_remain_memory_size) * 1.0 / (b->total_core_num + b->total_memory_size) * 2;
         return surplus_ratio_a < surplus_ratio_b;
+    }
+};
+class Load {
+public:
+    static double CalculateDistance(double target, double current) {
+        if (target > 1) {
+            if (current > 1) {
+                return fabs(target - current);
+            } else {
+                return target - 1 + (1 / current) - 1;
+            }
+        } else {
+            if (current < 1) {
+                return fabs (1 / target - 1 / current);
+            } else {
+                return current - 1 + (1 / target - 1);
+            }
+        }
+    }
+    static void CalculateInterval(double& left, double& right, double load_ratio, double threshold) {
+        if (load_ratio > 1) {
+            left = load_ratio + threshold;
+            if (load_ratio - threshold > 1) {
+                right = load_ratio - threshold;
+            } else {
+                right = 1.0 / (threshold - (load_ratio - 1) + 1);
+            }
+        } else {
+            right = 1.0 / (1 / load_ratio + threshold);
+            if ((1 / load_ratio - threshold) > 1) {
+                left = 1 / (1 / load_ratio - threshold);
+            } else {
+                left = threshold - (1 / load_ratio - 1) + 1;
+            }
+        }
     }
 };
