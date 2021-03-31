@@ -11,6 +11,7 @@ unordered_map<string, vector<PurchasedServer*>> purchase_infos;
 unordered_set<int> from_off_2_start;
 
 int total_days_num, foreseen_days_num; //总天数和可预知的天数
+int now_day;    //现在是第几天
 int total_req_num  = 0;
 int now_req_num = 0;
 
@@ -452,9 +453,11 @@ void AddVm(AddData& add_data) {
                     double use_cpu_rate = pow(_cpu_rate,1.0 / T) / _temp_sum;
                     double use_memory_rate = pow(_memory_rate,1.0 / T) / _temp_sum;
                     double use_rate = max  (use_cpu_rate , use_memory_rate);
-                    dense_cost = 1.0 * sold_server.hardware_cost * use_rate;
+                    // dense_cost = 1.0 * sold_server.hardware_cost * use_rate;
+                    dense_cost = 1.0 * (sold_server.hardware_cost + sold_server.daily_energy_cost * (total_days_num - now_day)) * use_rate;
                 }else{
-                    dense_cost = sold_server.hardware_cost;
+                    // dense_cost = sold_server.hardware_cost;
+                    dense_cost = sold_server.hardware_cost + sold_server.daily_energy_cost * (total_days_num - now_day);
                 }
                 if(dense_cost < min_dense_cost) {
                     min_dense_cost = dense_cost;
@@ -641,12 +644,11 @@ void AddVm(AddData& add_data) {
                     double _temp_sum = pow(_cpu_rate,1.0 / T) + pow(_memory_rate,1.0 / T);
                     double use_cpu_rate = pow(_cpu_rate,1.0 / T) / _temp_sum;
                     double use_memory_rate = pow(_memory_rate,1.0 / T) / _temp_sum;
-                    
                     double use_rate = max  (use_cpu_rate , use_memory_rate);
-                    dense_cost = 1.0 * sold_server.hardware_cost * use_rate;
+                    dense_cost = 1.0 * (sold_server.hardware_cost + sold_server.daily_energy_cost * (total_days_num - now_day)) * use_rate;
 
                 }else{
-                    dense_cost = sold_server.hardware_cost;
+                    dense_cost = 1.0 * (sold_server.hardware_cost + sold_server.daily_energy_cost * (total_days_num - now_day));
                 }
                 if(dense_cost < min_dense_cost) {
                     min_dense_cost = dense_cost;
@@ -845,7 +847,6 @@ vector<int> GetMaxResourceOfToday(vector<RequestData> &reqInfoOfToday){
     return {_max_cpu,_max_memory};
 }
 
-
 vector<int> GetAllResourceOfFutureNDays(int req_num){
 /**
  * @description: 获取未来N条请求所需要的所有资源,以及峰值时刻的CPU，峰值时刻的Memory
@@ -898,6 +899,7 @@ void SolveProblem() {
     Cmp cmp;
     sort(sold_servers.begin(), sold_servers.end(), cmp.SoldServers);
     for (int i = 0; i < total_days_num; ++i) {
+        now_day = i+1;
         from_off_2_start.erase(from_off_2_start.begin(),from_off_2_start.end());
         // vector<MigrationInfo> migration_infos;
         vector<MigrationInfo> migration_infos = Migration();
@@ -985,7 +987,7 @@ int main(int argc, char* argv[]) {
 
 
 #ifdef REDIRECT
-    freopen("/Users/wangtongling/Desktop/training-data/training-1.txt", "r", stdin);
+    freopen("/Users/wangtongling/Desktop/training-data/training-2.txt", "r", stdin);
     // freopen("out1.txt", "w", stdout);
 #endif
 #ifdef PRINTINFO
