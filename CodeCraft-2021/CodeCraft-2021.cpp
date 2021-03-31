@@ -28,8 +28,8 @@ int number = 0; //给服务器编号
 int isDenseBuy = 0; // 0--非密度购买  1--密度购买
 double _future_N_reqs_cpu_rate = 0;
 double _future_N_reqs_memory_rate = 0;
-double _migration_threahold = 0.65;
-double _near_full_threhold = 0;
+double _migration_threahold = 0.4;
+double _near_full_threhold = 0.07;
 
 void ParseServerInfo() {
     int server_num;
@@ -899,8 +899,8 @@ void SolveProblem() {
     sort(sold_servers.begin(), sold_servers.end(), cmp.SoldServers);
     for (int i = 0; i < total_days_num; ++i) {
         from_off_2_start.erase(from_off_2_start.begin(),from_off_2_start.end());
-        vector<MigrationInfo> migration_infos;
-        // vector<MigrationInfo> migration_infos = Migration();
+        // vector<MigrationInfo> migration_infos;
+        vector<MigrationInfo> migration_infos = Migration();
 
         //获取迁移之后的系统可以提供的总资源
         vector<int> allResouceAfterMigration = GetAllResourceOfOwnServers(true);
@@ -963,7 +963,7 @@ void SolveProblem() {
             }
         }
         Numbering(); //给购买了的服务器编号
-        // Print(vm_ids, migration_infos);
+        Print(vm_ids, migration_infos);
         fflush(stdout);
         purchase_infos.clear();
         from_off_2_start.clear();
