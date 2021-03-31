@@ -12,8 +12,8 @@
 using namespace std;
 
 // #define TEST_PARSEINPUT
-// #define REDIRECT
-// #define PRINTINFO
+#define REDIRECT
+#define PRINTINFO
 
 struct SoldServer {
     string server_name;
@@ -111,7 +111,7 @@ public:
         return true;
     }
     bool WeakPurchasedServerAB(PurchasedServer* purchased_server, int cpu_cores, int memory_size) {  //评价要不要插到双节点
-        
+
         return true;
     }
     bool PurchasedServerA(PurchasedServer* purchased_server, int cpu_cores, int memory_size) {  //评价要不要插到A节点

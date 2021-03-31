@@ -23,8 +23,6 @@ clock_t _start,_end;
 #endif
 
 int number = 0; //给服务器编号
-//ifstream cin("training-2.txt");
-//ofstream cout("t2.txt");
 void ParseServerInfo() {
     int server_num;
     cin >> server_num;
@@ -131,7 +129,6 @@ bool NeedMigration(PurchasedServer *server) {
     else
         return false;
 }
-
 vector<MigrationInfo> Migration() {
     int max_migration_num = vm_id2info.size() * 5 / 1000;
     vector<MigrationInfo> migration_infos;
@@ -350,7 +347,6 @@ void AddVm(AddData& add_data) {
     Evaluate evaluate;  //创建一个评价类的实例
     int deployment_way = add_data.deployment_way;
     if (deployment_way == 1) { //双节点部署
-    
         int cpu_cores = add_data.cpu_cores;
         int memory_size = add_data.memory_size;
         double min_remain_rate = 2.0;
@@ -361,7 +357,6 @@ void AddVm(AddData& add_data) {
             }   //先筛选能用的服务器
             if (purchase_server->A_remain_core_num >= cpu_cores && purchase_server->A_remain_memory_size >= memory_size
             && purchase_server->B_remain_core_num >= cpu_cores && purchase_server->B_remain_memory_size >= memory_size) {
-        
                 double _cpu_remain_rate = (1.0*(purchase_server->A_remain_core_num - cpu_cores)/purchase_server->total_core_num + 1.0*(purchase_server->B_remain_core_num - cpu_cores)/ purchase_server->total_core_num) / 2;
                 double _memory_remain_rate = (1.0*(purchase_server->A_remain_memory_size - memory_size)/purchase_server->total_memory_size + 1.0*(purchase_server->B_remain_memory_size - memory_size) / purchase_server->total_memory_size) / 2;
                 if(_cpu_remain_rate + _memory_remain_rate < min_remain_rate) {
@@ -405,7 +400,6 @@ void AddVm(AddData& add_data) {
                 }else{
                     dense_cost = sold_server.hardware_cost;
                 }
-                
                 if(dense_cost < min_dense_cost) {
                     min_dense_cost = dense_cost;
                     flag_sold_server = &sold_server;
@@ -494,7 +488,7 @@ void AddVm(AddData& add_data) {
             }
             bool evaluate_A = evaluate.PurchasedServerA(purchase_server, cpu_cores, memory_size);
             bool evaluate_B = evaluate.PurchasedServerB(purchase_server, cpu_cores, memory_size);
-            
+
             if(evaluate_A&&evaluate_B) {
                 double _cpu_remain_rate = 1.0*(purchase_server->A_remain_core_num - cpu_cores)/purchase_server->total_core_num ;
                 double _memory_remain_rate = 1.0*(purchase_server->A_remain_memory_size - memory_size)/purchase_server->total_memory_size ;
@@ -572,7 +566,7 @@ void AddVm(AddData& add_data) {
                 vm_id2info[add_data.vm_id] = vm_id_info;
             }
         }
-        
+
         double min_dense_cost = 99999999999999;
         SoldServer* flag_sold_server;
         for (auto& sold_server : sold_servers) {
@@ -620,7 +614,7 @@ void AddVm(AddData& add_data) {
             vm_id2info[add_data.vm_id] = vm_id_info;
         }
 
- 
+
     }
 }
 void DeleteVm(int vm_id) {
@@ -679,7 +673,6 @@ void Numbering() {
         }
     }
 }
-
 void Compute_Power_Cost(){
     for(auto& server:purchase_servers){
         if(server->A_vm_id.size() + server->B_vm_id.size() + server->AB_vm_id.size()!=0){
@@ -694,13 +687,110 @@ void Compute_Power_Cost(){
     }
 }
 
+vector<int> GetAllResourceOfOwnServers(bool isRemained = false){
+/**
+ * @description:获取当前所有已经购买的服务器的总资源 或 剩余资源
+ * @param {isRemained 为false ：总资源，true：剩余资源}
+ * @return {vector<int> 二维数组 [0]--cpu，[1]--memory}
+ */
+    int _total_cpu = 0;
+    int _total_memory = 0;
+    if(!isRemained){
+        for(auto& purchase_server:purchase_servers){
+            string _serverName = purchase_server->server_name;
+            _total_cpu+= server_name2info[_serverName].cpu_cores *2;
+            _total_memory +=server_name2info[_serverName].memory_size*2;
+        }
+    }else{
+        for(auto& purchase_server:purchase_servers){
+            _total_cpu+= purchase_server->A_remain_core_num + purchase_server->B_remain_core_num;
+            _total_memory +=purchase_server->A_remain_memory_size + purchase_server->B_remain_memory_size;
+        }
+    }
+    return {_total_cpu,_total_memory};
+}
+
+vector<int> GetAllResourceOfToday(vector<RequestData> &reqInfoOfToday){
+/**
+ * @description: 获取当天请求所需的总资源,当天增加的减去删除的
+ * @param {reqInfoOfToday ： 当天的请求信息}
+ * @return {vector<int> 二维数组 [0]--cpu，[1]--memory}
+ */
+    int _total_cpu = 0;
+    int _total_memory = 0;
+    for(auto& req:reqInfoOfToday){
+        string vm_name = req.vm_name;
+        int vm_isTwoNode = vm_name2info[vm_name].deployment_way;
+        int vm_cpu,vm_memory;
+        if(vm_isTwoNode == 1){
+            vm_cpu = vm_name2info[vm_name].cpu_cores * 2;
+            vm_memory = vm_name2info[vm_name].memory_size * 2;
+        }else{
+            vm_cpu = vm_name2info[vm_name].cpu_cores;
+            vm_memory = vm_name2info[vm_name].memory_size;
+        }
+        if(req.operation == "add"){
+            _total_cpu+=vm_cpu;
+            _total_memory+=vm_memory;
+        }else if(req.operation == "del"){
+            _total_cpu-=vm_cpu;
+            _total_memory-=vm_memory;
+        }
+    }
+    return {_total_cpu,_total_memory};
+}
+
+vector<int> GetAllResourceOfFutureNDays(int req_num){ 
+/**
+ * @description: 获取未来N条请求所需要的所有资源
+ * @param { int req_num}
+ * @return {vector<int> 二维数组 [0]--cpu，[1]--memory}
+ */
+    queue<vector<RequestData>> _temp(request_datas);
+    int _cnt = 0;
+    int _total_cpu = 0;
+    int _total_memory = 0;
+    while(_temp.size()>=1 && _cnt<req_num){
+        vector<RequestData>_tempReqs = _temp.front();
+        _temp.pop();
+        for(auto& _req:_tempReqs){
+            if(_cnt>=req_num){
+                break;
+            }
+            string vm_name = _req.vm_name;
+            int vm_isTwoNode = vm_name2info[vm_name].deployment_way;
+            int vm_cpu,vm_memory;
+            if(vm_isTwoNode == 1){
+            vm_cpu = vm_name2info[vm_name].cpu_cores * 2;
+            vm_memory = vm_name2info[vm_name].memory_size * 2;
+            }else{
+                vm_cpu = vm_name2info[vm_name].cpu_cores;
+                vm_memory = vm_name2info[vm_name].memory_size;
+            }
+            if(_req.operation == "add"){
+                _total_cpu+=vm_cpu;
+                _total_memory+=vm_memory;
+            }else if(_req.operation == "del"){
+                _total_cpu-=vm_cpu;
+                _total_memory-=vm_memory;
+            }
+        }
+    }
+    return {_total_cpu,_total_memory};
+}
+
 void SolveProblem() {
     Cmp cmp;
     sort(sold_servers.begin(), sold_servers.end(), cmp.SoldServers);
     for (int i = 0; i < total_days_num; ++i) {
         from_off_2_start.erase(from_off_2_start.begin(),from_off_2_start.end());
-        // vector<MigrationInfo> migration_infos;
-        vector<MigrationInfo> migration_infos = Migration();
+        vector<MigrationInfo> migration_infos;
+        // vector<MigrationInfo> migration_infos = Migration();
+
+        //获取未来N条请求所需要的总资源
+        // vector<int> allResourceOfNReqs = GetAllResourceOfFutureNDays(10);
+        // cout<<allResourceOfNReqs[0]<<"  "<<allResourceOfNReqs[1]<<endl;
+
         vector<RequestData> intraday_requests = request_datas.front();
         request_datas.pop();
         int request_num = intraday_requests.size();
@@ -710,6 +800,15 @@ void SolveProblem() {
                 vm_ids.emplace_back(intraday_requests[j].vm_id);
             }
         }
+
+        //获取当前所有服务器的总容量
+        // vector<int> _allResourceOfOwnServers =  GetAllResourceOfOwnServers();
+        // cout<<_allResourceOfOwnServers[0]<<"   "<<_allResourceOfOwnServers[1]<<endl;
+        // vector<int> _allRemainedResourceOfOwnServers = GetAllResourceOfOwnServers(1);
+        // cout<<_allRemainedResourceOfOwnServers[0]<<"  "<<_allRemainedResourceOfOwnServers[1]<<endl;
+        // vector<int> _allResourceToday = GetAllResourceOfToday(intraday_requests);
+        // cout<<_allResourceToday[0] <<"  "<<_allResourceToday[1]<<endl;
+
         for (int j = 0; j < request_num; ++j) {
             string operation = intraday_requests[j].operation;
             vector<AddData> continuous_add_datas;
@@ -743,12 +842,12 @@ void SolveProblem() {
             }
         }
         Numbering(); //给购买了的服务器编号
-        Print(vm_ids, migration_infos);
+        // Print(vm_ids, migration_infos);
         fflush(stdout);
         purchase_infos.clear();
         if (i < total_days_num - foreseen_days_num) ParseRequest(1);
         Compute_Power_Cost();
-       
+
     }
 }
 
@@ -762,7 +861,7 @@ void PrintCostInfo(){
 }
 
 int main(int argc, char* argv[]) {
-    
+
 
 #ifdef REDIRECT
     freopen("/Users/wangtongling/Desktop/training-data/training-2.txt", "r", stdin);
@@ -783,8 +882,8 @@ int main(int argc, char* argv[]) {
 #endif
 
 #ifdef REDIRECT
-    fclose(stdin);
-    fclose(stdout);
+    // fclose(stdin);
+    // fclose(stdout);
 #endif
     return 0;
 }
