@@ -23,6 +23,10 @@ clock_t _start,_end;
 #endif
 
 int number = 0; //给服务器编号
+
+//状态值
+int isDenseBuy = 0; // 0--非密度购买  1--密度购买
+
 void ParseServerInfo() {
     int server_num;
     cin >> server_num;
@@ -394,7 +398,7 @@ void AddVm(AddData& add_data) {
                 break;
             if (sold_server.cpu_cores >= cpu_cores && sold_server.memory_size >= memory_size) {
                 double dense_cost;
-                if(1.0 * now_req_num / total_req_num < 3.0 / 6) {
+                if(isDenseBuy == 1) {
                     double use_rate = (1.0 *(cpu_cores) / sold_server.cpu_cores + 1.0 *(memory_size) / sold_server.memory_size) / 2;
                     dense_cost = 1.0 * sold_server.hardware_cost * use_rate;
                 }else{
@@ -575,7 +579,7 @@ void AddVm(AddData& add_data) {
             }
             if (sold_server.cpu_cores >= cpu_cores && sold_server.memory_size >= memory_size) {
                 double dense_cost;
-                if(1.0 * now_req_num / total_req_num < 3.0 / 6) {
+                if(isDenseBuy == 1) {
                     double use_rate = (1.0 *(cpu_cores) / sold_server.cpu_cores + 1.0 *(memory_size) / sold_server.memory_size) / 2;
                     dense_cost = 1.0 * sold_server.hardware_cost * use_rate;
                 }else{
@@ -834,6 +838,10 @@ void SolveProblem() {
         vector<MigrationInfo> migration_infos;
         // vector<MigrationInfo> migration_infos = Migration();
 
+        //获取迁移之后的系统可以提供的总资源
+        vector<int> allResouceAfterMigration = GetAllResourceOfOwnServers(true);
+
+
         //获取未来N条请求所需要的总资源
         vector<int> allResourceOfNReqs = GetAllResourceOfFutureNDays(3000);
 
@@ -847,17 +855,15 @@ void SolveProblem() {
             }
         }
 
-        //获取当前所有服务器的总容量
-        // vector<int> _allResourceOfOwnServers =  GetAllResourceOfOwnServers();
-        // cout<<_allResourceOfOwnServers[0]<<"   "<<_allResourceOfOwnServers[1]<<endl;
-        // vector<int> _allRemainedResourceOfOwnServers = GetAllResourceOfOwnServers(1);
-        // cout<<_allRemainedResourceOfOwnServers[0]<<"  "<<_allRemainedResourceOfOwnServers[1]<<endl;
-        // vector<int> _allResourceToday = GetAllResourceOfToday(intraday_requests);
-        // cout<<_allResourceToday[0] <<"  "<<_allResourceToday[1]<<endl;
-        // vector<int> _maxResourceToday = GetMaxResourceOfToday(intraday_requests);
-        // cout<<_maxResourceToday[0] <<"  "<<_maxResourceToday[1]<<endl;
-        // if(_allResourceToday[0] != _maxResourceToday[0]) cout<<"    adasdasdasdasdasdasdad"<<endl;
-        // if(_allResourceToday[1] != _maxResourceToday[1]) cout<<"    adasdasdasdasdasdasdad"<<endl;
+        //获取当天请求所需要的峰值时刻的cpu和memory
+        vector<int> max_resource_of_today_reqs = GetMaxResourceOfToday(intraday_requests);
+        double _rate = 1.0;
+        if(allResouceAfterMigration[0] * _rate >= max_resource_of_today_reqs[0] && allResouceAfterMigration[1] * _rate >= max_resource_of_today_reqs[1]){
+            isDenseBuy = 1;
+        }else{
+            isDenseBuy = 0;
+        }
+
 
         for (int j = 0; j < request_num; ++j) {
             string operation = intraday_requests[j].operation;
@@ -914,7 +920,7 @@ int main(int argc, char* argv[]) {
 
 
 #ifdef REDIRECT
-    freopen("/Users/wangtongling/Desktop/training-data/training-2.txt", "r", stdin);
+    freopen("/Users/wangtongling/Desktop/training-data/training-1.txt", "r", stdin);
     // freopen("out1.txt", "w", stdout);
 #endif
 #ifdef PRINTINFO
