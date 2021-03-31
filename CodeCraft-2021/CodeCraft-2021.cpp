@@ -26,6 +26,9 @@ int number = 0; //给服务器编号
 
 //状态值
 int isDenseBuy = 0; // 0--非密度购买  1--密度购买
+double _future_N_reqs_cpu_rate = 0;
+double _future_N_reqs_memory_rate = 0;
+
 
 void ParseServerInfo() {
     int server_num;
@@ -403,7 +406,15 @@ void AddVm(AddData& add_data) {
             if (sold_server.cpu_cores >= cpu_cores && sold_server.memory_size >= memory_size) {
                 double dense_cost;
                 if(isDenseBuy == 1) {
-                    double use_rate = (1.0 *(cpu_cores) / sold_server.cpu_cores + 1.0 *(memory_size) / sold_server.memory_size) / 2;
+                    // double use_rate = (1.0 *(cpu_cores) / sold_server.cpu_cores + 1.0 *(memory_size) / sold_server.memory_size) / 2;
+                    // double use_rate = max(1.0 *(cpu_cores) / sold_server.cpu_cores , 1.0 *(memory_size) / sold_server.memory_size) ;
+                    double _cpu_rate = 1.0 * cpu_cores / sold_server.cpu_cores;
+                    double _memory_rate = 1.0 *(memory_size) / sold_server.memory_size ;
+                    double T = 0.9;
+                    double _temp_sum = pow(_cpu_rate,1.0 / T) + pow(_memory_rate,1.0 / T);
+                    double use_cpu_rate = pow(_cpu_rate,1.0 / T) / _temp_sum;
+                    double use_memory_rate = pow(_memory_rate,1.0 / T) / _temp_sum;
+                    double use_rate = max  (use_cpu_rate , use_memory_rate);
                     dense_cost = 1.0 * sold_server.hardware_cost * use_rate;
                 }else{
                     dense_cost = sold_server.hardware_cost;
@@ -584,8 +595,21 @@ void AddVm(AddData& add_data) {
             if (sold_server.cpu_cores >= cpu_cores && sold_server.memory_size >= memory_size) {
                 double dense_cost;
                 if(isDenseBuy == 1) {
-                    double use_rate = (1.0 *(cpu_cores) / sold_server.cpu_cores + 1.0 *(memory_size) / sold_server.memory_size) / 2;
+                    // double use_rate = (1.0 *(cpu_cores) / sold_server.cpu_cores + 1.0 *(memory_size) / sold_server.memory_size) / 2;
+                    // double use_rate = max(1.0 *(cpu_cores) / sold_server.cpu_cores , 1.0 *(memory_size) / sold_server.memory_size) ;
+                    // double use_cpu_rate = pow(2.718,1.0 *(cpu_cores) / sold_server.cpu_cores) / ( pow(2.718,1.0 *(cpu_cores) / sold_server.cpu_cores)+pow(2.718,1.0 *(memory_size) / sold_server.memory_size)) ;
+                    // double use_memory_rate = pow(2.718,1.0 *(memory_size) / sold_server.memory_size) / ( pow(2.718,1.0 *(cpu_cores) / sold_server.cpu_cores)+pow(2.718,1.0 *(memory_size) / sold_server.memory_size)) ;
+                    // double use_rate = 0.5 * (use_cpu_rate + use_memory_rate);
+                    double _cpu_rate = 1.0 * cpu_cores / sold_server.cpu_cores;
+                    double _memory_rate = 1.0 *(memory_size) / sold_server.memory_size ;
+                    double T = 0.9;
+                    double _temp_sum = pow(_cpu_rate,1.0 / T) + pow(_memory_rate,1.0 / T);
+                    double use_cpu_rate = pow(_cpu_rate,1.0 / T) / _temp_sum;
+                    double use_memory_rate = pow(_memory_rate,1.0 / T) / _temp_sum;
+                    
+                    double use_rate = max  (use_cpu_rate , use_memory_rate);
                     dense_cost = 1.0 * sold_server.hardware_cost * use_rate;
+
                 }else{
                     dense_cost = sold_server.hardware_cost;
                 }
@@ -806,6 +830,7 @@ vector<int> GetAllResourceOfFutureNDays(int req_num){
             if(_cnt>=req_num){
                 break;
             }
+            _cnt++;
             string vm_name = _req.vm_name;
             int vm_isTwoNode = vm_name2info[vm_name].deployment_way;
             int vm_cpu,vm_memory;
@@ -847,7 +872,8 @@ void SolveProblem() {
 
 
         //获取未来N条请求所需要的总资源
-        vector<int> allResourceOfNReqs = GetAllResourceOfFutureNDays(3000);
+        vector<int> allResourceOfNReqs = GetAllResourceOfFutureNDays(5000);
+
 
         vector<RequestData> intraday_requests = request_datas.front();
         request_datas.pop();
@@ -924,7 +950,7 @@ int main(int argc, char* argv[]) {
 
 
 #ifdef REDIRECT
-    freopen("/Users/wangtongling/Desktop/training-data/training-2.txt", "r", stdin);
+    freopen("/Users/wangtongling/Desktop/training-data/training-1.txt", "r", stdin);
     // freopen("out1.txt", "w", stdout);
 #endif
 #ifdef PRINTINFO
