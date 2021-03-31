@@ -838,10 +838,6 @@ void SolveProblem() {
     Cmp cmp;
     sort(sold_servers.begin(), sold_servers.end(), cmp.SoldServers);
     for (int i = 0; i < total_days_num; ++i) {
-<<<<<<< HEAD
-        // vector<MigrationInfo> migration_infos;
-        vector<MigrationInfo> migration_infos = Migration();
-=======
         from_off_2_start.erase(from_off_2_start.begin(),from_off_2_start.end());
         vector<MigrationInfo> migration_infos;
         // vector<MigrationInfo> migration_infos = Migration();
@@ -853,7 +849,6 @@ void SolveProblem() {
         //获取未来N条请求所需要的总资源
         vector<int> allResourceOfNReqs = GetAllResourceOfFutureNDays(3000);
 
->>>>>>> wangtl
         vector<RequestData> intraday_requests = request_datas.front();
         request_datas.pop();
         int request_num = intraday_requests.size();
@@ -913,10 +908,6 @@ void SolveProblem() {
         from_off_2_start.clear();
         if (i < total_days_num - foreseen_days_num) ParseRequest(1);
         Compute_Power_Cost();
-<<<<<<< HEAD
-=======
-
->>>>>>> wangtl
     }
 }
 
