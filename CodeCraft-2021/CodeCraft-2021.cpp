@@ -839,8 +839,8 @@ void SolveProblem() {
     sort(sold_servers.begin(), sold_servers.end(), cmp.SoldServers);
     for (int i = 0; i < total_days_num; ++i) {
         from_off_2_start.erase(from_off_2_start.begin(),from_off_2_start.end());
-        vector<MigrationInfo> migration_infos;
-        // vector<MigrationInfo> migration_infos = Migration();
+        // vector<MigrationInfo> migration_infos;
+        vector<MigrationInfo> migration_infos = Migration();
 
         //获取迁移之后的系统可以提供的总资源
         vector<int> allResouceAfterMigration = GetAllResourceOfOwnServers(true);
@@ -924,7 +924,7 @@ int main(int argc, char* argv[]) {
 
 
 #ifdef REDIRECT
-    freopen("/Users/wangtongling/Desktop/training-data/training-1.txt", "r", stdin);
+    freopen("/Users/wangtongling/Desktop/training-data/training-2.txt", "r", stdin);
     // freopen("out1.txt", "w", stdout);
 #endif
 #ifdef PRINTINFO
