@@ -9,14 +9,13 @@ vector<PurchasedServer*> purchase_servers;
 unordered_map<string, vector<PurchasedServer*>> purchase_infos;
 
 unordered_set<int> from_off_2_start;
-double k1 = 0.75, k2 = 1 - k1; //CPU和memory的加权系数
-double r1 = 0.5, r2 = 1 - r1; //CPU和memory剩余率的加权系数
 
-int number = 0; //给服务器编号
 int total_days_num, foreseen_days_num; //总天数和可预知的天数
+int now_day;    //现在是第几天
 int total_req_num  = 0;
 int now_req_num = 0;
 
+int number = 0; //给服务器编号
 long long total_server_cost = 0;
 long long total_power_cost = 0;
 int total_migration_num = 0;
@@ -24,6 +23,17 @@ int total_migration_num = 0;
 #ifdef PRINTINFO
 clock_t _start,_end;
 #endif
+
+
+//状态值
+int isDenseBuy = 0; // 0--非密度购买  1--密度购买
+double _future_N_reqs_cpu_rate = 0;
+double _future_N_reqs_memory_rate = 0;
+double _migration_threahold = 0.4; //减小能增加迁移数量。
+double _near_full_threhold = 0.07; //增大能去掉更多的服务器，减少时间；同时迁移次数会有轻微减少，成本有轻微增加。
+
+double k1 = 0.75, k2 = 1 - k1; //CPU和memory的加权系数
+double r1 = 0.5, r2 = 1 - r1; //CPU和memory剩余率的加权系数
 
 void ParseServerInfo() {
     int server_num;
@@ -120,22 +130,34 @@ void ParseInput() {
 }
 // 筛选出利用率较低的服务器，迁移走其中的虚拟机。
 bool NeedMigration(PurchasedServer *server) {
-    if (server->A_vm_id.size() + server->B_vm_id.size() + server->AB_vm_id.size() == 0) return false;
+    if(server->A_vm_id.size() + server->B_vm_id.size() + server->AB_vm_id.size() == 0) return false;
     double _A_cpu_remain_rate = 1.0 * server->A_remain_core_num / server->total_core_num;
     double _B_cpu_remain_rate = 1.0 * server->B_remain_core_num / server->total_core_num;
     double _A_memory_remain_rate = 1.0 * server->A_remain_memory_size / server->total_memory_size;
     double _B_memory_remain_rate = 1.0 * server->B_remain_memory_size / server->total_memory_size;
-    double threadhold = 0.4; //减小能增加迁移数量。
-    return (_A_cpu_remain_rate > threadhold) + (_A_memory_remain_rate > threadhold) + (_B_cpu_remain_rate > threadhold)
-                    + (_B_memory_remain_rate > threadhold) >= 1;
-}
-// 筛选出几乎满了的服务器，不作为目标服务器。
-bool NearlyFull(PurchasedServer *server) {
-    double threshold = 0.07; //增大能去掉更多的服务器，减少时间；同时迁移次数会有轻微减少，成本有轻微增加。
-    return (1.0 * server->A_remain_core_num / server->total_core_num < threshold || 1.0 * server->A_remain_memory_size / server->total_memory_size < threshold)
-                    && (1.0 * server->B_remain_core_num / server->total_core_num < threshold || 1.0 * server->B_remain_memory_size / server->total_memory_size < threshold);
+    return (_A_cpu_remain_rate > _migration_threahold) + (_A_memory_remain_rate > _migration_threahold) + (_B_cpu_remain_rate > _migration_threahold)
+                    + (_B_memory_remain_rate > _migration_threahold) >= 1;
 }
 
+int _HowManyCondionSuit(PurchasedServer *server) {
+/**
+ * @description: 接NeedMigration，返回服务器满足的条件个数
+ * @param {*}
+ * @return {个数}
+ */
+    double _A_cpu_remain_rate = 1.0 * server->A_remain_core_num / server->total_core_num;
+    double _B_cpu_remain_rate = 1.0 * server->B_remain_core_num / server->total_core_num;
+    double _A_memory_remain_rate = 1.0 * server->A_remain_memory_size / server->total_memory_size;
+    double _B_memory_remain_rate = 1.0 * server->B_remain_memory_size / server->total_memory_size;
+    return (_A_cpu_remain_rate > _migration_threahold) + (_A_memory_remain_rate > _migration_threahold) + (_B_cpu_remain_rate > _migration_threahold)
+                    + (_B_memory_remain_rate > _migration_threahold) ;
+}
+
+// 筛选出几乎满了的服务器，不作为目标服务器。
+bool NearlyFull(PurchasedServer *server) {
+    return (1.0 * server->A_remain_core_num / server->total_core_num < _near_full_threhold || 1.0 * server->A_remain_memory_size / server->total_memory_size < _near_full_threhold)
+                    && (1.0 * server->B_remain_core_num / server->total_core_num < _near_full_threhold || 1.0 * server->B_remain_memory_size / server->total_memory_size < _near_full_threhold);
+}
 vector<MigrationInfo> Migration() {
     int max_migration_num = vm_id2info.size() * 30 / 1000;
     vector<MigrationInfo> migration_infos;
@@ -289,41 +311,49 @@ void AddVm(AddData& add_data) {
     Evaluate evaluate;  //创建一个评价类的实例
     int deployment_way = add_data.deployment_way;
     if (deployment_way == 1) { //双节点部署
-    
         int cpu_cores = add_data.cpu_cores;
         int memory_size = add_data.memory_size;
         double min_remain_rate = 2.0;
-        PurchasedServer* best_server;
+        PurchasedServer* flag_server;
         for (auto& purchase_server : purchase_servers) {
             if (deployed) {
                 break;
             }   //先筛选能用的服务器
             if (purchase_server->A_remain_core_num >= cpu_cores && purchase_server->A_remain_memory_size >= memory_size
             && purchase_server->B_remain_core_num >= cpu_cores && purchase_server->B_remain_memory_size >= memory_size) {
-        
-                double _cpu_remain_rate = (1.0*(purchase_server->A_remain_core_num - cpu_cores)/purchase_server->total_core_num + 1.0*(purchase_server->B_remain_core_num - cpu_cores)/ purchase_server->total_core_num) / 2;
-                double _memory_remain_rate = (1.0*(purchase_server->A_remain_memory_size - memory_size)/purchase_server->total_memory_size + 1.0*(purchase_server->B_remain_memory_size - memory_size) / purchase_server->total_memory_size) / 2;
-                if (_cpu_remain_rate + _memory_remain_rate < min_remain_rate) {
+                // double _cpu_remain_rate = (1.0*(purchase_server->A_remain_core_num - cpu_cores)/purchase_server->total_core_num + 1.0*(purchase_server->B_remain_core_num - cpu_cores)/ purchase_server->total_core_num) / 2;
+                // double _memory_remain_rate = (1.0*(purchase_server->A_remain_memory_size - memory_size)/purchase_server->total_memory_size + 1.0*(purchase_server->B_remain_memory_size - memory_size) / purchase_server->total_memory_size) / 2;
+                // if(_cpu_remain_rate + _memory_remain_rate < min_remain_rate) {
+                //     min_remain_rate = _cpu_remain_rate + _memory_remain_rate;
+                //     flag_server = purchase_server;
+                // }
+                double _cpu_remain_rate = min(1.0*(purchase_server->A_remain_core_num - cpu_cores)/purchase_server->total_core_num , 1.0*(purchase_server->B_remain_core_num - cpu_cores)/ purchase_server->total_core_num) ;
+                double _memory_remain_rate = min(1.0*(purchase_server->A_remain_memory_size - memory_size)/purchase_server->total_memory_size , 1.0*(purchase_server->B_remain_memory_size - memory_size) / purchase_server->total_memory_size) ;
+                // if((_cpu_remain_rate + _memory_remain_rate)  < min_remain_rate) {
+                //     min_remain_rate = _cpu_remain_rate + _memory_remain_rate;
+                //     flag_server = purchase_server;
+                // }
+                if( 2* max(_cpu_remain_rate , _memory_remain_rate)  < min_remain_rate) {
                     min_remain_rate = _cpu_remain_rate + _memory_remain_rate;
-                    best_server = purchase_server;
+                    flag_server = purchase_server;
                 }
             }
         }
 
-        if (min_remain_rate != 2.0) {
+        if(min_remain_rate != 2.0) {
             //代表从关机的服务器中选取的
-            if (best_server->A_vm_id.size()+best_server->B_vm_id.size()+best_server->AB_vm_id.size() == 0) {
-                from_off_2_start.insert(best_server->server_id);
+            if(flag_server->A_vm_id.size()+flag_server->B_vm_id.size()+flag_server->AB_vm_id.size() == 0) {
+                from_off_2_start.insert(flag_server->server_id);
             }
             deployed = true;
-            best_server->A_remain_core_num -= cpu_cores;
-            best_server->A_remain_memory_size -= memory_size;
-            best_server->B_remain_core_num -= cpu_cores;
-            best_server->B_remain_memory_size -= memory_size;
-            best_server->AB_vm_id.insert(add_data.vm_id);
+            flag_server->A_remain_core_num -= cpu_cores;
+            flag_server->A_remain_memory_size -= memory_size;
+            flag_server->B_remain_core_num -= cpu_cores;
+            flag_server->B_remain_memory_size -= memory_size;
+            flag_server->AB_vm_id.insert(add_data.vm_id);
 
             VmIdInfo vm_id_info;
-            vm_id_info.purchase_server = best_server;
+            vm_id_info.purchase_server = flag_server;
             vm_id_info.vm_name = add_data.vm_name;
             vm_id_info.cpu_cores = cpu_cores;
             vm_id_info.memory_size = memory_size;
@@ -332,28 +362,36 @@ void AddVm(AddData& add_data) {
             vm_id2info[add_data.vm_id] = vm_id_info;
         }
 
-
         double min_dense_cost = 99999999999999;
         SoldServer* flag_sold_server;
-        for (auto& sold_server : sold_servers) {
-            if (deployed)
+        for(auto& sold_server : sold_servers) {
+            if(deployed)
                 break;
             if (sold_server.cpu_cores >= cpu_cores && sold_server.memory_size >= memory_size) {
                 double dense_cost;
-                if (1.0 * now_req_num / total_req_num < 3.0 / 6) {
-                    double use_rate = (1.0 *(cpu_cores) / sold_server.cpu_cores + 1.0 *(memory_size) / sold_server.memory_size) / 2;
-                    dense_cost = 1.0 * sold_server.hardware_cost * use_rate;
-                }else{
-                    dense_cost = sold_server.hardware_cost;
+                if(isDenseBuy == 1) {
+                    // double use_rate = (1.0 *(cpu_cores) / sold_server.cpu_cores + 1.0 *(memory_size) / sold_server.memory_size) / 2;
+                    // double use_rate = max(1.0 *(cpu_cores) / sold_server.cpu_cores , 1.0 *(memory_size) / sold_server.memory_size) ;
+                    double _cpu_rate = 1.0 * cpu_cores / sold_server.cpu_cores;
+                    double _memory_rate = 1.0 *(memory_size) / sold_server.memory_size ;
+                    double T = 0.9;
+                    double _temp_sum = pow(_cpu_rate,1.0 / T) + pow(_memory_rate,1.0 / T);
+                    double use_cpu_rate = pow(_cpu_rate,1.0 / T) / _temp_sum;
+                    double use_memory_rate = pow(_memory_rate,1.0 / T) / _temp_sum;
+                    double use_rate = max  (use_cpu_rate , use_memory_rate);
+                    // dense_cost = 1.0 * sold_server.hardware_cost * use_rate;
+                    dense_cost = 1.0 * (sold_server.hardware_cost + sold_server.daily_energy_cost * (total_days_num - now_day)) * use_rate;
+                } else{
+                    // dense_cost = sold_server.hardware_cost;
+                    dense_cost = sold_server.hardware_cost + sold_server.daily_energy_cost * (total_days_num - now_day);
                 }
-                
-                if (dense_cost < min_dense_cost) {
+                if(dense_cost < min_dense_cost) {
                     min_dense_cost = dense_cost;
                     flag_sold_server = &sold_server;
                 }
             }
         }
-        if (!deployed) {
+        if(!deployed) {
             //购买新的服务器并部署
             total_server_cost+=flag_sold_server->hardware_cost;
             deployed = true;
@@ -379,36 +417,7 @@ void AddVm(AddData& add_data) {
             vm_id2info[add_data.vm_id] = vm_id_info;
         }
 
-        // for (auto& sold_server : sold_servers) {
-        //     if (deployed) {
-        //         break;
-        //     }
-        //     if (sold_server.cpu_cores >= cpu_cores && sold_server.memory_size >= memory_size) {
-        //         deployed = true;
-        //         PurchasedServer* purchase_server = new PurchasedServer;
-        //         purchase_server->total_core_num = sold_server.cpu_cores;
-        //         purchase_server->total_memory_size = sold_server.memory_size;
-        //         purchase_server->A_remain_core_num = sold_server.cpu_cores - cpu_cores;
-        //         purchase_server->A_remain_memory_size = sold_server.memory_size - memory_size;
-        //         purchase_server->B_remain_core_num = sold_server.cpu_cores - cpu_cores;
-        //         purchase_server->B_remain_memory_size = sold_server.memory_size - memory_size;
-        //         purchase_server->AB_vm_id.insert(add_data.vm_id);
-        //         purchase_server->server_name = sold_server.server_name;
-        //         purchase_servers.emplace_back(purchase_server);
-        //         purchase_infos[sold_server.server_name].emplace_back(purchase_server);
-
-        //         VmIdInfo vm_id_info;
-        //         vm_id_info.purchase_server = purchase_server;
-        //         vm_id_info.vm_name = add_data.vm_name;
-        //         vm_id_info.cpu_cores = cpu_cores;
-        //         vm_id_info.memory_size = memory_size;
-        //         vm_id_info.node = "C";
-        //         vm_id_info.vm_id = add_data.vm_id;
-        //         vm_id2info[add_data.vm_id] = vm_id_info;
-        //         //通过虚拟机ID，知道部署再哪个服务器的哪个端口
-        //         break;
-        //     }
-        // }
+       
     } else {       //单节点部署
         int cpu_cores = add_data.cpu_cores;
         int memory_size = add_data.memory_size;
@@ -429,7 +438,7 @@ void AddVm(AddData& add_data) {
         }
         //sort(can_deploy_servers.begin(), can_deploy_servers.end(), cmp.CanDeploySingle);
         double min_remain_rate = 2.0;
-        PurchasedServer* best_server;
+        PurchasedServer* flag_server;
         char which_node = 'C';
         for (auto& purchase_server : can_deploy_servers) {
             if (deployed) {
@@ -437,64 +446,90 @@ void AddVm(AddData& add_data) {
             }
             bool evaluate_A = evaluate.PurchasedServerA(purchase_server, cpu_cores, memory_size);
             bool evaluate_B = evaluate.PurchasedServerB(purchase_server, cpu_cores, memory_size);
-            
-            if (evaluate_A&&evaluate_B) {
+
+            if(evaluate_A&&evaluate_B) {
                 double _cpu_remain_rate = 1.0*(purchase_server->A_remain_core_num - cpu_cores)/purchase_server->total_core_num ;
                 double _memory_remain_rate = 1.0*(purchase_server->A_remain_memory_size - memory_size)/purchase_server->total_memory_size ;
-                // double _cpu_remain_rate = (1.0*(purchase_server->A_remain_core_num - cpu_cores)/purchase_server->total_core_num + 1.0*purchase_server->B_remain_core_num / purchase_server->total_core_num) / 2;
-                // double _memory_remain_rate = (1.0*(purchase_server->A_remain_memory_size - memory_size)/purchase_server->total_memory_size + 1.0*purchase_server->B_remain_memory_size / purchase_server->total_memory_size) / 2;
-                if (_cpu_remain_rate + _memory_remain_rate < min_remain_rate) {
+
+
+
+                // if(_cpu_remain_rate + _memory_remain_rate < min_remain_rate) {
+                //     min_remain_rate = _cpu_remain_rate + _memory_remain_rate;
+                //     flag_server = purchase_server;
+                //     which_node = 'A';
+                // }
+                if( 2 * max(_cpu_remain_rate , _memory_remain_rate )< min_remain_rate) {
                     min_remain_rate = _cpu_remain_rate + _memory_remain_rate;
-                    best_server = purchase_server;
+                    flag_server = purchase_server;
                     which_node = 'A';
                 }
+
+
 
                 _cpu_remain_rate =  1.0*(purchase_server->B_remain_core_num- cpu_cores) / purchase_server->total_core_num;
                 _memory_remain_rate =  1.0*(purchase_server->B_remain_memory_size- memory_size) / purchase_server->total_memory_size;
                 // _cpu_remain_rate = (1.0*(purchase_server->A_remain_core_num )/purchase_server->total_core_num + 1.0*(purchase_server->B_remain_core_num- cpu_cores) / purchase_server->total_core_num) / 2;
                 // _memory_remain_rate = (1.0*(purchase_server->A_remain_memory_size)/purchase_server->total_memory_size + 1.0*(purchase_server->B_remain_memory_size- memory_size) / purchase_server->total_memory_size) / 2;
-                if (_cpu_remain_rate + _memory_remain_rate < min_remain_rate) {
+                // if(_cpu_remain_rate + _memory_remain_rate < min_remain_rate) {
+                //     min_remain_rate = _cpu_remain_rate + _memory_remain_rate;
+                //     flag_server = purchase_server;
+                //     which_node = 'B';
+                // }
+                if( 2 * max(_cpu_remain_rate , _memory_remain_rate )< min_remain_rate) {
                     min_remain_rate = _cpu_remain_rate + _memory_remain_rate;
-                    best_server = purchase_server;
+                    flag_server = purchase_server;
                     which_node = 'B';
                 }
-            }else if (evaluate_A) {
+
+
+
+            } else if (evaluate_A) {
                 double _cpu_remain_rate = 1.0*(purchase_server->A_remain_core_num - cpu_cores)/purchase_server->total_core_num ;
                 double _memory_remain_rate = 1.0*(purchase_server->A_remain_memory_size - memory_size)/purchase_server->total_memory_size;
                 // double _cpu_remain_rate = (1.0*(purchase_server->A_remain_core_num - cpu_cores)/purchase_server->total_core_num + 1.0*(purchase_server->B_remain_core_num) / purchase_server->total_core_num) / 2;
                 // double _memory_remain_rate = (1.0*(purchase_server->A_remain_memory_size - memory_size)/purchase_server->total_memory_size + 1.0*(purchase_server->B_remain_memory_size) / purchase_server->total_memory_size) / 2;
-                if (_cpu_remain_rate + _memory_remain_rate < min_remain_rate) {
+                // if(_cpu_remain_rate + _memory_remain_rate < min_remain_rate) {
+                //     min_remain_rate = _cpu_remain_rate + _memory_remain_rate;
+                //     flag_server = purchase_server;
+                //     which_node = 'A';
+                // }
+                if( 2 * max(_cpu_remain_rate , _memory_remain_rate) < min_remain_rate) {
                     min_remain_rate = _cpu_remain_rate + _memory_remain_rate;
-                    best_server = purchase_server;
+                    flag_server = purchase_server;
                     which_node = 'A';
                 }
-            }else if (evaluate_B) {
+            } else if (evaluate_B) {
                 double _cpu_remain_rate = 1.0*(purchase_server->B_remain_core_num- cpu_cores) / purchase_server->total_core_num;
                 double _memory_remain_rate = 1.0*(purchase_server->B_remain_memory_size- memory_size) / purchase_server->total_memory_size;
                 // double _cpu_remain_rate = (1.0*(purchase_server->A_remain_core_num )/purchase_server->total_core_num + 1.0*(purchase_server->B_remain_core_num- cpu_cores) / purchase_server->total_core_num) / 2;
                 // double _memory_remain_rate = (1.0*(purchase_server->A_remain_memory_size)/purchase_server->total_memory_size + 1.0*(purchase_server->B_remain_memory_size- memory_size) / purchase_server->total_memory_size) / 2;
                 //  double _cpu_remain_rate = max(1.0*(purchase_server->A_remain_core_num )/purchase_server->total_core_num , 1.0*(purchase_server->B_remain_core_num - cpu_cores)/ purchase_server->total_core_num) ;
                 // double _memory_remain_rate =  max(1.0*(purchase_server->A_remain_memory_size )/purchase_server->total_memory_size , 1.0*(purchase_server->B_remain_memory_size - memory_size) / purchase_server->total_memory_size) ;
-                if (_cpu_remain_rate + _memory_remain_rate < min_remain_rate) {
+                // if(_cpu_remain_rate + _memory_remain_rate < min_remain_rate) {
+                //     min_remain_rate = _cpu_remain_rate + _memory_remain_rate;
+                //     flag_server = purchase_server;
+                //     which_node = 'B';
+                // }
+                if( 2 * max(_cpu_remain_rate , _memory_remain_rate) < min_remain_rate) {
                     min_remain_rate = _cpu_remain_rate + _memory_remain_rate;
-                    best_server = purchase_server;
+                    flag_server = purchase_server;
                     which_node = 'B';
                 }
             }
         }
-        if (min_remain_rate !=2.0) {
+        if(min_remain_rate !=2.0) {
             //代表从关机的服务器中选取的
-            if (best_server->A_vm_id.size()+best_server->B_vm_id.size()+best_server->AB_vm_id.size() == 0) {
-                from_off_2_start.insert(best_server->server_id);
+            if(flag_server->A_vm_id.size()+flag_server->B_vm_id.size()+flag_server->AB_vm_id.size() == 0) {
+                from_off_2_start.insert(flag_server->server_id);
             }
             if (which_node == 'A') {
                 deployed = true;
-                best_server->A_remain_core_num -= cpu_cores;
-                best_server->A_remain_memory_size -= memory_size;
-                best_server->A_vm_id.insert(add_data.vm_id);
+                flag_server->A_remain_core_num -= cpu_cores;
+                flag_server->A_remain_memory_size -= memory_size;
+                flag_server->A_vm_id.insert(add_data.vm_id);
 
                 VmIdInfo vm_id_info;
-                vm_id_info.purchase_server = best_server;
+                vm_id_info.purchase_server = flag_server;
                 vm_id_info.vm_name = add_data.vm_name;
                 vm_id_info.cpu_cores = cpu_cores;
                 vm_id_info.memory_size = memory_size;
@@ -503,12 +538,12 @@ void AddVm(AddData& add_data) {
                 vm_id2info[add_data.vm_id] = vm_id_info;
             } else if (which_node == 'B') {
                 deployed = true;
-                best_server->B_remain_core_num -= cpu_cores;
-                best_server->B_remain_memory_size -= memory_size;
-                best_server->B_vm_id.insert(add_data.vm_id);
+                flag_server->B_remain_core_num -= cpu_cores;
+                flag_server->B_remain_memory_size -= memory_size;
+                flag_server->B_vm_id.insert(add_data.vm_id);
 
                 VmIdInfo vm_id_info;
-                vm_id_info.purchase_server = best_server;
+                vm_id_info.purchase_server = flag_server;
                 vm_id_info.vm_name = add_data.vm_name;
                 vm_id_info.cpu_cores = cpu_cores;
                 vm_id_info.memory_size = memory_size;
@@ -517,7 +552,7 @@ void AddVm(AddData& add_data) {
                 vm_id2info[add_data.vm_id] = vm_id_info;
             }
         }
-        
+
         double min_dense_cost = 99999999999999;
         SoldServer* flag_sold_server;
         for (auto& sold_server : sold_servers) {
@@ -526,20 +561,32 @@ void AddVm(AddData& add_data) {
             }
             if (sold_server.cpu_cores >= cpu_cores && sold_server.memory_size >= memory_size) {
                 double dense_cost;
-                if (1.0 * now_req_num / total_req_num < 3.0 / 6) {
-                    double use_rate = (1.0 *(cpu_cores) / sold_server.cpu_cores + 1.0 *(memory_size) / sold_server.memory_size) / 2;
-                    dense_cost = 1.0 * sold_server.hardware_cost * use_rate;
-                }else{
-                    dense_cost = sold_server.hardware_cost;
+                if(isDenseBuy == 1) {
+                    // double use_rate = (1.0 *(cpu_cores) / sold_server.cpu_cores + 1.0 *(memory_size) / sold_server.memory_size) / 2;
+                    // double use_rate = max(1.0 *(cpu_cores) / sold_server.cpu_cores , 1.0 *(memory_size) / sold_server.memory_size) ;
+                    // double use_cpu_rate = pow(2.718,1.0 *(cpu_cores) / sold_server.cpu_cores) / ( pow(2.718,1.0 *(cpu_cores) / sold_server.cpu_cores)+pow(2.718,1.0 *(memory_size) / sold_server.memory_size)) ;
+                    // double use_memory_rate = pow(2.718,1.0 *(memory_size) / sold_server.memory_size) / ( pow(2.718,1.0 *(cpu_cores) / sold_server.cpu_cores)+pow(2.718,1.0 *(memory_size) / sold_server.memory_size)) ;
+                    // double use_rate = 0.5 * (use_cpu_rate + use_memory_rate);
+                    double _cpu_rate = 1.0 * cpu_cores / sold_server.cpu_cores;
+                    double _memory_rate = 1.0 *(memory_size) / sold_server.memory_size ;
+                    double T = 0.9;
+                    double _temp_sum = pow(_cpu_rate,1.0 / T) + pow(_memory_rate,1.0 / T);
+                    double use_cpu_rate = pow(_cpu_rate,1.0 / T) / _temp_sum;
+                    double use_memory_rate = pow(_memory_rate,1.0 / T) / _temp_sum;
+                    double use_rate = max  (use_cpu_rate , use_memory_rate);
+                    dense_cost = 1.0 * (sold_server.hardware_cost + sold_server.daily_energy_cost * (total_days_num - now_day)) * use_rate;
+
+                } else{
+                    dense_cost = 1.0 * (sold_server.hardware_cost + sold_server.daily_energy_cost * (total_days_num - now_day));
                 }
-                if (dense_cost < min_dense_cost) {
+                if(dense_cost < min_dense_cost) {
                     min_dense_cost = dense_cost;
                     flag_sold_server = &sold_server;
                 }
             }
         }
 
-        if (!deployed) {
+        if(!deployed) {
             //购买一台新服务器
             total_server_cost+=flag_sold_server->hardware_cost;
             deployed = true;
@@ -621,27 +668,176 @@ void Numbering() {
         }
     }
 }
-
 void Compute_Power_Cost() {
-    for (auto& server:purchase_servers) {
-        if (server->A_vm_id.size() + server->B_vm_id.size() + server->AB_vm_id.size()!=0) {
+    for(auto& server:purchase_servers) {
+        if(server->A_vm_id.size() + server->B_vm_id.size() + server->AB_vm_id.size()!=0) {
             //当天结束时候有虚拟机的服务器
             total_power_cost += server_name2info[server->server_name].daily_energy_cost;
-        }else{
+        } else{
             //当天结束时关机，但是当天开过机的服务器，算电费
-            if (from_off_2_start.find(server->server_id) != from_off_2_start.end()) {
+            if(from_off_2_start.count(server->server_id)!=0) {
                 total_power_cost += server_name2info[server->server_name].daily_energy_cost;
             }
         }
     }
 }
 
+vector<int> GetAllResourceOfOwnServers(bool isRemained = false) {
+/**
+ * @description:获取当前所有已经购买的服务器的总资源 或 剩余资源
+ * @param {isRemained 为false ：总资源，true：剩余资源}
+ * @return {vector<int> 二维数组 [0]--cpu，[1]--memory}
+ */
+    int _total_cpu = 0;
+    int _total_memory = 0;
+    if(!isRemained) {
+        for(auto& purchase_server:purchase_servers) {
+            string _serverName = purchase_server->server_name;
+            _total_cpu+= server_name2info[_serverName].cpu_cores *2;
+            _total_memory +=server_name2info[_serverName].memory_size*2;
+        }
+    } else{
+        for(auto& purchase_server:purchase_servers) {
+            _total_cpu+= purchase_server->A_remain_core_num + purchase_server->B_remain_core_num;
+            _total_memory +=purchase_server->A_remain_memory_size + purchase_server->B_remain_memory_size;
+        }
+    }
+    return {_total_cpu,_total_memory};
+}
+
+vector<int> GetAllResourceOfToday(vector<RequestData> &reqInfoOfToday) {
+/**
+ * @description: 获取当天请求所需的总资源,当天增加的减去删除的
+ * @param {reqInfoOfToday ： 当天的请求信息}
+ * @return {vector<int> 二维数组 [0]--cpu，[1]--memory}
+ */
+    int _total_cpu = 0;
+    int _total_memory = 0;
+    for(auto& req:reqInfoOfToday) {
+        string vm_name = req.vm_name;
+        int vm_isTwoNode = vm_name2info[vm_name].deployment_way;
+        int vm_cpu,vm_memory;
+        if(vm_isTwoNode == 1) {
+            vm_cpu = vm_name2info[vm_name].cpu_cores * 2;
+            vm_memory = vm_name2info[vm_name].memory_size * 2;
+        } else{
+            vm_cpu = vm_name2info[vm_name].cpu_cores;
+            vm_memory = vm_name2info[vm_name].memory_size;
+        }
+        if(req.operation == "add") {
+            _total_cpu+=vm_cpu;
+            _total_memory+=vm_memory;
+        } else if(req.operation == "del") {
+            _total_cpu-=vm_cpu;
+            _total_memory-=vm_memory;
+        }
+    }
+    return {_total_cpu,_total_memory};
+}
+
+vector<int> GetMaxResourceOfToday(vector<RequestData> &reqInfoOfToday) {
+/**
+ * @description: 获取当天请求巅峰时刻的Cpu值和Memory值
+ * @param {reqInfoOfToday ： 当天的请求信息}
+ * @return {vector<int> 二维数组 [0]--max_cpu，[1]--max_memory}
+ */
+    int _total_cpu = 0;
+    int _total_memory = 0;
+    int _max_cpu = 0;
+    int _max_memory = 0;
+    for(auto& req:reqInfoOfToday) {
+        string vm_name = req.vm_name;
+        int vm_isTwoNode = vm_name2info[vm_name].deployment_way;
+        int vm_cpu,vm_memory;
+        if(vm_isTwoNode == 1) {
+            vm_cpu = vm_name2info[vm_name].cpu_cores * 2;
+            vm_memory = vm_name2info[vm_name].memory_size * 2;
+        } else{
+            vm_cpu = vm_name2info[vm_name].cpu_cores;
+            vm_memory = vm_name2info[vm_name].memory_size;
+        }
+        if(req.operation == "add") {
+            _total_cpu+=vm_cpu;
+            _total_memory+=vm_memory;
+            if(_total_cpu > _max_cpu) {
+                _max_cpu = _total_cpu;
+            }
+            if(_total_memory > _max_memory) {
+                _max_memory = _total_memory;
+            }
+        } else if(req.operation == "del") {
+            _total_cpu-=vm_cpu;
+            _total_memory-=vm_memory;
+        }
+    }
+    return {_max_cpu,_max_memory};
+}
+
+vector<int> GetAllResourceOfFutureNDays(int req_num) {
+/**
+ * @description: 获取未来N条请求所需要的所有资源,以及峰值时刻的CPU，峰值时刻的Memory
+ * @param { int req_num}
+ * @return {vector<int> 二维数组 [0]--cpu，[1]--memory,[2]--max_cpu,[3]--max_memory}
+ */
+    queue<vector<RequestData>> _temp(request_datas);
+    int _cnt = 0;
+    int _total_cpu = 0;
+    int _total_memory = 0;
+    int _max_cpu = 0;
+    int _max_memory = 0;
+    while(_temp.size()>=1 && _cnt<req_num) {
+        vector<RequestData>_tempReqs = _temp.front();
+        _temp.pop();
+        for(auto& _req:_tempReqs) {
+            if(_cnt>=req_num) {
+                break;
+            }
+            _cnt++;
+            string vm_name = _req.vm_name;
+            int vm_isTwoNode = vm_name2info[vm_name].deployment_way;
+            int vm_cpu,vm_memory;
+            if(vm_isTwoNode == 1) {
+            vm_cpu = vm_name2info[vm_name].cpu_cores * 2;
+            vm_memory = vm_name2info[vm_name].memory_size * 2;
+            } else{
+                vm_cpu = vm_name2info[vm_name].cpu_cores;
+                vm_memory = vm_name2info[vm_name].memory_size;
+            }
+            if(_req.operation == "add") {
+                _total_cpu+=vm_cpu;
+                _total_memory+=vm_memory;
+                if(_total_cpu > _max_cpu) {
+                    _max_cpu = _total_cpu;
+                }
+                if(_total_memory > _max_memory) {
+                    _max_memory = _total_memory;
+                }
+            } else if(_req.operation == "del") {
+                _total_cpu-=vm_cpu;
+                _total_memory-=vm_memory;
+            }
+        }
+    }
+    return {_total_cpu,_total_memory,_max_cpu,_max_memory};
+}
+
 void SolveProblem() {
     Cmp cmp;
     sort(sold_servers.begin(), sold_servers.end(), cmp.SoldServers);
     for (int i = 0; i < total_days_num; ++i) {
+        now_day = i+1;
+        from_off_2_start.erase(from_off_2_start.begin(),from_off_2_start.end());
         // vector<MigrationInfo> migration_infos;
         vector<MigrationInfo> migration_infos = Migration();
+
+        //获取迁移之后的系统可以提供的总资源
+        vector<int> allResouceAfterMigration = GetAllResourceOfOwnServers(true);
+
+
+        //获取未来N条请求所需要的总资源
+        vector<int> allResourceOfNReqs = GetAllResourceOfFutureNDays(5000);
+
+
         vector<RequestData> intraday_requests = request_datas.front();
         request_datas.pop();
         int request_num = intraday_requests.size();
@@ -651,6 +847,17 @@ void SolveProblem() {
                 vm_ids.emplace_back(intraday_requests[j].vm_id);
             }
         }
+
+        //获取当天请求所需要的峰值时刻的cpu和memory
+        vector<int> max_resource_of_today_reqs = GetMaxResourceOfToday(intraday_requests);
+        double _rate = 1.0;
+        if(allResouceAfterMigration[0] * _rate >= max_resource_of_today_reqs[0] && allResouceAfterMigration[1] * _rate >= max_resource_of_today_reqs[1]) {
+            isDenseBuy = 1;
+        } else{
+            isDenseBuy = 0;
+        }
+
+
         for (int j = 0; j < request_num; ++j) {
             string operation = intraday_requests[j].operation;
             vector<AddData> continuous_add_datas;
@@ -704,7 +911,7 @@ void PrintCostInfo() {
 
 int main(int argc, char* argv[]) {
 #ifdef REDIRECT
-    freopen("training-2.txt", "r", stdin);
+    freopen("training-1.txt", "r", stdin);
     freopen("out1.txt", "w", stdout);
 #endif
 #ifdef PRINTINFO
