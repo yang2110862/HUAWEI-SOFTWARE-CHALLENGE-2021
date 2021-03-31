@@ -740,16 +740,57 @@ vector<int> GetAllResourceOfToday(vector<RequestData> &reqInfoOfToday){
     return {_total_cpu,_total_memory};
 }
 
-vector<int> GetAllResourceOfFutureNDays(int req_num){ 
+vector<int> GetMaxResourceOfToday(vector<RequestData> &reqInfoOfToday){
 /**
- * @description: 获取未来N条请求所需要的所有资源
+ * @description: 获取当天请求巅峰时刻的Cpu值和Memory值
+ * @param {reqInfoOfToday ： 当天的请求信息}
+ * @return {vector<int> 二维数组 [0]--max_cpu，[1]--max_memory}
+ */
+    int _total_cpu = 0;
+    int _total_memory = 0;
+    int _max_cpu = 0;
+    int _max_memory = 0;
+    for(auto& req:reqInfoOfToday){
+        string vm_name = req.vm_name;
+        int vm_isTwoNode = vm_name2info[vm_name].deployment_way;
+        int vm_cpu,vm_memory;
+        if(vm_isTwoNode == 1){
+            vm_cpu = vm_name2info[vm_name].cpu_cores * 2;
+            vm_memory = vm_name2info[vm_name].memory_size * 2;
+        }else{
+            vm_cpu = vm_name2info[vm_name].cpu_cores;
+            vm_memory = vm_name2info[vm_name].memory_size;
+        }
+        if(req.operation == "add"){
+            _total_cpu+=vm_cpu;
+            _total_memory+=vm_memory;
+            if(_total_cpu > _max_cpu){
+                _max_cpu = _total_cpu;
+            }
+            if(_total_memory > _max_memory){
+                _max_memory = _total_memory;
+            }
+        }else if(req.operation == "del"){
+            _total_cpu-=vm_cpu;
+            _total_memory-=vm_memory;
+        }
+    }
+    return {_max_cpu,_max_memory};
+}
+
+
+vector<int> GetAllResourceOfFutureNDays(int req_num){
+/**
+ * @description: 获取未来N条请求所需要的所有资源,以及峰值时刻的CPU，峰值时刻的Memory
  * @param { int req_num}
- * @return {vector<int> 二维数组 [0]--cpu，[1]--memory}
+ * @return {vector<int> 二维数组 [0]--cpu，[1]--memory,[2]--max_cpu,[3]--max_memory}
  */
     queue<vector<RequestData>> _temp(request_datas);
     int _cnt = 0;
     int _total_cpu = 0;
     int _total_memory = 0;
+    int _max_cpu = 0;
+    int _max_memory = 0;
     while(_temp.size()>=1 && _cnt<req_num){
         vector<RequestData>_tempReqs = _temp.front();
         _temp.pop();
@@ -770,13 +811,19 @@ vector<int> GetAllResourceOfFutureNDays(int req_num){
             if(_req.operation == "add"){
                 _total_cpu+=vm_cpu;
                 _total_memory+=vm_memory;
+                if(_total_cpu > _max_cpu){
+                    _max_cpu = _total_cpu;
+                }
+                if(_total_memory > _max_memory){
+                    _max_memory = _total_memory;
+                }
             }else if(_req.operation == "del"){
                 _total_cpu-=vm_cpu;
                 _total_memory-=vm_memory;
             }
         }
     }
-    return {_total_cpu,_total_memory};
+    return {_total_cpu,_total_memory,_max_cpu,_max_memory};
 }
 
 void SolveProblem() {
@@ -788,8 +835,7 @@ void SolveProblem() {
         // vector<MigrationInfo> migration_infos = Migration();
 
         //获取未来N条请求所需要的总资源
-        // vector<int> allResourceOfNReqs = GetAllResourceOfFutureNDays(10);
-        // cout<<allResourceOfNReqs[0]<<"  "<<allResourceOfNReqs[1]<<endl;
+        vector<int> allResourceOfNReqs = GetAllResourceOfFutureNDays(500);
 
         vector<RequestData> intraday_requests = request_datas.front();
         request_datas.pop();
@@ -808,6 +854,10 @@ void SolveProblem() {
         // cout<<_allRemainedResourceOfOwnServers[0]<<"  "<<_allRemainedResourceOfOwnServers[1]<<endl;
         // vector<int> _allResourceToday = GetAllResourceOfToday(intraday_requests);
         // cout<<_allResourceToday[0] <<"  "<<_allResourceToday[1]<<endl;
+        // vector<int> _maxResourceToday = GetMaxResourceOfToday(intraday_requests);
+        // cout<<_maxResourceToday[0] <<"  "<<_maxResourceToday[1]<<endl;
+        // if(_allResourceToday[0] != _maxResourceToday[0]) cout<<"    adasdasdasdasdasdasdad"<<endl;
+        // if(_allResourceToday[1] != _maxResourceToday[1]) cout<<"    adasdasdasdasdasdasdad"<<endl;
 
         for (int j = 0; j < request_num; ++j) {
             string operation = intraday_requests[j].operation;
