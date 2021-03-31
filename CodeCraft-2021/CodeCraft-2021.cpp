@@ -332,6 +332,7 @@ void AddVm(AddData& add_data) {
             vm_id2info[add_data.vm_id] = vm_id_info;
         }
 
+
         double min_dense_cost = 99999999999999;
         SoldServer* flag_sold_server;
         for (auto& sold_server : sold_servers) {
