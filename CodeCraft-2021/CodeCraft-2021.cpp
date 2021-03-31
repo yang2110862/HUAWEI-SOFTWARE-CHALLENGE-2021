@@ -28,7 +28,8 @@ int number = 0; //给服务器编号
 int isDenseBuy = 0; // 0--非密度购买  1--密度购买
 double _future_N_reqs_cpu_rate = 0;
 double _future_N_reqs_memory_rate = 0;
-
+double _migration_threahold = 0.65;
+double _near_full_threhold = 0;
 
 void ParseServerInfo() {
     int server_num;
@@ -130,15 +131,28 @@ bool NeedMigration(PurchasedServer *server) {
     double _B_cpu_remain_rate = 1.0 * server->B_remain_core_num / server->total_core_num;
     double _A_memory_remain_rate = 1.0 * server->A_remain_memory_size / server->total_memory_size;
     double _B_memory_remain_rate = 1.0 * server->B_remain_memory_size / server->total_memory_size;
-    double threadhold = 0.4; //减小能增加迁移数量。
-    return (_A_cpu_remain_rate > threadhold) + (_A_memory_remain_rate > threadhold) + (_B_cpu_remain_rate > threadhold)
-                    + (_B_memory_remain_rate > threadhold) >= 1;
+    return (_A_cpu_remain_rate > _migration_threahold) + (_A_memory_remain_rate > _migration_threahold) + (_B_cpu_remain_rate > _migration_threahold)
+                    + (_B_memory_remain_rate > _migration_threahold) >= 1;
 }
+
+int _HowManyCondionSuit(PurchasedServer *server){
+/**
+ * @description: 接NeedMigration，返回服务器满足的条件个数
+ * @param {*}
+ * @return {个数}
+ */
+    double _A_cpu_remain_rate = 1.0 * server->A_remain_core_num / server->total_core_num;
+    double _B_cpu_remain_rate = 1.0 * server->B_remain_core_num / server->total_core_num;
+    double _A_memory_remain_rate = 1.0 * server->A_remain_memory_size / server->total_memory_size;
+    double _B_memory_remain_rate = 1.0 * server->B_remain_memory_size / server->total_memory_size;
+    return (_A_cpu_remain_rate > _migration_threahold) + (_A_memory_remain_rate > _migration_threahold) + (_B_cpu_remain_rate > _migration_threahold)
+                    + (_B_memory_remain_rate > _migration_threahold) ;
+}
+
 // 筛选出几乎满了的服务器，不作为目标服务器。
 bool NearlyFull(PurchasedServer *server) {
-    double threshold = 0.07; //增大能去掉更多的服务器，减少时间；同时迁移次数会有轻微减少，成本有轻微增加。
-    return (1.0 * server->A_remain_core_num / server->total_core_num < threshold || 1.0 * server->A_remain_memory_size / server->total_memory_size < threshold)
-                    && (1.0 * server->B_remain_core_num / server->total_core_num < threshold || 1.0 * server->B_remain_memory_size / server->total_memory_size < threshold);
+    return (1.0 * server->A_remain_core_num / server->total_core_num < _near_full_threhold || 1.0 * server->A_remain_memory_size / server->total_memory_size < _near_full_threhold)
+                    && (1.0 * server->B_remain_core_num / server->total_core_num < _near_full_threhold || 1.0 * server->B_remain_memory_size / server->total_memory_size < _near_full_threhold);
 }
 vector<MigrationInfo> Migration() {
     int max_migration_num = vm_id2info.size() * 30 / 1000;
@@ -156,9 +170,22 @@ vector<MigrationInfo> Migration() {
         //            (server->A_remain_memory_size + server->B_remain_memory_size) / 2.0 / server->total_memory_size < 0.8)
         //     target_servers.emplace_back(server);
     }
+
+    //直接按照需要迁移的虚拟机内部数量排序
     sort(original_servers.begin(),original_servers.end(),[](PurchasedServer* a,PurchasedServer*b) {
-        return a->A_vm_id.size() + a->B_vm_id.size() + a->AB_vm_id.size() < b->A_vm_id.size() + b->B_vm_id.size() + b->AB_vm_id.size() ;
+        return (a->A_vm_id.size() + a->B_vm_id.size() + a->AB_vm_id.size() < b->A_vm_id.size() + b->B_vm_id.size() + b->AB_vm_id.size()) ;
     });
+    //在按照需要迁移的虚拟机内部数量排序基础上，按照符合的条件数排序
+    // sort(original_servers.begin(),original_servers.end(),[](PurchasedServer* a,PurchasedServer*b) {
+    //     if(a->A_vm_id.size() + a->B_vm_id.size() + a->AB_vm_id.size() < b->A_vm_id.size() + b->B_vm_id.size() + b->AB_vm_id.size()){
+    //         return true;
+    //     }else if(a->A_vm_id.size() + a->B_vm_id.size() + a->AB_vm_id.size() == b->A_vm_id.size() + b->B_vm_id.size() + b->AB_vm_id.size()){
+    //         if(_HowManyCondionSuit(a)>_HowManyCondionSuit(b)) return true;
+    //         else return false;
+    //     }else{
+    //         return false;
+    //     }
+    // });
 
     for (auto &original_server : original_servers) {
         if (migration_infos.size() == max_migration_num) return migration_infos;
@@ -368,9 +395,15 @@ void AddVm(AddData& add_data) {
             }   //先筛选能用的服务器
             if (purchase_server->A_remain_core_num >= cpu_cores && purchase_server->A_remain_memory_size >= memory_size
             && purchase_server->B_remain_core_num >= cpu_cores && purchase_server->B_remain_memory_size >= memory_size) {
-                double _cpu_remain_rate = (1.0*(purchase_server->A_remain_core_num - cpu_cores)/purchase_server->total_core_num + 1.0*(purchase_server->B_remain_core_num - cpu_cores)/ purchase_server->total_core_num) / 2;
-                double _memory_remain_rate = (1.0*(purchase_server->A_remain_memory_size - memory_size)/purchase_server->total_memory_size + 1.0*(purchase_server->B_remain_memory_size - memory_size) / purchase_server->total_memory_size) / 2;
-                if(_cpu_remain_rate + _memory_remain_rate < min_remain_rate) {
+                // double _cpu_remain_rate = (1.0*(purchase_server->A_remain_core_num - cpu_cores)/purchase_server->total_core_num + 1.0*(purchase_server->B_remain_core_num - cpu_cores)/ purchase_server->total_core_num) / 2;
+                // double _memory_remain_rate = (1.0*(purchase_server->A_remain_memory_size - memory_size)/purchase_server->total_memory_size + 1.0*(purchase_server->B_remain_memory_size - memory_size) / purchase_server->total_memory_size) / 2;
+                // if(_cpu_remain_rate + _memory_remain_rate < min_remain_rate) {
+                //     min_remain_rate = _cpu_remain_rate + _memory_remain_rate;
+                //     flag_server = purchase_server;
+                // }
+                double _cpu_remain_rate = min(1.0*(purchase_server->A_remain_core_num - cpu_cores)/purchase_server->total_core_num , 1.0*(purchase_server->B_remain_core_num - cpu_cores)/ purchase_server->total_core_num) ;
+                double _memory_remain_rate = min(1.0*(purchase_server->A_remain_memory_size - memory_size)/purchase_server->total_memory_size , 1.0*(purchase_server->B_remain_memory_size - memory_size) / purchase_server->total_memory_size) ;
+                if((_cpu_remain_rate + _memory_remain_rate)  < min_remain_rate) {
                     min_remain_rate = _cpu_remain_rate + _memory_remain_rate;
                     flag_server = purchase_server;
                 }
@@ -511,8 +544,8 @@ void AddVm(AddData& add_data) {
             if(evaluate_A&&evaluate_B) {
                 double _cpu_remain_rate = 1.0*(purchase_server->A_remain_core_num - cpu_cores)/purchase_server->total_core_num ;
                 double _memory_remain_rate = 1.0*(purchase_server->A_remain_memory_size - memory_size)/purchase_server->total_memory_size ;
-                // double _cpu_remain_rate = (1.0*(purchase_server->A_remain_core_num - cpu_cores)/purchase_server->total_core_num + 1.0*purchase_server->B_remain_core_num / purchase_server->total_core_num) / 2;
-                // double _memory_remain_rate = (1.0*(purchase_server->A_remain_memory_size - memory_size)/purchase_server->total_memory_size + 1.0*purchase_server->B_remain_memory_size / purchase_server->total_memory_size) / 2;
+
+                
                 if(_cpu_remain_rate + _memory_remain_rate < min_remain_rate) {
                     min_remain_rate = _cpu_remain_rate + _memory_remain_rate;
                     flag_server = purchase_server;
