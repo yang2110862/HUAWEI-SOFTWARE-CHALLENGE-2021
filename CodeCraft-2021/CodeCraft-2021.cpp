@@ -835,7 +835,7 @@ void SolveProblem() {
         // vector<MigrationInfo> migration_infos = Migration();
 
         //获取未来N条请求所需要的总资源
-        vector<int> allResourceOfNReqs = GetAllResourceOfFutureNDays(500);
+        vector<int> allResourceOfNReqs = GetAllResourceOfFutureNDays(3000);
 
         vector<RequestData> intraday_requests = request_datas.front();
         request_datas.pop();
