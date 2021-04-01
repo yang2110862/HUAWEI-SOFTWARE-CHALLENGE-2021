@@ -14,7 +14,10 @@ int now_req_num = 0;
 
 int number = 0; //给服务器编号
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> master
 long long total_server_cost = 0;
 long long total_power_cost = 0;
 int total_migration_num = 0;
@@ -22,7 +25,10 @@ int total_migration_num = 0;
 
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> master
 
 //状态值
 int isDenseBuy = 0; // 0--非密度购买  1--密度购买
@@ -34,6 +40,9 @@ double _near_full_threhold = 0.07; //增大能去掉更多的服务器，减少�
 double k1 = 0.75, k2 = 1 - k1; //CPU和memory的加权系数
 double r1 = 0.5, r2 = 1 - r1; //CPU和memory剩余率的加权系数
 
+<<<<<<< HEAD
+>>>>>>> master
+=======
 >>>>>>> master
 void ParseServerInfo() {
     int server_num;
@@ -135,6 +144,7 @@ bool NeedMigration(PurchasedServer *server) {
     double _A_memory_remain_rate = 1.0 * server->A_remain_memory_size / server->total_memory_size;
     double _B_memory_remain_rate = 1.0 * server->B_remain_memory_size / server->total_memory_size;
 <<<<<<< HEAD
+<<<<<<< HEAD
     double threadhold = 0.23;
     if((_A_cpu_remain_rate > threadhold ) + (_A_memory_remain_rate > threadhold) + (_B_cpu_remain_rate > threadhold) + (_B_memory_remain_rate>threadhold) >=2)
         return true;
@@ -148,6 +158,11 @@ bool NeedMigration(PurchasedServer *server) {
     return (_A_cpu_remain_rate > _migration_threahold) + (_A_memory_remain_rate > _migration_threahold) + (_B_cpu_remain_rate > _migration_threahold)
                     + (_B_memory_remain_rate > _migration_threahold) >= 1;
 }
+=======
+    return (_A_cpu_remain_rate > _migration_threahold) + (_A_memory_remain_rate > _migration_threahold) + (_B_cpu_remain_rate > _migration_threahold)
+                    + (_B_memory_remain_rate > _migration_threahold) >= 1;
+}
+>>>>>>> master
 
 int _HowManyCondionSuit(PurchasedServer *server) {
 /**
@@ -168,6 +183,9 @@ bool NearlyFull(PurchasedServer *server) {
     return (1.0 * server->A_remain_core_num / server->total_core_num < _near_full_threhold || 1.0 * server->A_remain_memory_size / server->total_memory_size < _near_full_threhold)
                     && (1.0 * server->B_remain_core_num / server->total_core_num < _near_full_threhold || 1.0 * server->B_remain_memory_size / server->total_memory_size < _near_full_threhold);
 }
+<<<<<<< HEAD
+>>>>>>> master
+=======
 >>>>>>> master
 vector<MigrationInfo> Migration() {
     int max_migration_num = vm_id2info.size() * 5 / 1000;
@@ -178,9 +196,12 @@ vector<MigrationInfo> Migration() {
     vector<PurchasedServer *> target_servers;
     for (auto server : purchase_servers) {
 <<<<<<< HEAD
+<<<<<<< HEAD
         target_servers.emplace_back(server);
         if (NeedMigration(server)) original_servers.emplace_back(server);
 =======
+=======
+>>>>>>> master
         if (NeedMigration(server)) {
             for (auto &vm_id : server->A_vm_id) migrating_vms.emplace_back(&vm_id2info[vm_id]);
             for (auto &vm_id : server->B_vm_id) migrating_vms.emplace_back(&vm_id2info[vm_id]);
@@ -196,6 +217,7 @@ vector<MigrationInfo> Migration() {
         //     target_servers.emplace_back(server);
     }
 <<<<<<< HEAD
+<<<<<<< HEAD
     sort(original_servers.begin(),original_servers.end(),[](PurchasedServer* a,PurchasedServer*b) {
         return a->A_vm_id.size() + a->B_vm_id.size() + a->AB_vm_id.size() <b->A_vm_id.size() + b->B_vm_id.size() + b->AB_vm_id.size() ;
     });
@@ -210,6 +232,8 @@ vector<MigrationInfo> Migration() {
             // if (migrated_vms.find(vm_id) != migrated_vms.end()) continue;
             VmIdInfo *vm_info = &vm_id2info[vm_id];
 =======
+=======
+>>>>>>> master
     /* sort(migrating_vms.begin(), migrating_vms.end(), [](VmIdInfo *a,VmIdInfo *b) {
         return (a->cpu_cores * k1 + a->memory_size * k2) * (a->node == 'C' ? 10 : 1) > (b->cpu_cores * k1 + b->memory_size * k2) * (a->node == 'C' ? 10 : 1);
     }); */
@@ -218,6 +242,9 @@ vector<MigrationInfo> Migration() {
         if (vm_info->node != 'C') {
             PurchasedServer *original_server = vm_info->purchase_server;
             int vm_id = vm_info->vm_id;
+<<<<<<< HEAD
+>>>>>>> master
+=======
 >>>>>>> master
             double min_rate = 2.0;
             PurchasedServer* best_server;
@@ -258,8 +285,14 @@ vector<MigrationInfo> Migration() {
                 }
             }
 <<<<<<< HEAD
+<<<<<<< HEAD
             if(min_rate!=2.0) {
                 happened_migtation_serverID.emplace(original_server->server_id);
+=======
+            if (min_rate!=2.0) {
+                total_migration_num++;
+                happened_migration_serverID.emplace(original_server->server_id);
+>>>>>>> master
 =======
             if (min_rate!=2.0) {
                 total_migration_num++;
@@ -277,6 +310,7 @@ vector<MigrationInfo> Migration() {
                     original_server->B_vm_id.erase(vm_id);
                 }
                 
+<<<<<<< HEAD
 <<<<<<< HEAD
             }
         }
@@ -334,11 +368,16 @@ vector<MigrationInfo> Migration() {
                     flag_server->A_vm_id.insert(vm_id);
                     vm_info->purchase_server = flag_server;
 =======
+=======
+>>>>>>> master
                 if (which_node == 'A') {
                     best_server->A_remain_core_num -= cpu_cores;
                     best_server->A_remain_memory_size -= memory_size;
                     best_server->A_vm_id.insert(vm_id);
                     vm_info->purchase_server = best_server;
+<<<<<<< HEAD
+>>>>>>> master
+=======
 >>>>>>> master
                     vm_info->node = 'A';
                     // migrated_vms.insert(vm_id);
@@ -377,9 +416,15 @@ vector<MigrationInfo> Migration() {
                 }
             }
 <<<<<<< HEAD
+<<<<<<< HEAD
 
             if(min_rate!=2.0) {
                 happened_migtation_serverID.emplace(original_server->server_id);
+=======
+            if (min_rate!=2.0) {
+                total_migration_num++;
+                happened_migration_serverID.emplace(original_server->server_id);
+>>>>>>> master
 =======
             if (min_rate!=2.0) {
                 total_migration_num++;
@@ -414,6 +459,7 @@ void AddVm(AddData& add_data) {
     int deployment_way = add_data.deployment_way;
     if (deployment_way == 1) { //双节点部署
 <<<<<<< HEAD
+<<<<<<< HEAD
         double cpu_cores = add_data.cpu_cores;
         double memory_size = add_data.memory_size;
         double load_ratio = cpu_cores / memory_size;
@@ -436,6 +482,8 @@ void AddVm(AddData& add_data) {
                 double distance = load.CalculateDistance(load_ratio, server_ratio);
                 if (distance < priority) {        //可以加加上相同时的判断条件，后面再考虑
 =======
+=======
+>>>>>>> master
         int cpu_cores = add_data.cpu_cores;
         int memory_size = add_data.memory_size;
         double min_remain_rate = 2.0;
@@ -959,15 +1007,21 @@ vector<int> GetAllResourceOfFutureNDays(int req_num) {
     return {_total_cpu,_total_memory,_max_cpu,_max_memory};
 }
 
+<<<<<<< HEAD
+>>>>>>> master
+=======
 >>>>>>> master
 void SolveProblem() {
     Cmp cmp;
     sort(sold_servers.begin(), sold_servers.end(), cmp.SoldServers);
     for (int i = 0; i < total_days_num; ++i) {
 <<<<<<< HEAD
+<<<<<<< HEAD
         vector<MigrationInfo> migration_infos;
         // vector<MigrationInfo> migration_infos = Migration();
 =======
+=======
+>>>>>>> master
         now_day = i+1;
         from_off_2_start.erase(from_off_2_start.begin(),from_off_2_start.end());
         // vector<MigrationInfo> migration_infos;
@@ -981,6 +1035,9 @@ void SolveProblem() {
         vector<int> allResourceOfNReqs = GetAllResourceOfFutureNDays(5000);
 
 
+<<<<<<< HEAD
+>>>>>>> master
+=======
 >>>>>>> master
         vector<RequestData> intraday_requests = request_datas.front();
         request_datas.pop();
@@ -1043,7 +1100,10 @@ void SolveProblem() {
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> master
 void PrintCostInfo() {
     cout<<"Server Num : "<<purchase_servers.size()<<endl;
     cout<<"Total Migration Num : " <<total_migration_num<<endl;
@@ -1074,6 +1134,9 @@ int main(int argc, char* argv[]) {
 #ifdef PRINTINFO
     PrintCostInfo();
 #endif
+<<<<<<< HEAD
+>>>>>>> master
+=======
 >>>>>>> master
 #ifdef REDIRECT
     fclose(stdin);
