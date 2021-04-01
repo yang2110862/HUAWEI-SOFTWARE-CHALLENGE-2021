@@ -891,7 +891,7 @@ void SolveProblem() {
             }
         }
         Numbering(); //给购买了的服务器编号
-        Print(vm_ids, migration_infos);
+        // Print(vm_ids, migration_infos);
         fflush(stdout);
         purchase_infos.clear();
         from_off_2_start.clear();
@@ -911,8 +911,9 @@ void PrintCostInfo() {
 
 int main(int argc, char* argv[]) {
 #ifdef REDIRECT
-    freopen("training-1.txt", "r", stdin);
-    freopen("out1.txt", "w", stdout);
+    // freopen("training-1.txt", "r", stdin);
+    freopen("/Users/wangtongling/Desktop/training-data/training-1.txt", "r", stdin);
+    // freopen("out1.txt", "w", stdout);
 #endif
 #ifdef PRINTINFO
     _start = clock();
