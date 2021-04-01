@@ -50,6 +50,7 @@ struct PurchasedServer {
 struct VmIdInfo {
     PurchasedServer* purchase_server;
     char node;  //A 代表A节点  B代表B节点  C代表C节点
+    int vm_id;
     string vm_name;
     int cpu_cores;
     int memory_size;
