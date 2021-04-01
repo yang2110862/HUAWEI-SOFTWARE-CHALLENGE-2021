@@ -447,11 +447,12 @@ void AddVm(AddData& add_data) {
                     // double use_rate = max(1.0 *(cpu_cores) / sold_server.cpu_cores , 1.0 *(memory_size) / sold_server.memory_size) ;
                     double _cpu_rate = 1.0 * cpu_cores / sold_server.cpu_cores;
                     double _memory_rate = 1.0 *(memory_size) / sold_server.memory_size ;
-                    double T = 0.9;
-                    double _temp_sum = pow(_cpu_rate,1.0 / T) + pow(_memory_rate,1.0 / T);
-                    double use_cpu_rate = pow(_cpu_rate,1.0 / T) / _temp_sum;
-                    double use_memory_rate = pow(_memory_rate,1.0 / T) / _temp_sum;
-                    double use_rate = max  (use_cpu_rate , use_memory_rate);
+                    // double T = 0.9;
+                    // double _temp_sum = pow(_cpu_rate,1.0 / T) + pow(_memory_rate,1.0 / T);
+                    // double use_cpu_rate = pow(_cpu_rate,1.0 / T) / _temp_sum;
+                    // double use_memory_rate = pow(_memory_rate,1.0 / T) / _temp_sum;
+                    // double use_rate = max  (use_cpu_rate , use_memory_rate);
+                    double use_rate = 1.0 *  (_cpu_rate + _memory_rate) / 2;
                     // dense_cost = 1.0 * sold_server.hardware_cost * use_rate;
                     dense_cost = 1.0 * (sold_server.hardware_cost + sold_server.daily_energy_cost * (total_days_num - now_day)) * use_rate;
                 } else{
