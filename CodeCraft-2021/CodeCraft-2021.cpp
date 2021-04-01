@@ -239,7 +239,7 @@ vector<MigrationInfo> Migration() {
                     original_server->B_remain_memory_size += memory_size;
                     original_server->B_vm_id.erase(vm_id);
                 }
-                
+
                 if (which_node == 'A') {
                     best_server->A_remain_core_num -= cpu_cores;
                     best_server->A_remain_memory_size -= memory_size;
@@ -305,6 +305,7 @@ vector<MigrationInfo> Migration() {
     }
     return migration_infos;
 }
+
 void AddVm(AddData& add_data) {
     Cmp cmp;
     bool deployed = false;
@@ -340,7 +341,7 @@ void AddVm(AddData& add_data) {
         //         }
         //     }
         // }
-        
+
         //先从开机的服务器中选择
         for (auto& purchase_server : purchase_servers) {
             if (deployed) {
@@ -366,7 +367,6 @@ void AddVm(AddData& add_data) {
                 }
             }
         }
-
 
         if(min_remain_rate != 2.0) {
             //从开机的服务器中选到了服务器
@@ -901,8 +901,8 @@ void SolveProblem() {
     for (int i = 0; i < total_days_num; ++i) {
         now_day = i+1;
         from_off_2_start.erase(from_off_2_start.begin(),from_off_2_start.end());
-        // vector<MigrationInfo> migration_infos;
-        vector<MigrationInfo> migration_infos = Migration();
+        vector<MigrationInfo> migration_infos;
+        // vector<MigrationInfo> migration_infos = Migration();
 
         //获取迁移之后的系统可以提供的总资源
         vector<int> allResouceAfterMigration = GetAllResourceOfOwnServers(true);
@@ -910,6 +910,7 @@ void SolveProblem() {
 
         //获取未来N条请求所需要的总资源
         vector<int> allResourceOfNReqs = GetAllResourceOfFutureNDays(5000);
+        cout<<allResourceOfNReqs[0]<<"   "<<allResourceOfNReqs[1]<<endl;
 
 
         vector<RequestData> intraday_requests = request_datas.front();
@@ -986,7 +987,7 @@ void PrintCostInfo() {
 int main(int argc, char* argv[]) {
 #ifdef REDIRECT
     // freopen("training-1.txt", "r", stdin);
-    freopen("/Users/wangtongling/Desktop/training-data/training-2.txt", "r", stdin);
+    freopen("/Users/wangtongling/Desktop/training-data/training-1.txt", "r", stdin);
     // freopen("out1.txt", "w", stdout);
 #endif
 #ifdef PRINTINFO
