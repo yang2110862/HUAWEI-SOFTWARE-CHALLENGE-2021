@@ -207,16 +207,20 @@ vector<MigrationInfo> Migration() {
         if (vm_info->node != 'C') {
             PurchasedServer *original_server = vm_info->purchase_server;
             int vm_id = vm_info->vm_id;
-            double min_rate = remain_rate(original_server, vm_info->node);
+            
+            double min_diff;
+            if (vm_info->node == 'A')
+                min_diff = k1 * original_server->A_remain_core_num + k2 * original_server->A_remain_memory_size;
+            else
+                min_diff = k1 * original_server->B_remain_core_num + k2 * original_server->B_remain_memory_size;
             PurchasedServer* best_server;
             char which_node = '!';
             for (auto &target_server : target_servers) { //找最合适的服务器。
                 if (!(target_server == original_server && vm_info->node == 'A')
                         && (target_server->A_remain_core_num >= vm_info->cpu_cores && target_server->A_remain_memory_size >= vm_info->memory_size)) {
-                    double _cpu_remain_rate = r1 * (target_server->A_remain_core_num - vm_info->cpu_cores) / target_server->total_core_num ;
-                    double _memory_remain_rate = r2 * (target_server->A_remain_memory_size - vm_info->memory_size) / target_server->total_memory_size ;
-                    if (_cpu_remain_rate + _memory_remain_rate < min_rate) {
-                        min_rate = _cpu_remain_rate + _memory_remain_rate;
+                    double diff = k1 * (target_server->A_remain_core_num - vm_info->cpu_cores) + k2 * (target_server->A_remain_memory_size - vm_info->memory_size);
+                    if (diff < min_diff) {
+                        min_diff = diff;
                         best_server = target_server;
                         which_node = 'A';
                     }
@@ -229,10 +233,9 @@ vector<MigrationInfo> Migration() {
                 }
                 if (!(target_server == original_server && vm_info->node == 'B')
                         && (target_server->B_remain_core_num >= vm_info->cpu_cores && target_server->B_remain_memory_size >= vm_info->memory_size)) {
-                    double _cpu_remain_rate = r1 * (target_server->B_remain_core_num - vm_info->cpu_cores) / target_server->total_core_num;
-                    double _memory_remain_rate =  r2 * (target_server->B_remain_memory_size - vm_info->memory_size) / target_server->total_memory_size;
-                    if (_cpu_remain_rate + _memory_remain_rate < min_rate) {
-                        min_rate = _cpu_remain_rate + _memory_remain_rate;
+                    double diff = k1 * (target_server->B_remain_core_num - vm_info->cpu_cores) + k2 * (target_server->B_remain_memory_size - vm_info->memory_size);
+                    if (diff < min_diff) {
+                        min_diff = diff;
                         best_server = target_server;
                         which_node = 'B';
                     }
@@ -244,6 +247,44 @@ vector<MigrationInfo> Migration() {
                     // }
                 }
             }
+
+            // double min_rate = remain_rate(original_server, vm_info->node);
+            // PurchasedServer* best_server;
+            // char which_node = '!';
+            // for (auto &target_server : target_servers) { //找最合适的服务器。
+            //     if (!(target_server == original_server && vm_info->node == 'A')
+            //             && (target_server->A_remain_core_num >= vm_info->cpu_cores && target_server->A_remain_memory_size >= vm_info->memory_size)) {
+            //         double _cpu_remain_rate = r1 * (target_server->A_remain_core_num - vm_info->cpu_cores) / target_server->total_core_num ;
+            //         double _memory_remain_rate = r2 * (target_server->A_remain_memory_size - vm_info->memory_size) / target_server->total_memory_size ;
+            //         if (_cpu_remain_rate + _memory_remain_rate < min_rate) {
+            //             min_rate = _cpu_remain_rate + _memory_remain_rate;
+            //             best_server = target_server;
+            //             which_node = 'A';
+            //         }
+            //         // double temp = fabs(_cpu_remain_rate - _memory_remain_rate);
+            //         // if (temp < min_rate) {
+            //         //     min_rate = temp;
+            //         //     best_server = target_server;
+            //         //     which_node = 'A';
+            //         // }
+            //     }
+            //     if (!(target_server == original_server && vm_info->node == 'B')
+            //             && (target_server->B_remain_core_num >= vm_info->cpu_cores && target_server->B_remain_memory_size >= vm_info->memory_size)) {
+            //         double _cpu_remain_rate = r1 * (target_server->B_remain_core_num - vm_info->cpu_cores) / target_server->total_core_num;
+            //         double _memory_remain_rate =  r2 * (target_server->B_remain_memory_size - vm_info->memory_size) / target_server->total_memory_size;
+            //         if (_cpu_remain_rate + _memory_remain_rate < min_rate) {
+            //             min_rate = _cpu_remain_rate + _memory_remain_rate;
+            //             best_server = target_server;
+            //             which_node = 'B';
+            //         }
+            //         // double temp = fabs(_cpu_remain_rate - _memory_remain_rate);
+            //         // if (temp < min_rate) {
+            //         //     min_rate = temp;
+            //         //     best_server = target_server;
+            //         //     which_node = 'B';
+            //         // }
+            //     }
+            // }
             if (which_node != '!') { //开始迁移。
                 if (initial_pos.find(vm_info->vm_id) == initial_pos.end()) initial_pos[vm_info->vm_id] = make_pair(original_server, vm_info->node);
                 if (initial_pos[vm_info->vm_id] == make_pair(best_server, which_node)) continue;
@@ -279,16 +320,17 @@ vector<MigrationInfo> Migration() {
         } else {
             PurchasedServer *original_server = vm_info->purchase_server;
             int vm_id = vm_info->vm_id;
-            double min_rate = (remain_rate(original_server, 'A') + remain_rate(original_server, 'B')) / 2;
+
+            double min_diff = k1 * (original_server->A_remain_core_num + original_server->B_remain_core_num) / 2 + k2 * (original_server->A_remain_memory_size + original_server->B_remain_memory_size) / 2;
             PurchasedServer* best_server = NULL;
             for (auto &target_server : target_servers) { //找最合适的服务器。
                 if (target_server == original_server) continue;
                 if (target_server->A_remain_core_num >= vm_info->cpu_cores && target_server->A_remain_memory_size >= vm_info->memory_size
                         && target_server->B_remain_core_num >= vm_info->cpu_cores && target_server->B_remain_memory_size >= vm_info->memory_size) {
-                    double _cpu_remain_rate = r1 * (target_server->A_remain_core_num - vm_info->cpu_cores + target_server->B_remain_core_num - vm_info->cpu_cores) / target_server->total_core_num / 2;
-                    double _memory_remain_rate = r2 * (target_server->A_remain_memory_size - vm_info->memory_size + target_server->B_remain_memory_size - vm_info->memory_size) / target_server->total_memory_size / 2;
-                    if (_cpu_remain_rate + _memory_remain_rate < min_rate) {
-                        min_rate = _cpu_remain_rate + _memory_remain_rate;
+                    double diff = k1 * (original_server->A_remain_core_num + original_server->B_remain_core_num - 2 * vm_info->cpu_cores) / 2
+                                        + k2 * (original_server->A_remain_memory_size + original_server->B_remain_memory_size - 2 * vm_info->memory_size) / 2;
+                    if (diff < min_diff) {
+                        min_diff = diff;
                         best_server = target_server;
                     }
                     // double temp = fabs(_cpu_remain_rate - _memory_remain_rate);
@@ -298,6 +340,26 @@ vector<MigrationInfo> Migration() {
                     // }
                 }
             }
+
+            // double min_rate = (remain_rate(original_server, 'A') + remain_rate(original_server, 'B')) / 2;
+            // PurchasedServer* best_server = NULL;
+            // for (auto &target_server : target_servers) { //找最合适的服务器。
+            //     if (target_server == original_server) continue;
+            //     if (target_server->A_remain_core_num >= vm_info->cpu_cores && target_server->A_remain_memory_size >= vm_info->memory_size
+            //             && target_server->B_remain_core_num >= vm_info->cpu_cores && target_server->B_remain_memory_size >= vm_info->memory_size) {
+            //         double _cpu_remain_rate = r1 * (target_server->A_remain_core_num - vm_info->cpu_cores + target_server->B_remain_core_num - vm_info->cpu_cores) / target_server->total_core_num / 2;
+            //         double _memory_remain_rate = r2 * (target_server->A_remain_memory_size - vm_info->memory_size + target_server->B_remain_memory_size - vm_info->memory_size) / target_server->total_memory_size / 2;
+            //         if (_cpu_remain_rate + _memory_remain_rate < min_rate) {
+            //             min_rate = _cpu_remain_rate + _memory_remain_rate;
+            //             best_server = target_server;
+            //         }
+            //         // double temp = fabs(_cpu_remain_rate - _memory_remain_rate);
+            //         // if (temp < min_rate) {
+            //         //     min_rate = temp;
+            //         //     best_server = target_server;
+            //         // }
+            //     }
+            // }
             if (best_server != NULL) { //开始迁移。
                 if (initial_pos.find(vm_info->vm_id) == initial_pos.end()) initial_pos[vm_info->vm_id] = make_pair(original_server, 'C');
                 if (initial_pos[vm_info->vm_id] == make_pair(best_server, 'C')) continue;
@@ -342,7 +404,7 @@ vector<MigrationInfo> Migration() {
                 sum_memory = original_server->total_memory_size - original_server->B_remain_memory_size;
                 original_node = 'B';
             }
-            int min_diff = INT_MAX;
+            double min_diff = DBL_MAX;
             PurchasedServer *best_server;
             char which_node;
             for (auto target_server : merging_servers) { //找最合适的服务器。
@@ -350,7 +412,7 @@ vector<MigrationInfo> Migration() {
                 double rate2a = remain_rate(target_server, 'A'), rate2b = remain_rate(target_server, 'B');
                 if (rate2a < threshold) {
                     if (target_server->B_remain_core_num >= sum_cpu && target_server->B_remain_memory_size >= sum_memory) {
-                        int diff = (target_server->B_remain_core_num - sum_cpu) + (target_server->B_remain_memory_size - sum_memory);
+                        double diff = k1 * (target_server->B_remain_core_num - sum_cpu) + k2 * (target_server->B_remain_memory_size - sum_memory);
                         if (diff < min_diff) {
                             min_diff = diff;
                             best_server = target_server;
@@ -359,7 +421,7 @@ vector<MigrationInfo> Migration() {
                     }
                 } else if (rate2b < threshold) {
                     if (target_server->A_remain_core_num >= sum_cpu && target_server->A_remain_memory_size >= sum_memory) {
-                        int diff = (target_server->A_remain_core_num - sum_cpu) + (target_server->A_remain_memory_size - sum_memory);
+                        double diff = k1 * (target_server->A_remain_core_num - sum_cpu) + k2 *(target_server->A_remain_memory_size - sum_memory);
                         if (diff < min_diff) {
                             min_diff = diff;
                             best_server = target_server;
@@ -368,7 +430,7 @@ vector<MigrationInfo> Migration() {
                     }
                 }
             }
-            if (min_diff < INT_MAX) { //开始迁移。
+            if (min_diff < DBL_MAX) { //开始迁移。
                 if (original_node == 'A') {
                     unordered_set<int> vm_ids = original_server->A_vm_id;
                     for (auto vm_id : vm_ids) {
