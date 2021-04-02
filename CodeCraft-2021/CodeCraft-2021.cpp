@@ -371,7 +371,7 @@ vector<MigrationInfo> Migration() {
                 }
             }
             if (min_diff < DBL_MAX) { //开始迁移。
-                if (original_node == 'A') {
+                if (original_node == 'A') { //迁移A结点。
                     unordered_set<int> vm_ids = original_server->A_vm_id;
                     for (auto vm_id : vm_ids) {
                         if (migration_infos.size() == max_migration_num) return migration_infos;
@@ -397,6 +397,78 @@ vector<MigrationInfo> Migration() {
                             vm_info->purchase_server = best_server;
                             vm_info->node = 'B';
                             migration_infos.emplace_back(MigrationInfo(vm_id, best_server, 'B'));
+                        }
+                    }
+                    //如果能，顺带迁B。
+                    bool flag = false; //是否两个结点都能迁，是那么双节点虚拟机也能迁走。
+                    int sum_cpu_b = original_server->total_core_num - original_server->B_remain_core_num;
+                    int sum_memory_b = original_server->total_memory_size - original_server->B_remain_memory_size;
+                    if (best_server->A_remain_core_num >= sum_cpu_b && best_server->A_remain_memory_size >= sum_memory_b && which_node == 'B') { //B迁A。
+                        flag == true;
+                        unordered_set<int> vm_ids = original_server->B_vm_id;
+                        for (auto vm_id : vm_ids) {
+                            if (migration_infos.size() == max_migration_num) return migration_infos;
+                            if (initial_pos.find(vm_id) == initial_pos.end()) initial_pos[vm_id] = make_pair(original_server, 'B');
+                            if (initial_pos[vm_id] == make_pair(best_server, 'A')) continue;
+                            VmIdInfo *vm_info = &vm_id2info[vm_id];
+                            int cpu_cores = vm_info->cpu_cores;
+                            int memory_size = vm_info->memory_size;
+                            original_server->B_remain_core_num += cpu_cores;
+                            original_server->B_remain_memory_size += memory_size;
+                            original_server->B_vm_id.erase(vm_id);
+
+                            best_server->A_remain_core_num -= cpu_cores;
+                            best_server->A_remain_memory_size -= memory_size;
+                            best_server->A_vm_id.insert(vm_id);
+                            vm_info->purchase_server = best_server;
+                            vm_info->node = 'A';
+                            migration_infos.emplace_back(MigrationInfo(vm_id, best_server, 'A'));
+                        }
+                    }
+                    if (best_server->B_remain_core_num >= sum_cpu_b && best_server->B_remain_memory_size >= sum_memory_b && which_node == 'A') { //B迁B。
+                        flag == true;
+                        unordered_set<int> vm_ids = original_server->B_vm_id;
+                        for (auto vm_id : vm_ids) {
+                            if (migration_infos.size() == max_migration_num) return migration_infos;
+                            if (initial_pos.find(vm_id) == initial_pos.end()) initial_pos[vm_id] = make_pair(original_server, 'B');
+                            if (initial_pos[vm_id] == make_pair(best_server, 'B')) continue;
+                            VmIdInfo *vm_info = &vm_id2info[vm_id];
+                            int cpu_cores = vm_info->cpu_cores;
+                            int memory_size = vm_info->memory_size;
+                            original_server->B_remain_core_num += cpu_cores;
+                            original_server->B_remain_memory_size += memory_size;
+                            original_server->B_vm_id.erase(vm_id);
+
+                            best_server->B_remain_core_num -= cpu_cores;
+                            best_server->B_remain_memory_size -= memory_size;
+                            best_server->B_vm_id.insert(vm_id);
+                            vm_info->purchase_server = best_server;
+                            vm_info->node = 'B';
+                            migration_infos.emplace_back(MigrationInfo(vm_id, best_server, 'B'));
+                        }
+                    }
+                    if (flag) { //双节点虚拟机迁移。
+                        unordered_set<int> vm_ids = original_server->AB_vm_id;
+                        for (auto vm_id : vm_ids) {
+                            if (migration_infos.size() == max_migration_num) return migration_infos;
+                            if (initial_pos.find(vm_id) == initial_pos.end()) initial_pos[vm_id] = make_pair(original_server, 'C');
+                            if (initial_pos[vm_id] == make_pair(best_server, 'C')) continue;
+                            VmIdInfo *vm_info = &vm_id2info[vm_id];
+                            int cpu_cores = vm_info->cpu_cores;
+                            int memory_size = vm_info->memory_size;
+                            original_server->A_remain_core_num += cpu_cores;
+                            original_server->A_remain_memory_size += memory_size;
+                            original_server->B_remain_core_num += cpu_cores;
+                            original_server->B_remain_memory_size += memory_size;
+                            original_server->AB_vm_id.erase(vm_id);
+
+                            best_server->A_remain_core_num -= cpu_cores;
+                            best_server->A_remain_memory_size -= memory_size;
+                            best_server->B_remain_core_num -= cpu_cores;
+                            best_server->B_remain_memory_size -= memory_size;
+                            best_server->AB_vm_id.insert(vm_id);
+                            vm_info->purchase_server = best_server;
+                            migration_infos.emplace_back(MigrationInfo(vm_id, best_server, 'C'));
                         }
                     }
                 } else {
@@ -427,93 +499,85 @@ vector<MigrationInfo> Migration() {
                             migration_infos.emplace_back(MigrationInfo(vm_id, best_server, 'B'));
                         }
                     }
+                    //如果能，顺带迁A。
+                    bool flag = false; //是否两个结点都能迁，是那么双节点虚拟机也能迁走。
+                    int sum_cpu_a = original_server->total_core_num - original_server->A_remain_core_num;
+                    int sum_memory_a = original_server->total_memory_size - original_server->B_remain_memory_size;
+                    if (best_server->A_remain_core_num >= sum_cpu_a && best_server->A_remain_memory_size >= sum_memory_a && which_node == 'B') { //A迁A。
+                        flag == true;
+                        unordered_set<int> vm_ids = original_server->A_vm_id;
+                        for (auto vm_id : vm_ids) {
+                            if (migration_infos.size() == max_migration_num) return migration_infos;
+                            if (initial_pos.find(vm_id) == initial_pos.end()) initial_pos[vm_id] = make_pair(original_server, 'A');
+                            if (initial_pos[vm_id] == make_pair(best_server, 'A')) continue;
+                            VmIdInfo *vm_info = &vm_id2info[vm_id];
+                            int cpu_cores = vm_info->cpu_cores;
+                            int memory_size = vm_info->memory_size;
+                            original_server->A_remain_core_num += cpu_cores;
+                            original_server->A_remain_memory_size += memory_size;
+                            original_server->A_vm_id.erase(vm_id);
+
+                            best_server->A_remain_core_num -= cpu_cores;
+                            best_server->A_remain_memory_size -= memory_size;
+                            best_server->A_vm_id.insert(vm_id);
+                            vm_info->purchase_server = best_server;
+                            vm_info->node = 'A';
+                            migration_infos.emplace_back(MigrationInfo(vm_id, best_server, 'A'));
+                        }
+                    }
+                    if (best_server->B_remain_core_num >= sum_cpu_a && best_server->B_remain_memory_size >= sum_memory_a && which_node == 'A') { //A迁B。
+                        flag == true;
+                        unordered_set<int> vm_ids = original_server->A_vm_id;
+                        for (auto vm_id : vm_ids) {
+                            if (migration_infos.size() == max_migration_num) return migration_infos;
+                            if (initial_pos.find(vm_id) == initial_pos.end()) initial_pos[vm_id] = make_pair(original_server, 'A');
+                            if (initial_pos[vm_id] == make_pair(best_server, 'B')) continue;
+                            VmIdInfo *vm_info = &vm_id2info[vm_id];
+                            int cpu_cores = vm_info->cpu_cores;
+                            int memory_size = vm_info->memory_size;
+                            original_server->A_remain_core_num += cpu_cores;
+                            original_server->A_remain_memory_size += memory_size;
+                            original_server->A_vm_id.erase(vm_id);
+
+                            best_server->B_remain_core_num -= cpu_cores;
+                            best_server->B_remain_memory_size -= memory_size;
+                            best_server->B_vm_id.insert(vm_id);
+                            vm_info->purchase_server = best_server;
+                            vm_info->node = 'B';
+                            migration_infos.emplace_back(MigrationInfo(vm_id, best_server, 'B'));
+                        }
+                    }
+                    if (flag) { //双节点虚拟机迁移。
+                        unordered_set<int> vm_ids = original_server->AB_vm_id;
+                        for (auto vm_id : vm_ids) {
+                            if (migration_infos.size() == max_migration_num) return migration_infos;
+                            if (initial_pos.find(vm_id) == initial_pos.end()) initial_pos[vm_id] = make_pair(original_server, 'C');
+                            if (initial_pos[vm_id] == make_pair(best_server, 'C')) continue;
+                            VmIdInfo *vm_info = &vm_id2info[vm_id];
+                            int cpu_cores = vm_info->cpu_cores;
+                            int memory_size = vm_info->memory_size;
+                            original_server->A_remain_core_num += cpu_cores;
+                            original_server->A_remain_memory_size += memory_size;
+                            original_server->B_remain_core_num += cpu_cores;
+                            original_server->B_remain_memory_size += memory_size;
+                            original_server->AB_vm_id.erase(vm_id);
+
+                            best_server->A_remain_core_num -= cpu_cores;
+                            best_server->A_remain_memory_size -= memory_size;
+                            best_server->B_remain_core_num -= cpu_cores;
+                            best_server->B_remain_memory_size -= memory_size;
+                            best_server->AB_vm_id.insert(vm_id);
+                            vm_info->purchase_server = best_server;
+                            migration_infos.emplace_back(MigrationInfo(vm_id, best_server, 'C'));
+                        }
+                    }
                 }
             }
         }
     }
-    // 服务器内部结构调整。
-    for (auto server : purchase_servers) {
-        double rate_a = remain_rate(server, 'A'), rate_b = remain_rate(server, 'B');
-        if (fabs(rate_a - rate_b) > _nodes_diff_threshold) { //如果结点差距过大，则进行内部调整。
-            if (rate_a < rate_b) { //A往B迁。
-                unordered_map<int, double> vm_rates; //预先存储每个虚拟机的资源占比，避免重复计算。
-                for (auto vm_id : server->A_vm_id) {
-                    VmIdInfo *vm_info = &vm_id2info[vm_id];
-                    vm_rates[vm_id] = r1 * vm_info->cpu_cores / server->total_core_num + r2 * vm_info->memory_size / server->total_memory_size;
-                }
-                while (rate_a < rate_b) {
-                    if (migration_infos.size() == max_migration_num) return migration_infos;
-                    double min_rate = DBL_MAX;
-                    int best_vm;
-                    for (auto vm_id : server->A_vm_id) { //找大小最接近的虚拟机。
-                        if (initial_pos.find(vm_id) == initial_pos.end()) initial_pos[vm_id] = make_pair(server, 'A');
-                        if (initial_pos[vm_id] == make_pair(server, 'B')) continue;
-                        VmIdInfo *vm_info = &vm_id2info[vm_id];
-                        if (server->B_remain_core_num < vm_info->cpu_cores || server->B_remain_memory_size < vm_info->memory_size) continue;
-                        double rate = fabs(vm_rates[vm_id] - (rate_b - rate_a) / 2);
-                        if (rate < min_rate) {
-                            min_rate = rate;
-                            best_vm = vm_id;
-                        }
-                    }
-                    if (min_rate < DBL_MAX) { //找到了就迁移。
-                        VmIdInfo *vm_info = &vm_id2info[best_vm];
-                        int cpu_cores = vm_info->cpu_cores;
-                        int memory_size = vm_info->memory_size;
-                        server->A_remain_core_num += cpu_cores;
-                        server->A_remain_memory_size += memory_size;
-                        server->A_vm_id.erase(best_vm);
-
-                        server->B_remain_core_num -= cpu_cores;
-                        server->B_remain_memory_size -= memory_size;
-                        server->B_vm_id.insert(best_vm);
-                        vm_info->node = 'B';
-                        migration_infos.emplace_back(MigrationInfo(best_vm, server, 'B'));
-
-                        rate_a = remain_rate(server, 'A'), rate_b = remain_rate(server, 'B');
-                    } else break; //找不到则退出，不然死循环。
-                }
-            } else { //B往A迁。
-                unordered_map<int, double> vm_rates; //预先存储每个虚拟机的资源占比，避免重复计算。
-                for (auto vm_id : server->B_vm_id) {
-                    VmIdInfo *vm_info = &vm_id2info[vm_id];
-                    vm_rates[vm_id] = r1 * vm_info->cpu_cores / server->total_core_num + r2 * vm_info->memory_size / server->total_memory_size;
-                }
-                while (rate_a > rate_b) {
-                    if (migration_infos.size() == max_migration_num) return migration_infos;
-                    double min_rate = DBL_MAX;
-                    int best_vm;
-                    for (auto vm_id : server->B_vm_id) { //找大小最接近的虚拟机。
-                        if (initial_pos.find(vm_id) == initial_pos.end()) initial_pos[vm_id] = make_pair(server, 'B');
-                        if (initial_pos[vm_id] == make_pair(server, 'A')) continue;
-                        VmIdInfo *vm_info = &vm_id2info[vm_id];
-                        if (server->A_remain_core_num < vm_info->cpu_cores || server->A_remain_memory_size < vm_info->memory_size) continue;
-                        double rate = fabs(vm_rates[vm_id] - (rate_a - rate_b) / 2);
-                        if (rate < min_rate) {
-                            min_rate = rate;
-                            best_vm = vm_id;
-                        }
-                    }
-                    if (min_rate < DBL_MAX) { //找到了就迁移。
-                        VmIdInfo *vm_info = &vm_id2info[best_vm];
-                        int cpu_cores = vm_info->cpu_cores;
-                        int memory_size = vm_info->memory_size;
-                        server->B_remain_core_num += cpu_cores;
-                        server->B_remain_memory_size += memory_size;
-                        server->B_vm_id.erase(best_vm);
-
-                        server->A_remain_core_num -= cpu_cores;
-                        server->A_remain_memory_size -= memory_size;
-                        server->A_vm_id.insert(best_vm);
-                        vm_info->node = 'A';
-                        migration_infos.emplace_back(MigrationInfo(best_vm, server, 'A'));
-
-                        rate_a = remain_rate(server, 'A'), rate_b = remain_rate(server, 'B');
-                    } else break; //找不到则退出，不然死循环。
-                }
-            }
-        }
-    }
+    
+    // 第三步迁移。
+    
     return migration_infos;
 }
 void AddVm(AddData& add_data) {
