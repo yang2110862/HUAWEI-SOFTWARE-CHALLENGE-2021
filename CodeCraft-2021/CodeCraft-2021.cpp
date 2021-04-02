@@ -317,30 +317,6 @@ void AddVm(AddData& add_data) {
         double min_remain_rate = 2.0;
         PurchasedServer* flag_server;
 
-        // for (auto& purchase_server : purchase_servers) {
-        //     if (deployed) {
-        //         break;
-        //     }   //先筛选能用的服务器
-        //     if (purchase_server->A_remain_core_num >= cpu_cores && purchase_server->A_remain_memory_size >= memory_size
-        //     && purchase_server->B_remain_core_num >= cpu_cores && purchase_server->B_remain_memory_size >= memory_size) {
-        //         // double _cpu_remain_rate = (1.0*(purchase_server->A_remain_core_num - cpu_cores)/purchase_server->total_core_num + 1.0*(purchase_server->B_remain_core_num - cpu_cores)/ purchase_server->total_core_num) / 2;
-        //         // double _memory_remain_rate = (1.0*(purchase_server->A_remain_memory_size - memory_size)/purchase_server->total_memory_size + 1.0*(purchase_server->B_remain_memory_size - memory_size) / purchase_server->total_memory_size) / 2;
-        //         // if(_cpu_remain_rate + _memory_remain_rate < min_remain_rate) {
-        //         //     min_remain_rate = _cpu_remain_rate + _memory_remain_rate;
-        //         //     flag_server = purchase_server;
-        //         // }
-        //         double _cpu_remain_rate = min(1.0*(purchase_server->A_remain_core_num - cpu_cores)/purchase_server->total_core_num , 1.0*(purchase_server->B_remain_core_num - cpu_cores)/ purchase_server->total_core_num) ;
-        //         double _memory_remain_rate = min(1.0*(purchase_server->A_remain_memory_size - memory_size)/purchase_server->total_memory_size , 1.0*(purchase_server->B_remain_memory_size - memory_size) / purchase_server->total_memory_size) ;
-        //         // if((_cpu_remain_rate + _memory_remain_rate)  < min_remain_rate) {
-        //         //     min_remain_rate = _cpu_remain_rate + _memory_remain_rate;
-        //         //     flag_server = purchase_server;
-        //         // }
-        //         if( 2* max(_cpu_remain_rate , _memory_remain_rate)  < min_remain_rate) {
-        //             min_remain_rate = _cpu_remain_rate + _memory_remain_rate;
-        //             flag_server = purchase_server;
-        //         }
-        //     }
-        // }
 
         //先从开机的服务器中选择
         for (auto& purchase_server : purchase_servers) {
@@ -910,7 +886,6 @@ void SolveProblem() {
 
         //获取未来N条请求所需要的总资源
         vector<int> allResourceOfNReqs = GetAllResourceOfFutureNDays(5000);
-        cout<<allResourceOfNReqs[0]<<"   "<<allResourceOfNReqs[1]<<endl;
 
 
         vector<RequestData> intraday_requests = request_datas.front();
