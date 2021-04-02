@@ -313,9 +313,14 @@ PurchasedServer* SearchSuitPurchasedServer(int deployed_way,int cpu_cores,int me
      * @return {合适的服务器PurchasedServer* ，没有则返回nullptr}
      */
     PurchasedServer* flag_server = 0;
+    PurchasedServer* balance_server = 0;
+    bool use_Balance = true;
     if(deployed_way == 1){
         if(from_open){
+            
             double min_remain_rate = 2.0;
+            double min_balance_rate = 2.0;
+
             for (auto& purchase_server : purchase_servers) {
                 if (purchase_server->A_remain_core_num >= cpu_cores && purchase_server->A_remain_memory_size >= memory_size
                 && purchase_server->B_remain_core_num >= cpu_cores && purchase_server->B_remain_memory_size >= memory_size && (purchase_server->A_vm_id.size() + purchase_server->B_vm_id.size()+purchase_server->AB_vm_id.size() !=0)) {
@@ -331,12 +336,28 @@ PurchasedServer* SearchSuitPurchasedServer(int deployed_way,int cpu_cores,int me
                     //     min_remain_rate = _cpu_remain_rate + _memory_remain_rate;
                     //     flag_server = purchase_server;
                     // }
+                    if(_memory_remain_rate == 0){
+                        //防止除0
+                        _memory_remain_rate = 0.0000001;
+                    }
+                    double balance_rate = fabs(log(1.0 * _cpu_remain_rate / _memory_remain_rate));
+                    if(balance_rate < min_balance_rate){
+                        min_balance_rate = balance_rate;
+                        balance_server = purchase_server;
+                    }
+
+                    if(_cpu_remain_rate < 0.15 || _memory_remain_rate < 0.15){
+                        use_Balance = false;
+                    }
+
                     if( 2* max(_cpu_remain_rate , _memory_remain_rate)  < min_remain_rate) {
                         min_remain_rate = _cpu_remain_rate + _memory_remain_rate;
                         flag_server = purchase_server;
                     }
                 }
             }
+            if(use_Balance) return balance_server;
+            else return flag_server;
         }else{
             double min_dense_cost = 99999999999999;
             for (auto& purchase_server : purchase_servers) {
@@ -360,6 +381,8 @@ PurchasedServer* SearchSuitPurchasedServer(int deployed_way,int cpu_cores,int me
             }
         }
     }
+
+
     return flag_server;
 }
 
@@ -887,8 +910,8 @@ void SolveProblem() {
     for (int i = 0; i < total_days_num; ++i) {
         now_day = i+1;
         from_off_2_start.erase(from_off_2_start.begin(),from_off_2_start.end());
-        vector<MigrationInfo> migration_infos;
-        // vector<MigrationInfo> migration_infos = Migration();
+        // vector<MigrationInfo> migration_infos;
+        vector<MigrationInfo> migration_infos = Migration();
 
         //获取迁移之后的系统可以提供的总资源
         vector<int> allResouceAfterMigration = GetAllResourceOfOwnServers(true);
@@ -972,7 +995,7 @@ void PrintCostInfo() {
 int main(int argc, char* argv[]) {
 #ifdef REDIRECT
     // freopen("training-1.txt", "r", stdin);
-    freopen("/Users/wangtongling/Desktop/training-data/training-2.txt", "r", stdin);
+    freopen("/Users/wangtongling/Desktop/training-data/training-1.txt", "r", stdin);
     // freopen("out1.txt", "w", stdout);
 #endif
 #ifdef PRINTINFO
