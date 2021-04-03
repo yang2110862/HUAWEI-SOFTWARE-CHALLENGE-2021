@@ -4,10 +4,9 @@
 #include <vector>
 #include <queue>
 #include <unordered_map>
-#include <unordered_set>
-#include <utility>
 #include <ctime>
 #include <fstream>
+#include <unordered_set>
 #include <cmath>
 #include <climits>
 #include <cfloat>
@@ -24,7 +23,7 @@ struct SoldServer {
     int cpu_cores;
     int memory_size;
     int hardware_cost;
-    int daily_cost;
+    int daily_energy_cost;
 };
 struct SoldVm {
     //string VM_name;
@@ -42,7 +41,6 @@ struct PurchasedServer {
     int server_id = -1;
     int total_core_num;
     int total_memory_size;
-    int daily_cost;
     int A_remain_core_num;
     int A_remain_memory_size;
     int B_remain_core_num;
