@@ -16,8 +16,8 @@
 using namespace std;
 
 // #define TEST_PARSEINPUT
-// #define REDIRECT
-// #define PRINTINFO
+#define REDIRECT
+#define PRINTINFO
 
 struct SoldServer {
     string server_name;
