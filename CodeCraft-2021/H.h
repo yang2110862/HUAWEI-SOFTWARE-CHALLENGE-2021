@@ -86,7 +86,7 @@ private:
     int server_max_memory = 0;
     int server_min_cpu = 512;          //每个节点上是1024的一半
     int server_min_memory = 512;
-    double server_average_cpu;
+    double server_average_cpu;  //单个节点的平均cpu
     double server_average_memory;
     double server_middle_cpu;
     double server_middle_memory;
@@ -95,7 +95,7 @@ private:
     int VM_max_memory = 0;
     int VM_min_cpu = 512;       //每个节点至多512      
     int VM_min_memory = 512;
-    double VM_average_cpu;
+    double VM_average_cpu;     //单个节点的平均cpu
     double VM_average_memory;
     double VM_middle_cpu;
     double VM_middle_memory;
@@ -300,14 +300,24 @@ void Statistics::compute_statistics_of_server(vector<SoldServer>& sold_servers) 
 }
 void Statistics::compute_statistics_of_VM(vector<SoldVm>& sold_VMs) {
     int len = sold_VMs.size();
+    int node_num = 0; //计算一共需要多少个节点
+    for (auto& sold_VM : sold_VMs) {
+        if (sold_VM.deployment_way == 1) node_num += 2;
+        else ++node_num;
+    }
     double total_VM_cpu = 0;                 //计算的是一个节点上所需要的最大cpu
     double total_VM_memory = 0;
     for (auto& sold_VM : sold_VMs) {
-        total_VM_cpu += sold_VM.cpu_cores;
-        total_VM_memory += sold_VM.memory_size;
+        if (sold_VM.deployment_way == 1) {
+            total_VM_cpu += sold_VM.cpu_cores * 2;
+            total_VM_memory += sold_VM.memory_size * 2;
+        } else {
+            total_VM_cpu += sold_VM.cpu_cores;
+            total_VM_memory += sold_VM.memory_size;
+        }
     }
-    VM_average_cpu = total_VM_cpu / len;
-    VM_average_memory = total_VM_memory / len;
+    VM_average_cpu = total_VM_cpu / node_num;
+    VM_average_memory = total_VM_memory / node_num;
     sort(sold_VMs.begin(), sold_VMs.end(),                              
         [](SoldVm& a, SoldVm&b){ return a.cpu_cores < b.cpu_cores;});  //可以不排序改成找第k大(后面有效果再优化)
     VM_max_cpu = sold_VMs[len - 1].cpu_cores;
@@ -338,11 +348,25 @@ void Statistics::del_bad_server(vector<SoldServer>& sold_servers) {       //去�
                         break;
                     }
                     if ((sold_servers[j].cpu_cores + sold_servers[j].memory_size) >= sold_servers[i].cpu_cores + sold_servers[i].memory_size) {  //cpu + memory总量更高
-                        
+                        if (sold_servers[j].cpu_cores < sold_servers[i].cpu_cores) {
+                            if (sold_servers[i].cpu_cores - sold_servers[j].cpu_cores < sold_servers[j].cpu_cores / 5) {
+                                flag = true;
+                                break;
+                            }
+                        }
+                        if (sold_servers[j].memory_size < sold_servers[i].memory_size) {
+                            if (sold_servers[i].memory_size - sold_servers[j].memory_size < sold_servers[j].memory_size / 5) {
+                                flag = true;
+                                break;
+                            }
+                        }
                     }
                 }
             }
         }
-        new_sold_servers.emplace_back(sold_servers[i]);
+        if (!flag) {
+            new_sold_servers.emplace_back(sold_servers[i]);
+        }
     }
+    sold_servers = new_sold_servers;
 }

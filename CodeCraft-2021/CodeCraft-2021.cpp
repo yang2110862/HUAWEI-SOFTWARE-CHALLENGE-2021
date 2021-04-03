@@ -1,6 +1,7 @@
 #include "H.h"
 
 vector<SoldServer> sold_servers;
+vector<SoldVm> sold_vms;
 unordered_map<string, SoldVm> vm_name2info;
 unordered_map<string,SoldServer> server_name2info;
 unordered_map<int, VmIdInfo> vm_id2info;
@@ -70,6 +71,7 @@ void ParseVmInfo() {
             sold_vm.cpu_cores /= 2;
             sold_vm.memory_size /= 2;
         }
+        sold_vms.emplace_back(sold_vm);
         vm_name2info[vm_name] = sold_vm;
     }
 }
