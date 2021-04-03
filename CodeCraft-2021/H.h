@@ -73,6 +73,37 @@ struct MigrationInfo {
     MigrationInfo() {}
     MigrationInfo(int _vm_id, PurchasedServer *_server, char _node) : vm_id(_vm_id), server(_server), node(_node) {}
 };
+class Statistics {  //选计算虚拟机的统计量，再去掉劣势服务器，再计算去掉劣势服务器后的服务器统计量，再使用统计数据
+public :
+    Statistics() {};
+    void compute_statistics_of_VM(vector<SoldVm>& sold_VM);       //计算虚拟机的统计量
+    void del_bad_server(vector<SoldServer>& sold_servers);          //去掉相对劣势的服务器
+    void compute_statistics_of_server(vector<SoldServer>& sold_servers);  //计算服务器的统计量
+    int get_server_max_cpu() {return server_max_cpu;}           //返回所需数据,必须先计算出统计量后才可以返回数据
+    //需要什么值可以加上对应的返回函数
+private:
+    int server_max_cpu = 0;
+    int server_max_memory = 0;
+    int server_min_cpu = 512;          //每个节点上是1024的一半
+    int server_min_memory = 512;
+    double server_average_cpu;
+    double server_average_memory;
+    double server_middle_cpu;
+    double server_middle_memory;
+
+    int VM_max_cpu = 0;
+    int VM_max_memory = 0;
+    int VM_min_cpu = 512;       //每个节点至多512      
+    int VM_min_memory = 512;
+    double VM_average_cpu;
+    double VM_average_memory;
+    double VM_middle_cpu;
+    double VM_middle_memory;
+
+    int k = 10;
+    int kth_small_VM_cpu;
+    int kth_small_VM_memory;
+};
 
 class Evaluate {
     private:
@@ -244,3 +275,74 @@ public:
         }
     }
 };
+
+void Statistics::compute_statistics_of_server(vector<SoldServer>& sold_servers) {
+    int len = sold_servers.size();
+    double total_server_cpu = 0;
+    double total_server_memory = 0;
+    for (auto& sold_server : sold_servers) {
+        total_server_cpu += sold_server.cpu_cores;
+        total_server_memory += sold_server.memory_size;
+    }
+    server_average_cpu = total_server_cpu / len;
+    server_average_memory = total_server_memory / len;
+    sort(sold_servers.begin(), sold_servers.end(),                              
+        [](SoldServer& a, SoldServer&b){ return a.cpu_cores < b.cpu_cores;});  //可以不排序改成找第k大(后面有效果再优化)
+    server_max_cpu = sold_servers[len - 1].cpu_cores;
+    server_min_cpu = sold_servers[0].cpu_cores;
+    server_middle_cpu = len & 1 == 1 ? sold_servers[len >> 1].cpu_cores : 1.0 * (sold_servers[len >> 1].cpu_cores + sold_servers[(len >> 1) - 1].cpu_cores ) / 2;
+
+    sort(sold_servers.begin(), sold_servers.end(),                              
+        [](SoldServer& a, SoldServer&b){ return a.memory_size < b.memory_size;});  
+    server_max_memory = sold_servers[len - 1].memory_size;
+    server_min_memory = sold_servers[0].memory_size;
+    server_middle_memory = len & 1 == 1 ? sold_servers[len >> 1].memory_size : 1.0 * (sold_servers[len >> 1].memory_size + sold_servers[(len >> 1) - 1].memory_size ) / 2;
+}
+void Statistics::compute_statistics_of_VM(vector<SoldVm>& sold_VMs) {
+    int len = sold_VMs.size();
+    double total_VM_cpu = 0;                 //计算的是一个节点上所需要的最大cpu
+    double total_VM_memory = 0;
+    for (auto& sold_VM : sold_VMs) {
+        total_VM_cpu += sold_VM.cpu_cores;
+        total_VM_memory += sold_VM.memory_size;
+    }
+    VM_average_cpu = total_VM_cpu / len;
+    VM_average_memory = total_VM_memory / len;
+    sort(sold_VMs.begin(), sold_VMs.end(),                              
+        [](SoldVm& a, SoldVm&b){ return a.cpu_cores < b.cpu_cores;});  //可以不排序改成找第k大(后面有效果再优化)
+    VM_max_cpu = sold_VMs[len - 1].cpu_cores;
+    VM_min_cpu = sold_VMs[0].cpu_cores;
+    VM_middle_cpu = len & 1 == 1 ? sold_VMs[len >> 1].cpu_cores : 1.0 * (sold_VMs[len >> 1].cpu_cores + sold_VMs[(len >> 1) - 1].cpu_cores ) / 2;
+    kth_small_VM_cpu = k <= len ? sold_VMs[k - 1].cpu_cores : sold_VMs[len - 1].cpu_cores;
+
+    sort(sold_VMs.begin(), sold_VMs.end(),                              
+        [](SoldVm& a, SoldVm&b){ return a.memory_size < b.memory_size;});  
+    VM_max_memory = sold_VMs[len - 1].memory_size;
+    VM_min_memory = sold_VMs[0].memory_size;
+    VM_middle_memory = len & 1 == 1 ? sold_VMs[len >> 1].memory_size : 1.0 * (sold_VMs[len >> 1].memory_size + sold_VMs[(len >> 1) - 1].memory_size ) / 2;
+    kth_small_VM_memory = k <= len ? sold_VMs[k - 1].memory_size : sold_VMs[len - 1].memory_size;
+}
+void Statistics::del_bad_server(vector<SoldServer>& sold_servers) {       //去掉特别劣势的服务器
+    vector<SoldServer> new_sold_servers;
+    int len = sold_servers.size();
+    bool flag;  //是否要删除
+    for (int i = 0; i < len; ++i) {  
+        flag = false;         
+        for (int j = 0; j < len; ++j) {   //能否找到一个可以代替sold_servers[i] 的服务器
+            if (j == i) continue;     //跳过自身
+            if (sold_servers[j].cpu_cores < VM_max_cpu || sold_servers[j].memory_size < VM_max_memory) continue;      //要是不能容下所有可能的虚拟机，替换个毛线
+            if (sold_servers[j].hardware_cost < sold_servers[i].hardware_cost) {           //硬件成本低
+                if (sold_servers[j].daily_cost < sold_servers[i].daily_cost) {      //电费也更低
+                    if (sold_servers[j].cpu_cores >= sold_servers[i].cpu_cores && sold_servers[j].memory_size >= sold_servers[i].memory_size) {   //cpu,memory都更好
+                        flag = true;
+                        break;
+                    }
+                    if ((sold_servers[j].cpu_cores + sold_servers[j].memory_size) >= sold_servers[i].cpu_cores + sold_servers[i].memory_size) {  //cpu + memory总量更高
+                        
+                    }
+                }
+            }
+        }
+        new_sold_servers.emplace_back(sold_servers[i]);
+    }
+}
