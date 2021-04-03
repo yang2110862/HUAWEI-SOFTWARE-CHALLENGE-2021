@@ -418,8 +418,12 @@ vector<MigrationInfo> Migration_2() {
                 if (happened_migration_serverID.find(target_server->server_id) != happened_migration_serverID.end()) continue;
                 if (target_server->A_remain_core_num >= vm_info->cpu_cores && target_server->A_remain_memory_size >= vm_info->memory_size
                         && target_server->B_remain_core_num >= vm_info->cpu_cores && target_server->B_remain_memory_size >= vm_info->memory_size) {
-                    double _cpu_remain_rate = r1 * ((target_server->A_remain_core_num - vm_info->cpu_cores) / target_server->total_core_num + (target_server->B_remain_core_num - vm_info->cpu_cores) / target_server->total_core_num) / 2;
-                    double _memory_remain_rate = r2 * ((target_server->A_remain_memory_size - vm_info->memory_size) / target_server->total_memory_size + (target_server->B_remain_memory_size - vm_info->memory_size) / target_server->total_memory_size) / 2;
+                    // double _cpu_remain_rate = r1 * ((target_server->A_remain_core_num - vm_info->cpu_cores) / target_server->total_core_num + (target_server->B_remain_core_num - vm_info->cpu_cores) / target_server->total_core_num) / 2;
+                    // double _memory_remain_rate = r2 * ((target_server->A_remain_memory_size - vm_info->memory_size) / target_server->total_memory_size + (target_server->B_remain_memory_size - vm_info->memory_size) / target_server->total_memory_size) / 2;
+
+                    double _cpu_remain_rate = min(1.0*(target_server->A_remain_core_num - vm_info->cpu_cores)/target_server->total_core_num , 1.0*(target_server->B_remain_core_num - vm_info->cpu_cores)/ target_server->total_core_num) ;
+                    double _memory_remain_rate = min(1.0*(target_server->A_remain_memory_size - vm_info->memory_size)/target_server->total_memory_size , 1.0*(target_server->B_remain_memory_size - vm_info->memory_size) / target_server->total_memory_size) ;
+
                     if (_cpu_remain_rate + _memory_remain_rate < min_rate) {
                         min_rate = _cpu_remain_rate + _memory_remain_rate;
                         best_server = target_server;
@@ -1062,7 +1066,8 @@ void SolveProblem() {
         now_day = i+1;
         from_off_2_start.erase(from_off_2_start.begin(),from_off_2_start.end());
         // vector<MigrationInfo> migration_infos;
-        vector<MigrationInfo> migration_infos = Migration();
+        // vector<MigrationInfo> migration_infos = Migration();
+        vector<MigrationInfo> migration_infos = Migration_2();
 
         //获取迁移之后的系统可以提供的总资源
         vector<int> allResouceAfterMigration = GetAllResourceOfOwnServers(true);
