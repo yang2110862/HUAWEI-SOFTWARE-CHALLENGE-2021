@@ -314,14 +314,50 @@ vector<MigrationInfo> Migration_2() {
     vector<VmIdInfo *> migrating_vms;
     vector<PurchasedServer *> target_servers;
     for (auto server : purchase_servers) {
-        if (NeedMigration(server)) {
-            for (auto &vm_id : server->AB_vm_id) migrating_vms.emplace_back(&vm_id2info[vm_id]);
+        // if (NeedMigration(server)) {
+        //     for (auto &vm_id : server->AB_vm_id) migrating_vms.emplace_back(&vm_id2info[vm_id]);
 
-            for (auto &vm_id : server->A_vm_id) migrating_vms.emplace_back(&vm_id2info[vm_id]);
-            for (auto &vm_id : server->B_vm_id) migrating_vms.emplace_back(&vm_id2info[vm_id]);
-            
+        //     for (auto &vm_id : server->A_vm_id) migrating_vms.emplace_back(&vm_id2info[vm_id]);
+        //     for (auto &vm_id : server->B_vm_id) migrating_vms.emplace_back(&vm_id2info[vm_id]);
+        // }
+        if (NeedMigration(server)) {
+            vector<VmIdInfo *> temp;
+            for (auto &vm_id : server->AB_vm_id){
+                temp.emplace_back(&vm_id2info[vm_id]);
+            }
+            sort(temp.begin(),temp.end(),[](VmIdInfo* a ,VmIdInfo* b){
+                return a->cpu_cores + a->memory_size < b->cpu_cores + b->memory_size;
+            });
+            for(auto& _temp_s:temp){
+                migrating_vms.push_back(_temp_s);
+            }
+            temp.erase(temp.begin(),temp.end());
+
+            for (auto &vm_id : server->A_vm_id){
+                temp.emplace_back(&vm_id2info[vm_id]);
+            }
+            sort(temp.begin(),temp.end(),[](VmIdInfo* a ,VmIdInfo* b){
+                return a->cpu_cores + a->memory_size < b->cpu_cores + b->memory_size;
+            });
+            for(auto& _temp_s:temp){
+                migrating_vms.push_back(_temp_s);
+            }
+            temp.erase(temp.begin(),temp.end());
+
+            for (auto &vm_id : server->B_vm_id){
+                temp.emplace_back(&vm_id2info[vm_id]);
+            }
+            sort(temp.begin(),temp.end(),[](VmIdInfo* a ,VmIdInfo* b){
+                return a->cpu_cores + a->memory_size < b->cpu_cores + b->memory_size;
+            });
+            for(auto& _temp_s:temp){
+                migrating_vms.push_back(_temp_s);
+            }
+            temp.erase(temp.begin(),temp.end());
+
         }
         if (!NearlyFull(server)) target_servers.emplace_back(server);
+        // if (true) target_servers.emplace_back(server);
         // else
         //     target_servers.emplace_back(server);
 
@@ -1153,7 +1189,7 @@ void PrintCostInfo() {
 int main(int argc, char* argv[]) {
 #ifdef REDIRECT
     // freopen("training-1.txt", "r", stdin);
-    freopen("/Users/wangtongling/Desktop/training-data/training-1.txt", "r", stdin);
+    freopen("/Users/wangtongling/Desktop/training-data/training-2.txt", "r", stdin);
     // freopen("out1.txt", "w", stdout);
 #endif
 #ifdef PRINTINFO
