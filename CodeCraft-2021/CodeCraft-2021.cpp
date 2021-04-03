@@ -315,9 +315,11 @@ vector<MigrationInfo> Migration_2() {
     vector<PurchasedServer *> target_servers;
     for (auto server : purchase_servers) {
         if (NeedMigration(server)) {
+            for (auto &vm_id : server->AB_vm_id) migrating_vms.emplace_back(&vm_id2info[vm_id]);
+
             for (auto &vm_id : server->A_vm_id) migrating_vms.emplace_back(&vm_id2info[vm_id]);
             for (auto &vm_id : server->B_vm_id) migrating_vms.emplace_back(&vm_id2info[vm_id]);
-            for (auto &vm_id : server->AB_vm_id) migrating_vms.emplace_back(&vm_id2info[vm_id]);
+            
         }
         if (!NearlyFull(server)) target_servers.emplace_back(server);
         // else
@@ -346,7 +348,7 @@ vector<MigrationInfo> Migration_2() {
                         && (target_server->A_remain_core_num >= vm_info->cpu_cores && target_server->A_remain_memory_size >= vm_info->memory_size)) {
                     double _cpu_remain_rate = r1 * (target_server->A_remain_core_num - vm_info->cpu_cores) / target_server->total_core_num ;
                     double _memory_remain_rate = r2 * (target_server->A_remain_memory_size - vm_info->memory_size) / target_server->total_memory_size ;
-                    if (_cpu_remain_rate + _memory_remain_rate < min_rate) {
+                    if (2* max(_cpu_remain_rate , _memory_remain_rate) < min_rate) {
                         min_rate = _cpu_remain_rate + _memory_remain_rate;
                         best_server = target_server;
                         which_node = 'A';
@@ -362,7 +364,7 @@ vector<MigrationInfo> Migration_2() {
                         && (target_server->B_remain_core_num >= vm_info->cpu_cores && target_server->B_remain_memory_size >= vm_info->memory_size)) {
                     double _cpu_remain_rate = r1 * (target_server->B_remain_core_num- vm_info->cpu_cores) / target_server->total_core_num;
                     double _memory_remain_rate =  r2 * (target_server->B_remain_memory_size - vm_info->memory_size) / target_server->total_memory_size;
-                    if (_cpu_remain_rate + _memory_remain_rate < min_rate) {
+                    if ( 2* max(_cpu_remain_rate , _memory_remain_rate )< min_rate) {
                         min_rate = _cpu_remain_rate + _memory_remain_rate;
                         best_server = target_server;
                         which_node = 'B';
@@ -424,7 +426,7 @@ vector<MigrationInfo> Migration_2() {
                     double _cpu_remain_rate = min(1.0*(target_server->A_remain_core_num - vm_info->cpu_cores)/target_server->total_core_num , 1.0*(target_server->B_remain_core_num - vm_info->cpu_cores)/ target_server->total_core_num) ;
                     double _memory_remain_rate = min(1.0*(target_server->A_remain_memory_size - vm_info->memory_size)/target_server->total_memory_size , 1.0*(target_server->B_remain_memory_size - vm_info->memory_size) / target_server->total_memory_size) ;
 
-                    if (_cpu_remain_rate + _memory_remain_rate < min_rate) {
+                    if (2* max(_cpu_remain_rate , _memory_remain_rate) < min_rate) {
                         min_rate = _cpu_remain_rate + _memory_remain_rate;
                         best_server = target_server;
                     }
@@ -1151,7 +1153,7 @@ void PrintCostInfo() {
 int main(int argc, char* argv[]) {
 #ifdef REDIRECT
     // freopen("training-1.txt", "r", stdin);
-    freopen("/Users/wangtongling/Desktop/training-data/training-2.txt", "r", stdin);
+    freopen("/Users/wangtongling/Desktop/training-data/training-1.txt", "r", stdin);
     // freopen("out1.txt", "w", stdout);
 #endif
 #ifdef PRINTINFO
