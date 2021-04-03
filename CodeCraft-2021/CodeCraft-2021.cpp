@@ -356,7 +356,7 @@ vector<MigrationInfo> Migration_2() {
             temp.erase(temp.begin(),temp.end());
 
         }
-        if (!NearlyFull(server)) target_servers.emplace_back(server);
+        if (!NearlyFull(server) && server->A_vm_id.size() + server->B_vm_id.size()+ server->AB_vm_id.size() !=0) target_servers.emplace_back(server);
         // if (true) target_servers.emplace_back(server);
         // else
         //     target_servers.emplace_back(server);
@@ -483,7 +483,7 @@ vector<MigrationInfo> Migration_2() {
                 original_server->B_remain_core_num += cpu_cores;
                 original_server->B_remain_memory_size += memory_size;
                 original_server->AB_vm_id.erase(vm_id);
-                
+
                 best_server->A_remain_core_num -= cpu_cores;
                 best_server->A_remain_memory_size -= memory_size;
                 best_server->B_remain_core_num -= cpu_cores;
@@ -1168,7 +1168,7 @@ void SolveProblem() {
             }
         }
         Numbering(); //给购买了的服务器编号
-        // Print(vm_ids, migration_infos);
+        Print(vm_ids, migration_infos);
         fflush(stdout);
         purchase_infos.clear();
         from_off_2_start.clear();
