@@ -215,14 +215,14 @@ vector<MigrationInfo> Migration() {
             double min_rate = remain_rate(original_server, vm_info->node) * original_server->daily_cost;
             PurchasedServer* best_server;
             char which_node = '!';
-            // #pragma omp parallel for num_threads(2)
+            #pragma omp parallel for num_threads(2)
             for (auto &target_server : target_servers) { //找最合适的服务器。
                 if (!(target_server == original_server && vm_info->node == 'A')
                         && (target_server->A_remain_core_num >= cpu_cores && target_server->A_remain_memory_size >= memory_size)) {
-                    double rate = r1 * (target_server->A_remain_core_num - cpu_cores) / target_server->total_core_num * target_server->daily_cost;
+                    double rate = r1 * (target_server->A_remain_core_num - cpu_cores) / target_server->total_core_num * target_server->daily_cost
                         + r2 * (target_server->A_remain_memory_size - memory_size) / target_server->total_memory_size * target_server->daily_cost;
-                    // #pragma omp flush(min_rate, best_server, which_node)
-                    // #pragma omp critical(critical)
+                    #pragma omp flush(min_rate, best_server, which_node)
+                    #pragma omp critical(critical)
                     {
                         if (rate < min_rate) {
                             min_rate = rate;
@@ -239,10 +239,10 @@ vector<MigrationInfo> Migration() {
                 }
                 if (!(target_server == original_server && vm_info->node == 'B')
                         && (target_server->B_remain_core_num >= cpu_cores && target_server->B_remain_memory_size >= memory_size)) {
-                    double rate = r1 * (target_server->B_remain_core_num - cpu_cores) / target_server->total_core_num * target_server->daily_cost;
+                    double rate = r1 * (target_server->B_remain_core_num - cpu_cores) / target_server->total_core_num * target_server->daily_cost
                         + r2 * (target_server->B_remain_memory_size - memory_size) / target_server->total_memory_size * target_server->daily_cost;
-                    // #pragma omp flush(min_rate, best_server, which_node)
-                    // #pragma omp critical(critical)
+                    #pragma omp flush(min_rate, best_server, which_node)
+                    #pragma omp critical(critical)
                     {
                         if (rate < min_rate) {
                         min_rate = rate;
@@ -299,7 +299,7 @@ vector<MigrationInfo> Migration() {
                 if (target_server == original_server) continue;
                 if (target_server->A_remain_core_num >= cpu_cores && target_server->A_remain_memory_size >= memory_size
                         && target_server->B_remain_core_num >= cpu_cores && target_server->B_remain_memory_size >= memory_size) {
-                    double rate = r1 * (target_server->A_remain_core_num - cpu_cores + target_server->B_remain_core_num - cpu_cores) / target_server->total_core_num / 2 * target_server->daily_cost;
+                    double rate = r1 * (target_server->A_remain_core_num - cpu_cores + target_server->B_remain_core_num - cpu_cores) / target_server->total_core_num / 2 * target_server->daily_cost
                         + r2 * (target_server->A_remain_memory_size - memory_size + target_server->B_remain_memory_size - memory_size) / target_server->total_memory_size / 2 * target_server->daily_cost;
                     if (rate < min_rate) {
                         min_rate = rate;
