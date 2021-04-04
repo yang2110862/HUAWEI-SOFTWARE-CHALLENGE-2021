@@ -702,9 +702,8 @@ PurchasedServer* SearchSuitPurchasedServer(int deployed_way,int cpu_cores,int me
     bool use_Balance = true;
     if(deployed_way == 1){
         if(from_open){
-            
             double min_remain_rate = 2.0;
-            double min_balance_rate = 2.0;
+            double min_balance_rate = 1.25;
 
             for (auto& purchase_server : purchase_servers) {
                 if (purchase_server->A_remain_core_num >= cpu_cores && purchase_server->A_remain_memory_size >= memory_size
@@ -744,7 +743,7 @@ PurchasedServer* SearchSuitPurchasedServer(int deployed_way,int cpu_cores,int me
             if(use_Balance) return balance_server;
             else return flag_server;
         }else{
-            double min_dense_cost = 99999999999999;
+            double min_dense_cost = DBL_MAX;
             for (auto& purchase_server : purchase_servers) {
                 if (purchase_server->A_remain_core_num >= cpu_cores && purchase_server->A_remain_memory_size >= memory_size
                 && purchase_server->B_remain_core_num >= cpu_cores && purchase_server->B_remain_memory_size >= memory_size && (purchase_server->A_vm_id.size() + purchase_server->B_vm_id.size()+purchase_server->AB_vm_id.size() ==0)) {
@@ -753,6 +752,7 @@ PurchasedServer* SearchSuitPurchasedServer(int deployed_way,int cpu_cores,int me
                         double _cpu_rate = 1.0 * cpu_cores / purchase_server->A_remain_core_num;
                         double _memory_rate = 1.0 *(memory_size) / purchase_server->A_remain_memory_size;
                         double use_rate = 1.0 * (_cpu_rate + _memory_rate) / 2;
+                        // double use_rate = min (_cpu_rate , _memory_rate) ;
                         dense_cost = 1.0 * (server_name2info[purchase_server->server_name].daily_cost ) * use_rate;
                     }
                     else{
@@ -1383,7 +1383,7 @@ void PrintCostInfo() {
 int main(int argc, char* argv[]) {
 #ifdef REDIRECT
     // freopen("training-1.txt", "r", stdin);
-    freopen("/Users/wangtongling/Desktop/training-data/training-2.txt", "r", stdin);
+    freopen("/Users/wangtongling/Desktop/training-data/training-1.txt", "r", stdin);
     // freopen("out1.txt", "w", stdout);
 #endif
 #ifdef PRINTINFO
