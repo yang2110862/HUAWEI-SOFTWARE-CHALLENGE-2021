@@ -720,11 +720,14 @@ PurchasedServer* SearchSuitPurchasedServer(int deployed_way,int cpu_cores,int me
                     //     min_remain_rate = _cpu_remain_rate + _memory_remain_rate;
                     //     flag_server = purchase_server;
                     // }
-                    if(_memory_remain_rate == 0){
+                    double _cpu_remain = purchase_server->A_remain_core_num - cpu_cores+purchase_server->B_remain_core_num - cpu_cores;
+                    double _memory_remain = purchase_server->A_remain_memory_size - memory_size + purchase_server->B_remain_memory_size - memory_size;
+
+                    if(_memory_remain == 0){
                         //防止除0
-                        _memory_remain_rate = 0.0000001;
+                        _memory_remain = 0.0000001;
                     }
-                    double balance_rate = fabs(log(1.0 * _cpu_remain_rate / _memory_remain_rate));
+                    double balance_rate = fabs(log(1.0 * _cpu_remain / _memory_remain));
                     if(balance_rate < min_balance_rate){
                         min_balance_rate = balance_rate;
                         balance_server = purchase_server;
@@ -740,7 +743,9 @@ PurchasedServer* SearchSuitPurchasedServer(int deployed_way,int cpu_cores,int me
                     }
                 }
             }
-            if(use_Balance) return balance_server;
+            if(use_Balance){
+                return balance_server;
+            }
             else return flag_server;
         }else{
             double min_dense_cost = DBL_MAX;
