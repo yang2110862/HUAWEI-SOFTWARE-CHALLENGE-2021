@@ -14,9 +14,9 @@
 // #include <omp.h>
 
 using namespace std;
-
+#define PRINTINFO
 //#define TEST_PARSEINPUT
-// #define REDIRECT
+#define REDIRECT
 //#define OUTPUT_SERVER_DEL
 struct SoldServer {
     string server_name;

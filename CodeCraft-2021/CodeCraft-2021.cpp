@@ -1062,6 +1062,7 @@ void DeleteVm(int vm_id) {
     }
 }
 void Print(vector<int>& vm_ids, vector<MigrationInfo> &migration_infos) {
+#ifndef REDIRECT
     int purchase_type_num = purchase_infos.size();
     cout << "(purchase, " << purchase_type_num << ')' << endl;
     for (auto& purchase_info : purchase_infos) {
@@ -1083,6 +1084,7 @@ void Print(vector<int>& vm_ids, vector<MigrationInfo> &migration_infos) {
             cout << '(' << vm_info.purchase_server->server_id << ", " << node << ')' << endl;
         }
     }
+#endif
 }
 void Numbering() {
     for (auto& purchase_info : purchase_infos) {
@@ -1336,9 +1338,9 @@ void PrintCostInfo() {
 
 int main(int argc, char* argv[]) {
 #ifdef REDIRECT
-    // freopen("training-1.txt", "r", stdin);
-    freopen("/Users/wangtongling/Desktop/training-data/training-2.txt", "r", stdin);
-    // freopen("out1.txt", "w", stdout);
+    freopen("training-2.txt", "r", stdin);
+    //freopen("/Users/wangtongling/Desktop/training-data/training-2.txt", "r", stdin);
+    freopen("out2.txt", "w", stdout);
 #endif
 #ifdef PRINTINFO
     _start = clock();
