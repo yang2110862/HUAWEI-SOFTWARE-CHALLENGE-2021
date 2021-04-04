@@ -74,14 +74,14 @@ struct MigrationInfo {
     MigrationInfo(int _vm_id, PurchasedServer *_server, char _node) : vm_id(_vm_id), server(_server), node(_node) {}
 };
 class Statistics {  //选计算虚拟机的统计量，再去掉劣势服务器，再计算去掉劣势服务器后的服务器统计量，再使用统计数据
-public :
+public:
     Statistics() {};
     void compute_statistics_of_VM(vector<SoldVm>& sold_VM);       //计算虚拟机的统计量
     void del_bad_server(vector<SoldServer>& sold_servers);          //去掉相对劣势的服务器
     void compute_statistics_of_server(vector<SoldServer>& sold_servers);  //计算服务器的统计量
     int get_server_max_cpu() {return server_max_cpu;}           //返回所需数据,必须先计算出统计量后才可以返回数据
     //需要什么值可以加上对应的返回函数
-private:
+public:
     int server_max_cpu = 0;
     int server_max_memory = 0;
     int server_min_cpu = 512;          //每个节点上是1024的一半
@@ -90,7 +90,7 @@ private:
     double server_average_memory;
     double server_middle_cpu;
     double server_middle_memory;
-
+public:
     int VM_max_cpu = 0;
     int VM_max_memory = 0;
     int VM_min_cpu = 512;       //每个节点至多512      
@@ -341,22 +341,40 @@ void Statistics::del_bad_server(vector<SoldServer>& sold_servers) {       //去�
         for (int j = 0; j < len; ++j) {   //能否找到一个可以代替sold_servers[i] 的服务器
             if (j == i) continue;     //跳过自身
             if (sold_servers[j].cpu_cores < VM_max_cpu || sold_servers[j].memory_size < VM_max_memory) continue;      //要是不能容下所有可能的虚拟机，替换个毛线
-            if (sold_servers[j].hardware_cost < sold_servers[i].hardware_cost) {           //硬件成本低
-                if (sold_servers[j].daily_cost < sold_servers[i].daily_cost) {      //电费也更低
+            if (sold_servers[j].hardware_cost <= sold_servers[i].hardware_cost) {           //硬件成本低
+                if (sold_servers[j].daily_cost <= sold_servers[i].daily_cost) {      //电费也更低
                     if (sold_servers[j].cpu_cores >= sold_servers[i].cpu_cores && sold_servers[j].memory_size >= sold_servers[i].memory_size) {   //cpu,memory都更好
                         flag = true;
+                        cout << "删除服务器：" << sold_servers[i].server_name << ", cpu : " << sold_servers[i].cpu_cores << ", memory : " << sold_servers[i].memory_size
+                            << " 硬件成本 : " << sold_servers[i].hardware_cost << " 电费 ： " << sold_servers[i].daily_cost << endl;
+                        cout << "该服务器的上位替代服务器" << endl;
+                        cout << "服务器：" << sold_servers[j].server_name << ", cpu : " << sold_servers[j].cpu_cores << ", memory : " << sold_servers[j].memory_size
+                            << " 硬件成本 : " << sold_servers[j].hardware_cost << " 电费 ： " << sold_servers[j].daily_cost << endl;
+                        cout << endl;
                         break;
                     }
                     if ((sold_servers[j].cpu_cores + sold_servers[j].memory_size) >= sold_servers[i].cpu_cores + sold_servers[i].memory_size) {  //cpu + memory总量更高
                         if (sold_servers[j].cpu_cores < sold_servers[i].cpu_cores) {
                             if (sold_servers[i].cpu_cores - sold_servers[j].cpu_cores < sold_servers[j].cpu_cores / 5) {
                                 flag = true;
+                                cout << "删除服务器：" << sold_servers[i].server_name << ", cpu : " << sold_servers[i].cpu_cores << ", memory : " << sold_servers[i].memory_size
+                                    << " 硬件成本 : " << sold_servers[i].hardware_cost << " 电费 ： " << sold_servers[i].daily_cost << endl;
+                                cout << "该服务器的上位替代服务器" << endl;
+                                cout << "服务器：" << sold_servers[j].server_name << ", cpu : " << sold_servers[j].cpu_cores << ", memory : " << sold_servers[j].memory_size
+                                    << " 硬件成本 : " << sold_servers[j].hardware_cost << " 电费 ： " << sold_servers[j].daily_cost << endl;
+                                cout << endl;
                                 break;
                             }
                         }
                         if (sold_servers[j].memory_size < sold_servers[i].memory_size) {
                             if (sold_servers[i].memory_size - sold_servers[j].memory_size < sold_servers[j].memory_size / 5) {
                                 flag = true;
+                                cout << "删除服务器：" << sold_servers[i].server_name << ", cpu : " << sold_servers[i].cpu_cores << ", memory : " << sold_servers[i].memory_size
+                                    << " 硬件成本 : " << sold_servers[i].hardware_cost << " 电费 ： " << sold_servers[i].daily_cost << endl;
+                                cout << "该服务器的上位替代服务器" << endl;
+                                cout << "服务器：" << sold_servers[j].server_name << ", cpu : " << sold_servers[j].cpu_cores << ", memory : " << sold_servers[j].memory_size
+                                    << " 硬件成本 : " << sold_servers[j].hardware_cost << " 电费 ： " << sold_servers[j].daily_cost << endl;
+                                cout << endl;
                                 break;
                             }
                         }
