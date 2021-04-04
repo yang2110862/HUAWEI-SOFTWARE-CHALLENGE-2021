@@ -17,7 +17,7 @@ using namespace std;
 
 //#define TEST_PARSEINPUT
 // #define REDIRECT
-
+//#define OUTPUT_SERVER_DEL
 struct SoldServer {
     string server_name;
     int cpu_cores;
@@ -152,41 +152,12 @@ public:
     }
     bool PurchasedServerA(PurchasedServer* purchased_server, int cpu_cores, int memory_size) {  //评价要不要插到A节点
         if (purchased_server->A_remain_core_num >= cpu_cores && purchased_server->A_remain_memory_size >= memory_size) {
-            /*double ratio = 1.0 * purchased_server->A_remain_core_num / purchased_server->A_remain_memory_size;
-            if (purchased_server)
-            if (ratio > 1 && ratio < 10) {
-                if (1.0 * (purchased_server->A_remain_core_num - cpu_cores) / (purchased_server->A_remain_memory_size - memory_size) > 20) {
-                    return false;
-                }
-                if (1.0 * (purchased_server->A_remain_core_num - cpu_cores) / (purchased_server->A_remain_memory_size - memory_size) < 1 / 20) {
-                    return false;
-                }
-            }
-            if (ratio <= 1 && 1.0 / ratio < 10) {
-                if (1.0 / (purchased_server->A_remain_core_num - cpu_cores) * (purchased_server->A_remain_memory_size - memory_size) > 20) {
-                    return false;
-                }
-                if (1.0 * (purchased_server->A_remain_core_num - cpu_cores) / (purchased_server->A_remain_memory_size - memory_size) < 1 /20) {
-                    return false;
-                }
-            }*/
             return true;
         }
         return false;
     }
     bool PurchasedServerB(PurchasedServer* purchased_server, int cpu_cores, int memory_size) {  //评价要不要插到B节点
         if (purchased_server->B_remain_core_num >= cpu_cores && purchased_server->B_remain_memory_size >= memory_size) {
-            /*double ratio = 1.0 * purchased_server->B_remain_core_num / purchased_server->B_remain_memory_size;
-            if (ratio > 1 && ratio < 10) {
-                if (1.0 * (purchased_server->A_remain_core_num - cpu_cores) / (purchased_server->A_remain_memory_size - memory_size) > 20) {
-                    return false;
-                }
-            }
-            if (ratio <= 1 && 1.0 / ratio < 10) {
-                if (1.0 / (purchased_server->A_remain_core_num - cpu_cores) * (purchased_server->A_remain_memory_size - memory_size) > 20) {
-                    return false;
-                }
-            }*/
             return true;
         }
         return false;
@@ -349,36 +320,42 @@ void Statistics::del_bad_server(vector<SoldServer>& sold_servers) {       //去�
                 if (sold_servers[j].daily_cost <= sold_servers[i].daily_cost) {      //电费也更低
                     if (sold_servers[j].cpu_cores >= sold_servers[i].cpu_cores && sold_servers[j].memory_size >= sold_servers[i].memory_size) {   //cpu,memory都更好
                         flag = true;
+                    #ifdef OUTPUT_SERVER_DEL
                         cout << "删除服务器：" << sold_servers[i].server_name << ", cpu : " << sold_servers[i].cpu_cores << ", memory : " << sold_servers[i].memory_size
                             << " 硬件成本 : " << sold_servers[i].hardware_cost << " 电费 ： " << sold_servers[i].daily_cost << endl;
                         cout << "该服务器的上位替代服务器" << endl;
                         cout << "服务器：" << sold_servers[j].server_name << ", cpu : " << sold_servers[j].cpu_cores << ", memory : " << sold_servers[j].memory_size
                             << " 硬件成本 : " << sold_servers[j].hardware_cost << " 电费 ： " << sold_servers[j].daily_cost << endl;
                         cout << endl;
+                    #endif
                         break;
                     }
                     if ((sold_servers[j].cpu_cores + sold_servers[j].memory_size) >= sold_servers[i].cpu_cores + sold_servers[i].memory_size) {  //cpu + memory总量更高
                         if (sold_servers[j].cpu_cores < sold_servers[i].cpu_cores) {
                             if (sold_servers[i].cpu_cores - sold_servers[j].cpu_cores < sold_servers[j].cpu_cores / 5) {
                                 flag = true;
+                            #ifdef OUTPUT_SERVER_DEL
                                 cout << "删除服务器：" << sold_servers[i].server_name << ", cpu : " << sold_servers[i].cpu_cores << ", memory : " << sold_servers[i].memory_size
                                     << " 硬件成本 : " << sold_servers[i].hardware_cost << " 电费 ： " << sold_servers[i].daily_cost << endl;
                                 cout << "该服务器的上位替代服务器" << endl;
                                 cout << "服务器：" << sold_servers[j].server_name << ", cpu : " << sold_servers[j].cpu_cores << ", memory : " << sold_servers[j].memory_size
                                     << " 硬件成本 : " << sold_servers[j].hardware_cost << " 电费 ： " << sold_servers[j].daily_cost << endl;
                                 cout << endl;
+                            #endif
                                 break;
                             }
                         }
                         if (sold_servers[j].memory_size < sold_servers[i].memory_size) {
                             if (sold_servers[i].memory_size - sold_servers[j].memory_size < sold_servers[j].memory_size / 5) {
                                 flag = true;
+                            #ifdef OUTPUT_SERVER_DEL
                                 cout << "删除服务器：" << sold_servers[i].server_name << ", cpu : " << sold_servers[i].cpu_cores << ", memory : " << sold_servers[i].memory_size
                                     << " 硬件成本 : " << sold_servers[i].hardware_cost << " 电费 ： " << sold_servers[i].daily_cost << endl;
                                 cout << "该服务器的上位替代服务器" << endl;
                                 cout << "服务器：" << sold_servers[j].server_name << ", cpu : " << sold_servers[j].cpu_cores << ", memory : " << sold_servers[j].memory_size
                                     << " 硬件成本 : " << sold_servers[j].hardware_cost << " 电费 ： " << sold_servers[j].daily_cost << endl;
                                 cout << endl;
+                            #endif
                                 break;
                             }
                         }
