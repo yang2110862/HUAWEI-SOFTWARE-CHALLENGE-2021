@@ -170,6 +170,13 @@ bool NearlyFull(PurchasedServer *server) {
     return (1.0 * server->A_remain_core_num / server->total_core_num < _near_full_threshold || 1.0 * server->A_remain_memory_size / server->total_memory_size < _near_full_threshold)
                     && (1.0 * server->B_remain_core_num / server->total_core_num < _near_full_threshold || 1.0 * server->B_remain_memory_size / server->total_memory_size < _near_full_threshold);
 }
+
+// 将某台虚拟机迁移至指定位置。
+void migrate_to(VmIdInfo *vm_info, PurchasedServer *target_server, char target_node, vector<MigrationInfo> &migration_infos) {}
+
+// 将某个结点的虚拟机迁移至指定位置。
+void migrate_to(PurchasedServer *original_server, char original_node, PurchasedServer *target_server, char target_node, vector<MigrationInfo> &migration_infos) {}
+
 vector<MigrationInfo> Migration() {
     int max_migration_num = vm_id2info.size() * 30 / 1000;
     vector<MigrationInfo> migration_infos;
@@ -589,10 +596,10 @@ vector<MigrationInfo> Migration() {
 }
     
     // 第三步迁移。
-/* {   vector<PurchasedServer *> original_servers, target_servers;
+{   vector<PurchasedServer *> original_servers, target_servers;
     for (auto server : purchase_servers) {
         if (NeedMigration(server)) original_servers.emplace_back(server);
-        if (NearlyFull(server)) target_servers.emplace_back(server);
+        if (!NearlyFull(server)) target_servers.emplace_back(server);
     }
     sort(original_servers.begin(), original_servers.end(), [](PurchasedServer *server1, PurchasedServer *server2) {
         return server1->daily_cost > server2->daily_cost;
@@ -689,7 +696,7 @@ vector<MigrationInfo> Migration() {
             
         }}}
     }
-} */
+}
     return migration_infos;
 }
 void AddVm(AddData& add_data) {
