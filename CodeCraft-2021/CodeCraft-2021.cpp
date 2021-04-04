@@ -181,7 +181,6 @@ vector<MigrationInfo> Migration() {
     int max_migration_num = vm_id2info.size() * 30 / 1000;
     vector<MigrationInfo> migration_infos;
     if (max_migration_num == 0) return migration_infos;
-    unordered_map<int, pair<PurchasedServer *, char>> initial_pos; //记录迁移的虚拟机最开始的位置，避免最后迁移回去。
 
     // 第一步迁移。
 {   vector<VmIdInfo *> migrating_vms;
@@ -267,8 +266,6 @@ vector<MigrationInfo> Migration() {
                 }
             }
             if (which_node != '!') { //开始迁移。
-                if (initial_pos.find(vm_info->vm_id) == initial_pos.end()) initial_pos[vm_info->vm_id] = make_pair(original_server, vm_info->node);
-                if (initial_pos[vm_info->vm_id] == make_pair(best_server, which_node)) continue;
                 total_migration_num++;
                 if (vm_info->node == 'A') {
                     original_server->A_remain_core_num += cpu_cores;
@@ -321,8 +318,6 @@ vector<MigrationInfo> Migration() {
                 }
             }
             if (best_server != NULL) { //开始迁移。
-                if (initial_pos.find(vm_info->vm_id) == initial_pos.end()) initial_pos[vm_info->vm_id] = make_pair(original_server, 'C');
-                if (initial_pos[vm_info->vm_id] == make_pair(best_server, 'C')) continue;
                 total_migration_num++;
                 original_server->A_remain_core_num += cpu_cores;
                 original_server->A_remain_memory_size += memory_size;
@@ -393,8 +388,6 @@ vector<MigrationInfo> Migration() {
                     unordered_set<int> vm_ids = original_server->A_vm_id;
                     for (auto vm_id : vm_ids) {
                         if (migration_infos.size() == max_migration_num) return migration_infos;
-                        if (initial_pos.find(vm_id) == initial_pos.end()) initial_pos[vm_id] = make_pair(original_server, original_node);
-                        if (initial_pos[vm_id] == make_pair(best_server, which_node)) continue;
                         VmIdInfo *vm_info = &vm_id2info[vm_id];
                         int cpu_cores = vm_info->cpu_cores;
                         int memory_size = vm_info->memory_size;
@@ -426,8 +419,6 @@ vector<MigrationInfo> Migration() {
                         unordered_set<int> vm_ids = original_server->B_vm_id;
                         for (auto vm_id : vm_ids) {
                             if (migration_infos.size() == max_migration_num) return migration_infos;
-                            if (initial_pos.find(vm_id) == initial_pos.end()) initial_pos[vm_id] = make_pair(original_server, 'B');
-                            if (initial_pos[vm_id] == make_pair(best_server, 'A')) continue;
                             VmIdInfo *vm_info = &vm_id2info[vm_id];
                             int cpu_cores = vm_info->cpu_cores;
                             int memory_size = vm_info->memory_size;
@@ -448,8 +439,6 @@ vector<MigrationInfo> Migration() {
                         unordered_set<int> vm_ids = original_server->B_vm_id;
                         for (auto vm_id : vm_ids) {
                             if (migration_infos.size() == max_migration_num) return migration_infos;
-                            if (initial_pos.find(vm_id) == initial_pos.end()) initial_pos[vm_id] = make_pair(original_server, 'B');
-                            if (initial_pos[vm_id] == make_pair(best_server, 'B')) continue;
                             VmIdInfo *vm_info = &vm_id2info[vm_id];
                             int cpu_cores = vm_info->cpu_cores;
                             int memory_size = vm_info->memory_size;
@@ -469,8 +458,6 @@ vector<MigrationInfo> Migration() {
                         unordered_set<int> vm_ids = original_server->AB_vm_id;
                         for (auto vm_id : vm_ids) {
                             if (migration_infos.size() == max_migration_num) return migration_infos;
-                            if (initial_pos.find(vm_id) == initial_pos.end()) initial_pos[vm_id] = make_pair(original_server, 'C');
-                            if (initial_pos[vm_id] == make_pair(best_server, 'C')) continue;
                             VmIdInfo *vm_info = &vm_id2info[vm_id];
                             int cpu_cores = vm_info->cpu_cores;
                             int memory_size = vm_info->memory_size;
@@ -493,8 +480,6 @@ vector<MigrationInfo> Migration() {
                     unordered_set<int> vm_ids = original_server->B_vm_id;
                     for (auto vm_id : vm_ids) {
                         if (migration_infos.size() == max_migration_num) return migration_infos;
-                        if (initial_pos.find(vm_id) == initial_pos.end()) initial_pos[vm_id] = make_pair(original_server, original_node);
-                        if (initial_pos[vm_id] == make_pair(best_server, which_node)) continue;
                         VmIdInfo *vm_info = &vm_id2info[vm_id];
                         int cpu_cores = vm_info->cpu_cores;
                         int memory_size = vm_info->memory_size;
@@ -526,8 +511,6 @@ vector<MigrationInfo> Migration() {
                         unordered_set<int> vm_ids = original_server->A_vm_id;
                         for (auto vm_id : vm_ids) {
                             if (migration_infos.size() == max_migration_num) return migration_infos;
-                            if (initial_pos.find(vm_id) == initial_pos.end()) initial_pos[vm_id] = make_pair(original_server, 'A');
-                            if (initial_pos[vm_id] == make_pair(best_server, 'A')) continue;
                             VmIdInfo *vm_info = &vm_id2info[vm_id];
                             int cpu_cores = vm_info->cpu_cores;
                             int memory_size = vm_info->memory_size;
@@ -548,8 +531,6 @@ vector<MigrationInfo> Migration() {
                         unordered_set<int> vm_ids = original_server->A_vm_id;
                         for (auto vm_id : vm_ids) {
                             if (migration_infos.size() == max_migration_num) return migration_infos;
-                            if (initial_pos.find(vm_id) == initial_pos.end()) initial_pos[vm_id] = make_pair(original_server, 'A');
-                            if (initial_pos[vm_id] == make_pair(best_server, 'B')) continue;
                             VmIdInfo *vm_info = &vm_id2info[vm_id];
                             int cpu_cores = vm_info->cpu_cores;
                             int memory_size = vm_info->memory_size;
@@ -569,8 +550,6 @@ vector<MigrationInfo> Migration() {
                         unordered_set<int> vm_ids = original_server->AB_vm_id;
                         for (auto vm_id : vm_ids) {
                             if (migration_infos.size() == max_migration_num) return migration_infos;
-                            if (initial_pos.find(vm_id) == initial_pos.end()) initial_pos[vm_id] = make_pair(original_server, 'C');
-                            if (initial_pos[vm_id] == make_pair(best_server, 'C')) continue;
                             VmIdInfo *vm_info = &vm_id2info[vm_id];
                             int cpu_cores = vm_info->cpu_cores;
                             int memory_size = vm_info->memory_size;
@@ -596,7 +575,7 @@ vector<MigrationInfo> Migration() {
 }
     
     // 第三步迁移。
-{   vector<PurchasedServer *> original_servers, target_servers;
+/* {   vector<PurchasedServer *> original_servers, target_servers;
     for (auto server : purchase_servers) {
         if (NeedMigration(server)) original_servers.emplace_back(server);
         if (!NearlyFull(server)) target_servers.emplace_back(server);
@@ -696,7 +675,8 @@ vector<MigrationInfo> Migration() {
             
         }}}
     }
-}
+} */
+
     return migration_infos;
 }
 void AddVm(AddData& add_data) {

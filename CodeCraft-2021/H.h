@@ -73,10 +73,12 @@ struct AddData {
 };
 struct MigrationInfo {
     int vm_id;
+    int server_id;
     PurchasedServer *server;
     char node;
     MigrationInfo() {}
     MigrationInfo(int _vm_id, PurchasedServer *_server, char _node) : vm_id(_vm_id), server(_server), node(_node) {}
+    MigrationInfo(int _vm_id, int _server_id, char _node) : vm_id(_vm_id), server_id(_server_id), node(_node) {}
 };
 
 class Evaluate {
