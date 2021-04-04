@@ -72,10 +72,12 @@ struct AddData {
 };
 struct MigrationInfo {
     int vm_id;
+    int server_id;
     PurchasedServer *server;
     char node;
     MigrationInfo() {}
     MigrationInfo(int _vm_id, PurchasedServer *_server, char _node) : vm_id(_vm_id), server(_server), node(_node) {}
+    MigrationInfo(int _vm_id, int _server_id, char _node) : vm_id(_vm_id), server_id(_server_id), node(_node) {}
 };
 class Statistics {  //选计算虚拟机的统计量，再去掉劣势服务器，再计算去掉劣势服务器后的服务器统计量，再使用统计数据
 public:
