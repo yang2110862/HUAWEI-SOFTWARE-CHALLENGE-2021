@@ -30,7 +30,7 @@ clock_t _start, _end;
 int isDenseBuy = 0; // 0--非密度购买  1--密度购买
 double _future_N_reqs_cpu_rate = 0;
 double _future_N_reqs_memory_rate = 0;
-double _migration_threshold = 0.1; //减小能增加迁移数量。
+double _migration_threshold = 0; //减小能增加迁移数量。
 double _near_full_threshold = 0.07; //增大能去掉更多的服务器，减少时间；同时迁移次数会有轻微减少，成本有轻微增加。
 double _nodes_diff_threshold = 0.1; //服务器两结点间利用率之差的阈值，大于它则进行内部调整。
 
@@ -808,7 +808,7 @@ void DeployOnServer(PurchasedServer* flag_server, int deployment_way,int cpu_cor
     }
 }
 
-void BuyAndDeployTwoVM(int vmID_1,int vmID_2,string serverName){
+void BuyAndDeployTwoVM(string vm_1_name,string vm_2_name,int vmID_1,int vmID_2,string serverName){
     total_server_cost+=server_name2info[serverName].hardware_cost;
     PurchasedServer* purchase_server = new PurchasedServer;
     purchase_server->total_core_num = server_name2info[serverName].cpu_cores;
@@ -825,25 +825,89 @@ void BuyAndDeployTwoVM(int vmID_1,int vmID_2,string serverName){
     //待改 from_off_2_start 有问题
     // from_off_2_start.insert(flag_server->server_id);
 
-    purchase_server->A_remain_core_num -= vm_id2info[vmID_1].cpu_cores;
-    purchase_server->B_remain_core_num -= vm_id2info[vmID_1].cpu_cores;
-    purchase_server->A_remain_core_num -= vm_id2info[vmID_2].cpu_cores;
-    purchase_server->B_remain_core_num -= vm_id2info[vmID_2].cpu_cores;
-    purchase_server->A_remain_memory_size -= vm_id2info[vmID_1].memory_size;
-    purchase_server->B_remain_memory_size -= vm_id2info[vmID_1].memory_size;
-    purchase_server->A_remain_memory_size -= vm_id2info[vmID_2].memory_size;
-    purchase_server->B_remain_memory_size -= vm_id2info[vmID_2].memory_size;
+    purchase_server->A_remain_core_num -= vm_name2info[vm_1_name].cpu_cores;
+    purchase_server->B_remain_core_num -= vm_name2info[vm_1_name].cpu_cores;
+    purchase_server->A_remain_core_num -= vm_name2info[vm_2_name].cpu_cores;
+    purchase_server->B_remain_core_num -= vm_name2info[vm_2_name].cpu_cores;
+    purchase_server->A_remain_memory_size -= vm_name2info[vm_1_name].memory_size;
+    purchase_server->B_remain_memory_size -= vm_name2info[vm_1_name].memory_size;
+    purchase_server->A_remain_memory_size -= vm_name2info[vm_2_name].memory_size;
+    purchase_server->B_remain_memory_size -= vm_name2info[vm_2_name].memory_size;
     purchase_server->AB_vm_id.insert(vmID_1);
     purchase_server->AB_vm_id.insert(vmID_2);
 
-    VmIdInfo
+    vm_id2info.erase(vmID_1);
+    vm_id2info.erase(vmID_2);
 
-    vm_id2info[vmID_1].purchase_server = purchase_server;
-    vm_id2info[vmID_2].purchase_server = purchase_server;
+    
+    VmIdInfo vm_id_info;
+    vm_id_info.purchase_server = purchase_server;
+    vm_id_info.vm_name = vm_1_name;
+    vm_id_info.cpu_cores = vm_name2info[vm_1_name].cpu_cores;
+    vm_id_info.memory_size = vm_name2info[vm_1_name].memory_size;
+    vm_id_info.node = 'C';
+    vm_id_info.vm_id = vmID_1;
+    vm_id2info[vmID_1] = vm_id_info;
 
-
+    VmIdInfo vm_id_info_2;
+    vm_id_info_2.purchase_server = purchase_server;
+    vm_id_info_2.vm_name = vm_2_name;
+    vm_id_info_2.cpu_cores = vm_name2info[vm_2_name].cpu_cores;
+    vm_id_info_2.memory_size = vm_name2info[vm_2_name].memory_size;
+    vm_id_info_2.node = 'C';
+    vm_id_info_2.vm_id = vmID_2;
+    vm_id2info[vmID_2] = vm_id_info_2;
 
 }
+
+void BuyAndDeployTwoVM_2(string vm_1_name,string vm_2_name,int vmID_1,int vmID_2,string serverName){
+    total_server_cost+=server_name2info[serverName].hardware_cost;
+    PurchasedServer* purchase_server = new PurchasedServer;
+    purchase_server->total_core_num = server_name2info[serverName].cpu_cores;
+    purchase_server->total_memory_size = server_name2info[serverName].memory_size;
+    purchase_server->A_remain_core_num = server_name2info[serverName].cpu_cores ;
+    purchase_server->A_remain_memory_size = server_name2info[serverName].memory_size ;
+    purchase_server->B_remain_core_num = server_name2info[serverName].cpu_cores ;
+    purchase_server->daily_cost = server_name2info[serverName].daily_cost;
+    purchase_server->B_remain_memory_size = server_name2info[serverName].memory_size ;
+    purchase_server->server_name = server_name2info[serverName].server_name;
+    purchase_servers.emplace_back(purchase_server);
+    purchase_infos[serverName].emplace_back(purchase_server);
+
+    //待改 from_off_2_start 有问题
+    // from_off_2_start.insert(flag_server->server_id);
+
+    purchase_server->A_remain_core_num -= vm_name2info[vm_1_name].cpu_cores;
+    purchase_server->B_remain_core_num -= vm_name2info[vm_2_name].cpu_cores;
+    purchase_server->A_remain_memory_size -= vm_name2info[vm_1_name].memory_size;
+    purchase_server->B_remain_memory_size -= vm_name2info[vm_2_name].memory_size;
+    purchase_server->A_vm_id.insert(vmID_1);
+    purchase_server->B_vm_id.insert(vmID_2);
+
+    vm_id2info.erase(vmID_1);
+    vm_id2info.erase(vmID_2);
+
+    
+    VmIdInfo vm_id_info;
+    vm_id_info.purchase_server = purchase_server;
+    vm_id_info.vm_name = vm_1_name;
+    vm_id_info.cpu_cores = vm_name2info[vm_1_name].cpu_cores;
+    vm_id_info.memory_size = vm_name2info[vm_1_name].memory_size;
+    vm_id_info.node = 'A';
+    vm_id_info.vm_id = vmID_1;
+    vm_id2info[vmID_1] = vm_id_info;
+
+    VmIdInfo vm_id_info_2;
+    vm_id_info_2.purchase_server = purchase_server;
+    vm_id_info_2.vm_name = vm_2_name;
+    vm_id_info_2.cpu_cores = vm_name2info[vm_2_name].cpu_cores;
+    vm_id_info_2.memory_size = vm_name2info[vm_2_name].memory_size;
+    vm_id_info_2.node = 'B';
+    vm_id_info_2.vm_id = vmID_2;
+    vm_id2info[vmID_2] = vm_id_info_2;
+
+}
+
 
 PurchasedServer* BuyNewServer(int deployment_way,int cpu_cores,int memory_size){
     /**
@@ -1345,6 +1409,7 @@ vector<int> GetAllResourceOfFutureNDays(int req_num) {
 
 SoldServer* SearchForContinueVM(int deployment_way,int cpu_cores,int memory_size){
     /**
+     * '
      * @description: 为合并的机器找虚拟机
      * @param {*}
      * @return {SoldServer*}
@@ -1384,7 +1449,6 @@ SoldServer* SearchForContinueVM(int deployment_way,int cpu_cores,int memory_size
 
 void revokeBuy(int vmID){
     string server_name = vm_id2info[vmID].purchase_server->server_name;
-    int  server_id = vm_id2info[vmID].purchase_server->server_id;
     total_server_cost -= server_name2info[server_name].hardware_cost;
 
     purchase_servers.erase(purchase_servers.end()-1,purchase_servers.end());
@@ -1392,18 +1456,15 @@ void revokeBuy(int vmID){
     if(purchase_infos[server_name].size()==0){
         purchase_infos.erase(server_name);
     }
-    from_off_2_start.erase(server_id);
     int cpu_cores = vm_id2info[vmID].cpu_cores;
     int memory_size = vm_id2info[vmID].memory_size;
-
 
     vm_id2info[vmID].purchase_server->A_remain_core_num += cpu_cores;
     vm_id2info[vmID].purchase_server->A_remain_memory_size += memory_size;
     vm_id2info[vmID].purchase_server->B_remain_core_num += cpu_cores;
     vm_id2info[vmID].purchase_server->B_remain_memory_size += memory_size;
     vm_id2info[vmID].purchase_server->AB_vm_id.erase(vmID);
-
-    vm_id2info[vmID].purchase_server = 0;
+    vm_id2info.erase(vmID);
 }
 
 int count_continue_buy = 0;
@@ -1444,8 +1505,7 @@ void SolveProblem() {
             isDenseBuy = 0;
         }
 
-        string last_buy_server_name = "";
-        AddData last_add_data;
+        
 
         for (int j = 0; j < request_num; ++j) {
             string operation = intraday_requests[j].operation;
@@ -1466,52 +1526,174 @@ void SolveProblem() {
             }
             sort(continuous_add_datas.begin(), continuous_add_datas.end(), cmp.ContinuousADD);
 
+
+            string last_buy_server_name = "";
+            AddData last_add_data;
             for (auto& add_data : continuous_add_datas) {
                 string buy_server_name = AddVm(add_data);
-
+                // if(buy_server_name!=""){
+                //     revokeBuy(add_data.vm_id);
+                //     buy_server_name = AddVm(add_data);
+                // }
                 bool isSuccess = false;
-                if(last_buy_server_name != "" && buy_server_name != ""){
-                    //前后两次是连着买的
-                    if(last_add_data.deployment_way = 1 && add_data.deployment_way == 1){
-                        //前后两次都是双节点部署
-                        //合并起来
+                if(last_buy_server_name!="" && buy_server_name!=""){
+                    //连续两次购买
+
+                    if(last_add_data.deployment_way == 1 && add_data.deployment_way == 1){
                         int cpu_cores = last_add_data.cpu_cores+add_data.cpu_cores;
                         int memory_cores = last_add_data.memory_size + add_data.memory_size;
 
-                        SoldServer* suitServer = SearchForContinueVM(1,cpu_cores,memory_cores);
-                        if(suitServer!=0){
-                            int now_cost = suitServer->hardware_cost+ (total_days_num - now_day) * suitServer->daily_cost;
-                            int old_cost = server_name2info[last_buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[last_buy_server_name].daily_cost + server_name2info[buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[buy_server_name].daily_cost;
-                            if(now_cost < old_cost){
-                                save_cost += old_cost - now_cost;
-                                count_continue_buy++;
-                                //撤销上一次购买操作
-                                revokeBuy(add_data.vm_id);
-                                revokeBuy(last_add_data.vm_id);
-
-                                //重新购买新的
-                                BuyAndDeployTwoVM(last_add_data.vm_id,add_data.vm_id,suitServer->server_name);
-                                isSuccess = true;
-                            }
+                        SoldServer* suitServer = 0;
+                        if(memory_cores > cpu_cores){
+                            suitServer = SearchForContinueVM(1,cpu_cores,memory_cores);
                         }
                         
 
-                    }else if(last_add_data.deployment_way = 1 || add_data.deployment_way == 1){
-                        //前后节点一单一双
-                        
-
-                    }else{  
-                        //前后都是单节点
+                        if(suitServer!=0){
+                            // int new_cost = suitServer->hardware_cost+ (total_days_num - now_day) * suitServer->daily_cost;
+                            // int old_cost = server_name2info[last_buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[last_buy_server_name].daily_cost + server_name2info[buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[buy_server_name].daily_cost;
+                            int new_cost = suitServer->hardware_cost;
+                            int old_cost = server_name2info[last_buy_server_name].hardware_cost + server_name2info[buy_server_name].hardware_cost ;
+                            // cout<<new_cost<<"   "<<old_cost<<endl;
+                            if(new_cost <2.0 / 3 * old_cost){
+                                save_cost+=old_cost - new_cost;
+                                count_continue_buy ++;
+                                revokeBuy(add_data.vm_id);
+                                revokeBuy(last_add_data.vm_id);
+    
+                                // last_buy_server_name = AddVm(last_add_data);
+                                // buy_server_name = AddVm(add_data);
+                                BuyAndDeployTwoVM(last_add_data.vm_name,add_data.vm_name,last_add_data.vm_id,add_data.vm_id,suitServer->server_name);
+                                isSuccess = true;
+                            }
+                        }
                     }
-                    
-            
-                } 
+                    // if(last_add_data.deployment_way == 1 && add_data.deployment_way == 0){
+                    //     int cpu_cores = last_add_data.cpu_cores+add_data.cpu_cores;
+                    //     int memory_cores = last_add_data.memory_size + add_data.memory_size;
+                    //     SoldServer* suitServer = 0;
+                    //     if(memory_cores > 1.5 * cpu_cores){
+                    //         suitServer = SearchForContinueVM(1,cpu_cores,memory_cores);
+                    //     }
+                    //     if(suitServer!=0){
+                    //         // int new_cost = suitServer->hardware_cost+ (total_days_num - now_day) * suitServer->daily_cost;
+                    //         // int old_cost = server_name2info[last_buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[last_buy_server_name].daily_cost + server_name2info[buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[buy_server_name].daily_cost;
+                    //         int new_cost = suitServer->hardware_cost;
+                    //         int old_cost = server_name2info[last_buy_server_name].hardware_cost + server_name2info[buy_server_name].hardware_cost ;
+                    //         // cout<<new_cost<<"   "<<old_cost<<endl;
+                    //         if(new_cost <2.0 / 3 * old_cost){
+                    //             save_cost+=old_cost - new_cost;
+                    //             count_continue_buy ++;
+                    //             revokeBuy(add_data.vm_id);
+                    //             revokeBuy(last_add_data.vm_id);
+    
+                    //             // last_buy_server_name = AddVm(last_add_data);
+                    //             // buy_server_name = AddVm(add_data);
+                    //             BuyAndDeployTwoVM(last_add_data.vm_name,add_data.vm_name,last_add_data.vm_id,add_data.vm_id,suitServer->server_name);
+                    //             isSuccess = true;
+                    //         }
+                    //     }
+                    // }
+                    // if(last_add_data.deployment_way == 0 && add_data.deployment_way == 1){
+                    //     int cpu_cores = last_add_data.cpu_cores+add_data.cpu_cores;
+                    //     int memory_cores = last_add_data.memory_size + add_data.memory_size;
+                    //     SoldServer* suitServer = 0;
+                    //     if(memory_cores > cpu_cores){
+                    //         suitServer = SearchForContinueVM(1,cpu_cores,memory_cores);
+                    //     }
+                    //     if(suitServer!=0){
+                    //         // int new_cost = suitServer->hardware_cost+ (total_days_num - now_day) * suitServer->daily_cost;
+                    //         // int old_cost = server_name2info[last_buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[last_buy_server_name].daily_cost + server_name2info[buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[buy_server_name].daily_cost;
+                    //         int new_cost = suitServer->hardware_cost;
+                    //         int old_cost = server_name2info[last_buy_server_name].hardware_cost + server_name2info[buy_server_name].hardware_cost ;
+                    //         // cout<<new_cost<<"   "<<old_cost<<endl;
+                    //         if(new_cost <2.0 / 3 * old_cost){
+                    //             save_cost+=old_cost - new_cost;
+                    //             count_continue_buy ++;
+                    //             revokeBuy(add_data.vm_id);
+                    //             revokeBuy(last_add_data.vm_id);
+    
+                    //             // last_buy_server_name = AddVm(last_add_data);
+                    //             // buy_server_name = AddVm(add_data);
+                    //             BuyAndDeployTwoVM(last_add_data.vm_name,add_data.vm_name,last_add_data.vm_id,add_data.vm_id,suitServer->server_name);
+                    //             isSuccess = true;
+                    //         }
+                    //     }
+                    // }
+                    if(last_add_data.deployment_way == 0 && add_data.deployment_way == 0){
+                        int cpu_cores = max(last_add_data.cpu_cores,add_data.cpu_cores);
+                        int memory_cores = max(last_add_data.memory_size , add_data.memory_size);
+                        SoldServer* suitServer = SearchForContinueVM(1,cpu_cores,memory_cores);
+                        if(suitServer!=0){
+                            int new_cost = suitServer->hardware_cost+ (total_days_num - now_day) * suitServer->daily_cost;
+                            int old_cost = server_name2info[last_buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[last_buy_server_name].daily_cost + server_name2info[buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[buy_server_name].daily_cost;
+                            // int new_cost = suitServer->hardware_cost;
+                            // int old_cost = server_name2info[last_buy_server_name].hardware_cost + server_name2info[buy_server_name].hardware_cost ;
+                            // cout<<new_cost<<"   "<<old_cost<<endl;
+                            if(new_cost <  old_cost){
+                                save_cost+=old_cost - new_cost;
+                                count_continue_buy ++;
+                                revokeBuy(add_data.vm_id);
+                                revokeBuy(last_add_data.vm_id);
+    
+                                // last_buy_server_name = AddVm(last_add_data);
+                                // buy_server_name = AddVm(add_data);
+                                BuyAndDeployTwoVM_2(last_add_data.vm_name,add_data.vm_name,last_add_data.vm_id,add_data.vm_id,suitServer->server_name);
+                                isSuccess = true;
+                            }
+                        }
+                    }
+                }
                 if(isSuccess){
                     last_buy_server_name = "";
                 }else{
                     last_buy_server_name = buy_server_name;
                     last_add_data = add_data;
                 }
+                
+
+                // bool isSuccess = false;
+                // if(last_buy_server_name != "" && buy_server_name != ""){
+                //     //前后两次是连着买的
+                //     if(last_add_data.deployment_way = 1 && add_data.deployment_way == 1){
+                //         //前后两次都是双节点部署
+                //         //合并起来
+                //         
+
+                //         SoldServer* suitServer = SearchForContinueVM(1,cpu_cores,memory_cores);
+                //         if(suitServer!=0){
+                //             int now_cost = suitServer->hardware_cost+ (total_days_num - now_day) * suitServer->daily_cost;
+                //             int old_cost = server_name2info[last_buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[last_buy_server_name].daily_cost + server_name2info[buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[buy_server_name].daily_cost;
+                //             if(now_cost < old_cost){
+                //                 save_cost += old_cost - now_cost;
+                //                 count_continue_buy++;
+                //                 //撤销上一次购买操作
+                //                 revokeBuy(add_data.vm_id);
+                //                 revokeBuy(last_add_data.vm_id);
+
+                //                 //重新购买新的
+                //                 BuyAndDeployTwoVM(last_add_data.vm_name,add_data.vm_name,last_add_data.vm_id,add_data.vm_id,suitServer->server_name);
+                //                 isSuccess = true;
+                //             }
+                //         }
+                        
+
+                //     }else if(last_add_data.deployment_way = 1 || add_data.deployment_way == 1){
+                //         //前后节点一单一双
+                        
+
+                //     }else{  
+                //         //前后都是单节点
+                //     }
+                    
+            
+                // } 
+                // if(isSuccess){
+                //     last_buy_server_name = "";
+                // }else{
+                //     last_buy_server_name = buy_server_name;
+                //     last_add_data = add_data;
+                // }
                 
             }
             if (j == request_num) {
@@ -1532,8 +1714,8 @@ void SolveProblem() {
         if (i < total_days_num - foreseen_days_num) ParseRequest(1);
         Compute_Power_Cost();
     }
-    // cout<<count_continue_buy<<endl;
-    // cout<<save_cost<<endl;
+    cout<<count_continue_buy<<endl;
+    cout<<save_cost<<endl;
 }
 
 void PrintCostInfo() {
@@ -1548,7 +1730,7 @@ void PrintCostInfo() {
 int main(int argc, char* argv[]) {
 #ifdef REDIRECT
     // freopen("training-1.txt", "r", stdin);
-    freopen("/Users/wangtongling/Desktop/training-data/training-1.txt", "r", stdin);
+    freopen("/Users/wangtongling/Desktop/training-data/training-2.txt", "r", stdin);
     // freopen("out1.txt", "w", stdout);
 #endif
 #ifdef PRINTINFO
