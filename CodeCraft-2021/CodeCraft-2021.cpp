@@ -32,7 +32,7 @@ clock_t _start, _end;
 int isDenseBuy = 0; // 0--非密度购买  1--密度购买
 double _future_N_reqs_cpu_rate = 0;
 double _future_N_reqs_memory_rate = 0;
-double _migration_threshold = 0.1; //减小能增加迁移数量。
+double _migration_threshold = 0.03; //减小能增加迁移数量。
 double _near_full_threshold = 0.07; //增大能去掉更多的服务器，减少时间；同时迁移次数会有轻微减少，成本有轻微增加。
 double _nodes_diff_threshold = 0.1; //服务器两结点间利用率之差的阈值，大于它则进行内部调整。
 
@@ -1858,9 +1858,7 @@ void SolveProblem() {
                 }  
             }
            
-           
-        
-
+        //处理所有的del
         for (int j = 0; j < request_num; ++j){
               string operation = intraday_requests[j].operation;
              if (operation == "del") {
@@ -1895,7 +1893,7 @@ void PrintCostInfo() {
 int main(int argc, char* argv[]) {
 #ifdef REDIRECT
     // freopen("training-1.txt", "r", stdin);
-    freopen("/Users/wangtongling/Desktop/training-data/training-2.txt", "r", stdin);
+    freopen("/Users/wangtongling/Desktop/training-data/training-1.txt", "r", stdin);
     // freopen("out1.txt", "w", stdout);
 #endif
 #ifdef PRINTINFO
