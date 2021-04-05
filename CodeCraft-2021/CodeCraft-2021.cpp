@@ -607,19 +607,16 @@ vector<MigrationInfo> Migration() {
 
     vector<PurchasedServer*> target_off_servers = {};
     for(auto& server: purchase_servers){
+        if(migration_infos.size() == max_migration_num) break;
         if(server->A_vm_id.size() + server->B_vm_id.size() + server->AB_vm_id.size()==0) target_off_servers.emplace_back(server);
     }
     sort(target_off_servers.begin(),target_off_servers.end(),[](PurchasedServer* a,PurchasedServer* b){
         return a->daily_cost < b->daily_cost;
     });
-    // if(migration_infos.size() == max_migration_num){
-    //     ;
-    // }else{
-    //     sort(left_servers.begin(),left_servers.end(),[](PurchasedServer* a,PurchasedServer* b){
-    //         return a->A_vm_id.size() + a->B_vm_id.size()+a->AB_vm_id.size() > b->A_vm_id.size() + b->B_vm_id.size()+b->AB_vm_id.size();
-    //         // return 2*a->total_core_num - a->A_remain_core_num - a->B_remain_core_num + 2*a->total_memory_size - a->A_remain_memory_size - a->B_remain_memory_size > 2*b->total_core_num - b->A_remain_core_num - b->B_remain_core_num + 2*b->total_memory_size - b->A_remain_memory_size - b->B_remain_memory_size ;
-    //     });
-    // }
+    // sort(left_servers.begin(),left_servers.end(),[](PurchasedServer* a,PurchasedServer* b){
+    //     return a->AB_vm_id.size() + a->A_vm_id.size() + a->B_vm_id.size() < b->AB_vm_id.size() + b->A_vm_id.size() + b->B_vm_id.size() ;
+    // });
+
     for(auto& server: left_servers){
         if(migration_infos.size() == max_migration_num) break;
         int max_cpu = max( server->total_core_num - server->A_remain_core_num, server->total_core_num - server->B_remain_core_num);
