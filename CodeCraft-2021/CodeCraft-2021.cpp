@@ -13,6 +13,8 @@ unordered_map<string, vector<PurchasedServer *>> purchase_infos;
 unordered_set<int> from_off_2_start;
 
 vector<RequestData> intraday_requests;
+vector<int> allResourceOfNReqs ;
+
 
 int total_days_num, foreseen_days_num; //总天数和可预知的天数
 int now_day;                           //现在是第几天
@@ -356,29 +358,21 @@ vector<MigrationInfo> Migration()
         //            (server->A_remain_memory_size + server->B_remain_memory_size) / 2.0 / server->total_memory_size < 0.8)
         //     target_servers.emplace_back(server);
     }
-    // vector<int> add_del_count = print_req_num(intraday_requests);
-    sort(migrating_vms.begin(), migrating_vms.end(), [&](VmIdInfo *vm1,VmIdInfo *vm2) {
-        PurchasedServer *server1 = vm1->purchase_server, *server2 = vm2->purchase_server;
-        if (server1 == server2) { //同一服务器内按双节点虚拟机优先、大的单节点虚拟机次优先的顺序迁移。
-            return (vm1->cpu_cores * k1 + vm1->memory_size * k2) * (vm1->node == 'C' ? 10 : 1) > (vm2->cpu_cores * k1 + vm2->memory_size * k2) * (vm2->node == 'C' ? 10 : 1);
-        }
+   
 
-        // if(add_del_count[0] + add_del_count[1] < 1.0 * (add_del_count[2] + add_del_count[3]))
-        if(max(vm_nums(server1),vm_nums(server2))<=3)
-        {
-            return vm_nums(server1) < vm_nums(server2); //不同服务器间，其虚拟机数量少的优先迁移。
-        }else  {
-            return (vm1->cpu_cores * k1 + vm1->memory_size * k2) * (vm1->node == 'C' ? 2 : 1) > (vm2->cpu_cores * k1 + vm2->memory_size * k2) * (vm2->node == 'C' ? 2 : 1);
+    sort(migrating_vms.begin(), migrating_vms.end(), [&](VmIdInfo *vm1,VmIdInfo *vm2) {     
+        PurchasedServer *server1 = vm1->purchase_server, *server2 = vm2->purchase_server;
+        if( vm_nums(server1) < vm_nums(server2)) return true;
+        else if( vm_nums(server1) == vm_nums(server2)){
+            return (vm1->cpu_cores  * k1+ vm1->memory_size * k2) * (vm1->node == 'C' ? 1 : 1) > (vm2->cpu_cores * k1 + vm2->memory_size * k2) * (vm2->node == 'C' ? 1 : 1);
+        }else{
+            return false;
         }
-        
-         
-        // return r1 * (server1->A_remain_core_num + server1->B_remain_core_num) / server1->total_core_num / 2
-        //             + r2 * (server1->A_remain_memory_size + server1->B_remain_memory_size) / server1->total_memory_size / 2
-        //             > r1 * (server2->A_remain_core_num + server2->B_remain_core_num) / server2->total_core_num / 2
-        //             + r2 * (server2->A_remain_memory_size + server2->B_remain_memory_size) / server2->total_memory_size / 2; //不同服务器间，其利用率低的优先迁移。
-        // return (remain_rate(server1, 'A') + remain_rate(server1, 'B')) * server1->daily_cost > (remain_rate(server2, 'A') + remain_rate(server2, 'B')) * server2->daily_cost;
-        // return 1.0 * server1->daily_cost / vm_nums(server1) > 1.0 * server2->daily_cost / vm_nums(server2); //不同服务器间，其虚拟机均摊电费大的优先迁移。
+        // return vm_nums(server1) < vm_nums(server2); //不同服务器间，其虚拟机数量少的优先迁移。
+        // return (vm1->cpu_cores * k1 + vm1->memory_size * k2) * (vm1->node == 'C' ? 2 : 1) > (vm2->cpu_cores * k1 + vm2->memory_size * k2) * (vm2->node == 'C' ? 2 : 1);
     });
+    
+    
     unordered_set<int> success_vm;
     for (auto &vm_info : migrating_vms) {
         if (vm_info->node != 'C') {
@@ -1402,11 +1396,9 @@ PurchasedServer *BuyNewServer(int deployment_way, int cpu_cores, int memory_size
                     // double use_rate = max(1.0 *(cpu_cores) / sold_server.cpu_cores , 1.0 *(memory_size) / sold_server.memory_size) ;
                     double _cpu_rate = 1.0 * cpu_cores / sold_server.cpu_cores;
                     double _memory_rate = 1.0 * (memory_size) / sold_server.memory_size;
-                    // double T = 0.9;
-                    // double _temp_sum = pow(_cpu_rate,1.0 / T) + pow(_memory_rate,1.0 / T);
-                    // double use_cpu_rate = pow(_cpu_rate,1.0 / T) / _temp_sum;
-                    // double use_memory_rate = pow(_memory_rate,1.0 / T) / _temp_sum;
-                    // double use_rate = max  (use_cpu_rate , use_memory_rate);
+                    
+
+
                     double use_rate = 1.0 * (_cpu_rate + _memory_rate) / 2;
                     // dense_cost = 1.0 * sold_server.hardware_cost * use_rate;
                     dense_cost = 1.0 * (sold_server.hardware_cost + sold_server.daily_cost * (total_days_num - now_day)) * use_rate;
@@ -2070,7 +2062,8 @@ void SolveProblem()
         vector<int> allResouceAfterMigration = GetAllResourceOfOwnServers(true);
 
         //获取未来N条请求所需要的总资源
-        // vector<int> allResourceOfNReqs = GetAllResourceOfFutureNDays(50);
+        allResourceOfNReqs = GetAllResourceOfFutureNDays(3000);
+
 
         intraday_requests = request_datas.front();
 
@@ -2407,7 +2400,7 @@ void SolveProblem()
             }
         }
         Numbering(); //给购买了的服务器编号
-        Print(vm_ids, migration_infos);
+        // Print(vm_ids, migration_infos);
         fflush(stdout);
         purchase_infos.clear();
         from_off_2_start.clear();
