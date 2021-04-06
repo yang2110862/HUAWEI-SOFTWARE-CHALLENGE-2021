@@ -19,6 +19,7 @@ using namespace std;
 // #define TEST_PARSEINPUT
 #define REDIRECT
 #define PRINTINFO
+#define MULTIPROCESS
 
 struct SoldServer {
     string server_name;

@@ -6,7 +6,7 @@ unordered_map<string, SoldServer> server_name2info;
 unordered_map<int, VmIdInfo> vm_id2info;
 unordered_set<int> vmIDs;
 
-queue<vector<RequestData>> request_datas;
+queue<vector<RequestData> > request_datas;
 vector<PurchasedServer *> purchase_servers;
 unordered_map<string, vector<PurchasedServer *>> purchase_infos;
 
@@ -15,6 +15,9 @@ unordered_set<int> from_off_2_start;
 vector<RequestData> intraday_requests;
 vector<int> allResourceOfNReqs ;
 
+int count_continue_buy = 0;
+
+int count_add_more_del = 0;
 
 int total_days_num, foreseen_days_num; //总天数和可预知的天数
 int now_day;                           //现在是第几天
@@ -40,6 +43,33 @@ double _nodes_diff_threshold = 0.1; //服务器两结点间利用率之差的阈
 
 double k1 = 0.695, k2 = 1 - k1; //CPU和memory的加权系数
 double r1 = 0.695, r2 = 1 - r1; //CPU和memory剩余率的加权系数
+
+
+void init(){
+    sold_servers.erase(sold_servers.begin(),sold_servers.end());
+    vm_name2info.erase(vm_name2info.begin(),vm_name2info.end());
+    server_name2info.erase(server_name2info.begin(),server_name2info.end());
+    vm_id2info.erase(vm_id2info.begin(),vm_id2info.end());
+    vmIDs.erase(vmIDs.begin(),vmIDs.end());
+    while (!request_datas.empty()) request_datas.pop();
+    purchase_servers.erase(purchase_servers.begin(),purchase_servers.end());
+    purchase_infos.erase(purchase_infos.begin(),purchase_infos.end());
+    from_off_2_start.erase(from_off_2_start.begin(),from_off_2_start.end());
+    intraday_requests.erase(intraday_requests.begin(),intraday_requests.end());
+    allResourceOfNReqs.erase(allResourceOfNReqs.begin(),allResourceOfNReqs.end());
+    count_continue_buy = 0;
+
+    count_add_more_del = 0;
+    //现在是第几天
+    total_req_num = 0;
+    now_req_num = 0;
+
+    number = 0; //给服务器编号
+    total_server_cost = 0;
+    total_power_cost = 0;
+    total_migration_num = 0;
+    isDenseBuy = 0;
+}
 
 // 返回服务器里虚拟机的数量。
 inline int vm_nums(PurchasedServer *server)
@@ -330,11 +360,9 @@ vector<int> print_req_num(vector<RequestData> &intraday_requests)
     // cout<<add_count<<"   "<<del_count<<endl;
 }
 
-int Max_migration = 0;
 vector<MigrationInfo> Migration()
 {
     int max_migration_num = vmIDs.size() * 30 / 1000;
-    Max_migration+=max_migration_num;
     vector<MigrationInfo> migration_infos;
     if (max_migration_num == 0)
         return migration_infos;
@@ -1383,6 +1411,7 @@ PurchasedServer *BuyNewServer(int deployment_way, int cpu_cores, int memory_size
      */
     SoldServer *flag_sold_server;
     double min_dense_cost = 99999999999999;
+
     if (deployment_way == 1)
     {
         for (auto &sold_server : sold_servers)
@@ -1397,7 +1426,7 @@ PurchasedServer *BuyNewServer(int deployment_way, int cpu_cores, int memory_size
                     double _cpu_rate = 1.0 * cpu_cores / sold_server.cpu_cores;
                     double _memory_rate = 1.0 * (memory_size) / sold_server.memory_size;
                     
-
+                    
 
                     double use_rate = 1.0 * (_cpu_rate + _memory_rate) / 2;
                     // dense_cost = 1.0 * sold_server.hardware_cost * use_rate;
@@ -1431,6 +1460,58 @@ PurchasedServer *BuyNewServer(int deployment_way, int cpu_cores, int memory_size
     purchase_infos[flag_sold_server->server_name].emplace_back(purchase_server);
     return purchase_server;
 }
+
+PurchasedServer *BuyNewServer_2(int deployment_way, int cpu_cores, int memory_size)
+{
+    /**
+     * @description: 购买新服务器并加入已购序列中
+     * @param {*}
+     * @return {刚刚购买的服务器PurchasedServer*}
+     */
+    SoldServer *flag_sold_server = 0;
+    double max_dense_cost = -1;
+    double min_dense_cost = 99999999999999;
+        for (auto &sold_server : sold_servers)
+        {
+            if (sold_server.cpu_cores >= cpu_cores && sold_server.memory_size >= memory_size)
+            {
+                double dense_cost;
+                if (isDenseBuy == 1){
+                     dense_cost =1.0 * min(1.0 * cpu_cores / allResourceOfNReqs[2] , 1.0 * memory_size / allResourceOfNReqs[3]) / (sold_server.hardware_cost + (total_days_num - now_day) * sold_server.daily_cost ) * 1000000;
+                }else{
+                     dense_cost = sold_server.hardware_cost + sold_server.daily_cost * (total_days_num - now_day);
+                }
+                if(isDenseBuy == 1){
+                    if (dense_cost > max_dense_cost)
+                    {
+                        max_dense_cost = dense_cost;
+                        flag_sold_server = &sold_server;
+                    }
+                }else{
+                    if (dense_cost < min_dense_cost)
+                    {
+                        min_dense_cost = dense_cost;
+                        flag_sold_server = &sold_server;
+                    }
+                }
+            }
+        }
+
+    total_server_cost += flag_sold_server->hardware_cost;
+    PurchasedServer *purchase_server = new PurchasedServer;
+    purchase_server->total_core_num = flag_sold_server->cpu_cores;
+    purchase_server->total_memory_size = flag_sold_server->memory_size;
+    purchase_server->A_remain_core_num = flag_sold_server->cpu_cores;
+    purchase_server->A_remain_memory_size = flag_sold_server->memory_size;
+    purchase_server->B_remain_core_num = flag_sold_server->cpu_cores;
+    purchase_server->daily_cost = flag_sold_server->daily_cost;
+    purchase_server->B_remain_memory_size = flag_sold_server->memory_size;
+    purchase_server->server_name = flag_sold_server->server_name;
+    purchase_servers.emplace_back(purchase_server);
+    purchase_infos[flag_sold_server->server_name].emplace_back(purchase_server);
+    return purchase_server;
+}
+
 
 string AddVm(AddData &add_data)
 {
@@ -1471,7 +1552,7 @@ string AddVm(AddData &add_data)
         PurchasedServer *newServer = 0;
         if (!deployed)
         {
-            newServer = BuyNewServer(1, cpu_cores, memory_size);
+            newServer = BuyNewServer_2(1, cpu_cores, memory_size);
             DeployOnServer(newServer, 1, cpu_cores, memory_size, add_data.vm_id, add_data.vm_name);
             deployed = true;
             return newServer->server_name;
@@ -2038,9 +2119,7 @@ void revokeBuy(int vmID)
 }
 
 
-int count_continue_buy = 0;
-long long save_cost = 0;
-int count_add_more_del = 0;
+
 
 void SolveProblem()
 {
@@ -2051,6 +2130,7 @@ void SolveProblem()
         now_day = i + 1;
 
 #ifdef PRINTINFO
+    if(now_day %200 == 0)
         cout << now_day << endl;
 #endif
 
@@ -2062,7 +2142,7 @@ void SolveProblem()
         vector<int> allResouceAfterMigration = GetAllResourceOfOwnServers(true);
 
         //获取未来N条请求所需要的总资源
-        allResourceOfNReqs = GetAllResourceOfFutureNDays(3000);
+        allResourceOfNReqs = GetAllResourceOfFutureNDays(300);
 
 
         intraday_requests = request_datas.front();
@@ -2158,7 +2238,6 @@ void SolveProblem()
                                 int num1 = vm_id2info.size();
                                 if (new_cost < old_cost)
                                 {
-                                    save_cost += old_cost - new_cost;
                                     count_continue_buy++;
                                     revokeBuy(add_data.vm_id);
                                     revokeBuy(last_add_data.vm_id);
@@ -2188,7 +2267,6 @@ void SolveProblem()
                                 // cout<<new_cost<<"   "<<old_cost<<endl;
                                 if (new_cost < old_cost)
                                 {
-                                    save_cost += old_cost - new_cost;
                                     count_continue_buy++;
                                     revokeBuy(add_data.vm_id);
                                     revokeBuy(last_add_data.vm_id);
@@ -2283,7 +2361,6 @@ void SolveProblem()
                             // cout<<new_cost<<"   "<<old_cost<<endl;
                             if (new_cost < 2.0  / 3 *  old_cost)
                             {
-                                save_cost += old_cost - new_cost;
                                 count_continue_buy++;
                                 revokeBuy(add_data.vm_id);
                                 revokeBuy(last_add_data.vm_id);
@@ -2360,7 +2437,6 @@ void SolveProblem()
                             // cout<<new_cost<<"   "<<old_cost<<endl;
                             if (new_cost < old_cost)
                             {
-                                save_cost += old_cost - new_cost;
                                 count_continue_buy++;
                                 revokeBuy(add_data.vm_id);
                                 revokeBuy(last_add_data.vm_id);
@@ -2493,6 +2569,80 @@ int main(int argc, char *argv[])
 #ifdef PRINTINFO
     PrintCostInfo();
 #endif
+
+
+#ifdef MULTIPROCESS
+init();
+#ifdef REDIRECT
+    // freopen("training-1.txt", "r", stdin);
+    freopen("/Users/wangtongling/Desktop/training-data/training-2.txt", "r", stdin);
+    // freopen("out1.txt", "w", stdout);
+#endif
+#ifdef PRINTINFO
+    _start = clock();
+#endif
+    ParseInput();
+    // vector<double>R1_R2 = compute_rate();
+    // cout<<R1_R2[0]<<" " <<R1_R2[1]<<endl;
+    // r1 = R1_R2[0]; r2 = R1_R2[1];
+    // k1 = R1_R2[0]; k2 = R1_R2[1];
+    SolveProblem();
+#ifdef PRINTINFO
+    _end = clock();
+#endif
+#ifdef PRINTINFO
+    PrintCostInfo();
+#endif
+
+init();
+
+#ifdef REDIRECT
+    // freopen("training-1.txt", "r", stdin);
+    freopen("/Users/wangtongling/Desktop/training-data/training-3.txt", "r", stdin);
+    // freopen("out1.txt", "w", stdout);
+#endif
+#ifdef PRINTINFO
+    _start = clock();
+#endif
+    ParseInput();
+    // vector<double>R1_R2 = compute_rate();
+    // cout<<R1_R2[0]<<" " <<R1_R2[1]<<endl;
+    // r1 = R1_R2[0]; r2 = R1_R2[1];
+    // k1 = R1_R2[0]; k2 = R1_R2[1];
+    SolveProblem();
+#ifdef PRINTINFO
+    _end = clock();
+#endif
+#ifdef PRINTINFO
+    PrintCostInfo();
+#endif
+
+init();
+
+#ifdef REDIRECT
+    // freopen("training-1.txt", "r", stdin);
+    freopen("/Users/wangtongling/Desktop/training-data/training-4.txt", "r", stdin);
+    // freopen("out1.txt", "w", stdout);
+#endif
+#ifdef PRINTINFO
+    _start = clock();
+#endif
+    ParseInput();
+    // vector<double>R1_R2 = compute_rate();
+    // cout<<R1_R2[0]<<" " <<R1_R2[1]<<endl;
+    // r1 = R1_R2[0]; r2 = R1_R2[1];
+    // k1 = R1_R2[0]; k2 = R1_R2[1];
+    SolveProblem();
+#ifdef PRINTINFO
+    _end = clock();
+#endif
+#ifdef PRINTINFO
+    PrintCostInfo();
+#endif
+
+
+#endif
+
 #ifdef REDIRECT
     fclose(stdin);
     fclose(stdout);
