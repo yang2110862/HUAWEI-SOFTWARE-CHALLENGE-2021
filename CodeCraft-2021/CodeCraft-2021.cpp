@@ -43,8 +43,6 @@ double _nodes_diff_threshold = 0.1; //服务器两结点间利用率之差的阈
 
 double k1 = 0.695, k2 = 1 - k1; //CPU和memory的加权系数
 double r1 = 0.695, r2 = 1 - r1; //CPU和memory剩余率的加权系数
-// double k1 = 0.3, k2 = 1 - k1; //CPU和memory的加权系数
-// double r1 = 0.3, r2 = 1 - r1; //CPU和memory剩余率的加权系数
 
 
 void init(){
