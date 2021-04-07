@@ -448,7 +448,6 @@ vector<MigrationInfo> Migration()
             if (which_node != '!') { //开始迁移。
                 success_vm.insert(vm_info->vm_id);
                 migrate_to(vm_info, best_server, which_node, migration_infos);
-                if(migration_infos.size()>max_migration_num) cout<<"asdasdasdsadasd"<<endl;
                 if (migration_infos.size() == max_migration_num) return migration_infos;
             }
         } else {
@@ -456,7 +455,7 @@ vector<MigrationInfo> Migration()
             int vm_id = vm_info->vm_id;
             int cpu_cores = vm_info->cpu_cores;
             int memory_size = vm_info->memory_size;
-            double min_rate = (remain_rate(original_server, 'A') + remain_rate(original_server, 'B')) / 2 * original_server->daily_cost;
+            double min_rate = (remain_rate(original_server, 'A') +  remain_rate(original_server, 'B')) / 2 * original_server->daily_cost;
             PurchasedServer* best_server = NULL;
             for (auto &target_server : target_servers) { //找最合适的服务器。
                 if (target_server == original_server) continue;
@@ -468,17 +467,12 @@ vector<MigrationInfo> Migration()
                         min_rate = rate;
                         best_server = target_server;
                     }
-                    // double temp = fabs(_cpu_remain_rate - _memory_remain_rate);
-                    // if (temp < min_rate) {
-                    //     min_rate = temp;
-                    //     best_server = target_server;
-                    // }
+                   
                 }
             }
             if (best_server != NULL) { //开始迁移。
                 success_vm.insert(vm_info->vm_id);
                 migrate_to(vm_info, best_server, 'C', migration_infos);
-                if(migration_infos.size()>max_migration_num) cout<<"asdasdasdsadasd"<<endl;
                 if (migration_infos.size() == max_migration_num) return migration_infos;
             }
         }
