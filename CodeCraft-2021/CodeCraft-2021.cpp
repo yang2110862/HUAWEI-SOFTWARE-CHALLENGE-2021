@@ -408,6 +408,7 @@ vector<MigrationInfo> Migration()
             for (auto &target_server : target_servers) { //找最合适的服务器。
                 if (!(target_server == original_server && vm_info->node == 'A')
                         && (target_server->A_remain_core_num >= cpu_cores && target_server->A_remain_memory_size >= memory_size)) {
+                    
                     double rate = r1 * (target_server->A_remain_core_num - cpu_cores) / target_server->total_core_num * target_server->daily_cost
                         + r2 * (target_server->A_remain_memory_size - memory_size) / target_server->total_memory_size * target_server->daily_cost;
                     #pragma omp flush(min_rate, best_server, which_node)
@@ -1802,10 +1803,10 @@ void SolveProblem()
 
         vector<int> add_del_count = print_req_num(intraday_requests);
         // cout<<add_del_count[0]<<"  "<<add_del_count[1]<<"  "<<add_del_count[2]<<"  "<<add_del_count[3]<<"  "<<endl;
-        if (add_del_count[0] + add_del_count[1] > 1.2 * (add_del_count[2] + add_del_count[3]))
-        {
-            count_add_more_del++;
-        }
+        // if (add_del_count[0] + add_del_count[1] > 1.2 * (add_del_count[2] + add_del_count[3]))
+        // {
+        //     count_add_more_del++;
+        // }
         // if(add_del_count[0] > add_del_count[2]&&add_del_count[1]> add_del_count[3]){
         //     count_add_more_del++;
         // }
@@ -2128,44 +2129,9 @@ vector<double> solve_functions(int x1,int y1,int z1,int x2,int y2,int z2){
     return {a / (a+b) ,b / (a+b)};
 }
 
-double SumVector(vector<double>& vec)
-{
-    double res = 0;
-    for (size_t i=0; i<vec.size(); i++)
-    {
-        res += vec[i];
-    }
-    return res;
-}
-
-vector<double> compute_rate(){
-    vector<double> a = {};
-    vector<double> b = {};
-    srand(unsigned(time(NULL)));
-    random_shuffle(sold_servers.begin(), sold_servers.end());
-    vector<SoldServer>::iterator it = sold_servers.begin();
-    while(it+1<sold_servers.end()){
-        vector<double> temp = solve_functions(it->cpu_cores,it->memory_size,it->hardware_cost,(it+1)->cpu_cores,(it+1)->memory_size,(it+1)->hardware_cost);
-        if(temp.size() != 0){
-            a.emplace_back(temp[0]);
-            b.emplace_back(temp[1]);
-        }
-        it++;
-    }
-    it = sold_servers.begin();
-    while(it+2<sold_servers.end()){
-        vector<double> temp = solve_functions(it->cpu_cores,it->memory_size,it->hardware_cost,(it+2)->cpu_cores,(it+2)->memory_size,(it+2)->hardware_cost);
-        if(temp.size() != 0){
-            a.emplace_back(temp[0]);
-            b.emplace_back(temp[1]);
-        }
-        it++;
-    }
- 
 
 
-    return {1.0 *SumVector(a) / a.size()  ,1.0 *SumVector(b) / b.size() };
-}
+
 
 void PrintCostInfo()
 {
@@ -2179,6 +2145,9 @@ void PrintCostInfo()
 
 int main(int argc, char *argv[])
 {
+
+    Statistics sta;
+    vector<double> ans;
 #ifdef REDIRECT
     // freopen("training-1.txt", "r", stdin);
     freopen("/Users/wangtongling/Desktop/training-data/training-1.txt", "r", stdin);
@@ -2188,10 +2157,10 @@ int main(int argc, char *argv[])
     _start = clock();
 #endif
     ParseInput();
-    // vector<double>R1_R2 = compute_rate();
-    // cout<<R1_R2[0]<<" " <<R1_R2[1]<<endl;
-    // r1 = R1_R2[0]; r2 = R1_R2[1];
-    // k1 = R1_R2[0]; k2 = R1_R2[1];
+    ans = sta.linear_regression(sold_servers);
+    // cout<<ans[0]<<" " <<ans[1]<<endl;
+    r1 = ans[0]; r2 = ans[1];
+    k1 = ans[0]; k2 = ans[1];
     SolveProblem();
 #ifdef PRINTINFO
     _end = clock();
@@ -2212,10 +2181,10 @@ init();
     _start = clock();
 #endif
     ParseInput();
-    // vector<double>R1_R2 = compute_rate();
-    // cout<<R1_R2[0]<<" " <<R1_R2[1]<<endl;
-    // r1 = R1_R2[0]; r2 = R1_R2[1];
-    // k1 = R1_R2[0]; k2 = R1_R2[1];
+    ans = sta.linear_regression(sold_servers);
+    // cout<<ans[0]<<" " <<ans[1]<<endl;
+    r1 = ans[0]; r2 = ans[1];
+    k1 = ans[0]; k2 = ans[1];
     SolveProblem();
 #ifdef PRINTINFO
     _end = clock();
@@ -2235,10 +2204,10 @@ init();
     _start = clock();
 #endif
     ParseInput();
-    // vector<double>R1_R2 = compute_rate();
-    // cout<<R1_R2[0]<<" " <<R1_R2[1]<<endl;
-    // r1 = R1_R2[0]; r2 = R1_R2[1];
-    // k1 = R1_R2[0]; k2 = R1_R2[1];
+    ans = sta.linear_regression(sold_servers);
+    // cout<<ans[0]<<" " <<ans[1]<<endl;
+    r1 = ans[0]; r2 = ans[1];
+    k1 = ans[0]; k2 = ans[1];
     SolveProblem();
 #ifdef PRINTINFO
     _end = clock();
@@ -2258,10 +2227,10 @@ init();
     _start = clock();
 #endif
     ParseInput();
-    // vector<double>R1_R2 = compute_rate();
-    // cout<<R1_R2[0]<<" " <<R1_R2[1]<<endl;
-    // r1 = R1_R2[0]; r2 = R1_R2[1];
-    // k1 = R1_R2[0]; k2 = R1_R2[1];
+    ans = sta.linear_regression(sold_servers);
+    // cout<<ans[0]<<" " <<ans[1]<<endl;
+    r1 = ans[0]; r2 = ans[1];
+    k1 = ans[0]; k2 = ans[1];
     SolveProblem();
 #ifdef PRINTINFO
     _end = clock();
