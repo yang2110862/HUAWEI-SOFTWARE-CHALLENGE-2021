@@ -490,6 +490,8 @@ vector<MigrationInfo> Migration()
         double rate_a = remain_rate(server, 'A'), rate_b = remain_rate(server, 'B');
         if ((rate_a < _near_full_threshold && rate_b > 1 - _near_full_threshold) || (rate_b < _near_full_threshold && rate_a > 1 - _near_full_threshold)) merging_servers.emplace_back(server);
     }
+
+ 
     for (auto original_server : merging_servers) {
         double rate1a = remain_rate(original_server, 'A'), rate1b = remain_rate(original_server, 'B');
         if ((rate1a < _near_full_threshold && rate1b > 1 - _near_full_threshold) || (rate1b < _near_full_threshold && rate1a > 1 - _near_full_threshold)) {
