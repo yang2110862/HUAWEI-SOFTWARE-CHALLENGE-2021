@@ -372,7 +372,8 @@ vector<MigrationInfo> Migration()
     vector<PurchasedServer *> left_servers;
 
 // 第一步迁移。
-{   vector<VmIdInfo *> migrating_vms;
+{   
+    vector<VmIdInfo *> migrating_vms;
     vector<PurchasedServer *> target_servers;
     for (auto server : purchase_servers) {
         if (NeedMigration(server)) {
@@ -381,12 +382,6 @@ vector<MigrationInfo> Migration()
             for (auto &vm_id : server->B_vm_id) migrating_vms.emplace_back(&vm_id2info[vm_id]);
         }
         if (vm_nums(server) > 0 && !NearlyFull(server)) target_servers.emplace_back(server);
-        // else
-        //     target_servers.emplace_back(server);
-
-        // else if ((server->A_remain_core_num + server->B_remain_core_num) / 2.0 / server->total_core_num < 0.8 ||
-        //            (server->A_remain_memory_size + server->B_remain_memory_size) / 2.0 / server->total_memory_size < 0.8)
-        //     target_servers.emplace_back(server);
     }
    
 
@@ -398,8 +393,6 @@ vector<MigrationInfo> Migration()
         }else{
             return false;
         }
-        // return vm_nums(server1) < vm_nums(server2); //不同服务器间，其虚拟机数量少的优先迁移。
-        // return (vm1->cpu_cores * k1 + vm1->memory_size * k2) * (vm1->node == 'C' ? 2 : 1) > (vm2->cpu_cores * k1 + vm2->memory_size * k2) * (vm2->node == 'C' ? 2 : 1);
     });
     
     
@@ -448,12 +441,6 @@ vector<MigrationInfo> Migration()
                         which_node = 'B';
                         }
                     }
-                    // double temp = fabs(_cpu_remain_rate - _memory_remain_rate);
-                    // if (temp < min_rate) {
-                    //     min_rate = temp;
-                    //     best_server = target_server;
-                    //     which_node = 'B';
-                    // }
                 }
             }
             if (which_node != '!') { //开始迁移。
