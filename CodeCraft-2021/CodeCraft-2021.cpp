@@ -344,16 +344,16 @@ vector<int> print_req_num(vector<RequestData> &intraday_requests)
         if (operation == "add")
         {
             string vm_name = req.vm_name;
-            cpu_add += (vm_name2info[vm_name].cpu_cores) * (vm_name2info[vm_name].deployment_way +1);
-            memory_add += (vm_name2info[vm_name].memory_size) * (vm_name2info[vm_name].deployment_way+1);
+            cpu_add += (vm_name2info[vm_name].cpu_cores) * (vm_name2info[vm_name].deployment_way);
+            memory_add += (vm_name2info[vm_name].memory_size) * (vm_name2info[vm_name].deployment_way);
         }
         else if (operation == "del")
         {
 
             int vm_id = req.vm_id;
             string vm_name = vm_id2info[vm_id].vm_name;
-            cpu_del += (vm_name2info[vm_name].cpu_cores) * (vm_name2info[vm_name].deployment_way+1);
-            memory_del += (vm_name2info[vm_name].memory_size) * (vm_name2info[vm_name].deployment_way+1);
+            cpu_del += (vm_name2info[vm_name].cpu_cores) * (vm_name2info[vm_name].deployment_way);
+            memory_del += (vm_name2info[vm_name].memory_size) * (vm_name2info[vm_name].deployment_way);
         }
     }
     return {cpu_add, memory_add, cpu_del, memory_del};
