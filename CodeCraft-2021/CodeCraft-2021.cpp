@@ -1058,6 +1058,8 @@ string AddVm(AddData &add_data)
         //     }else if(vm_nums(a) == vm_nums(b)){
         //         double surplus_ratio_a = (a->A_remain_core_num + a->A_remain_memory_size + a->B_remain_core_num + a->B_remain_memory_size) * 1.0 / (a->total_core_num + a->total_memory_size) ;
         //         double surplus_ratio_b = (b->A_remain_core_num + b->A_remain_memory_size + b->B_remain_core_num + b->B_remain_memory_size) * 1.0 / (b->total_core_num + b->total_memory_size) ;
+        //         // double surplus_ratio_a = ( r1 * a->A_remain_core_num +r2* a->A_remain_memory_size +r1* a->B_remain_core_num + r2*a->B_remain_memory_size) * 1.0 / (r1*a->total_core_num +r2* a->total_memory_size) ;
+        //         // double surplus_ratio_b = (r1*b->A_remain_core_num +r2* b->A_remain_memory_size +r1*b->B_remain_core_num + r2*b->B_remain_memory_size) * 1.0 / (r1*b->total_core_num +r2* b->total_memory_size) ;
         //         return surplus_ratio_a < surplus_ratio_b;
         //     }else{
         //         return false;
@@ -1148,6 +1150,8 @@ string AddVm(AddData &add_data)
                 }
             }
         }
+
+        
         if (min_remain_rate != 2.0)
         {
             //代表从关机的服务器中选取的
@@ -1188,6 +1192,18 @@ string AddVm(AddData &add_data)
                 vm_id2info[add_data.vm_id] = vm_id_info;
             }
         }
+
+        // sort(can_deploy_servers.begin(), can_deploy_servers.end(), [](PurchasedServer* a,PurchasedServer* b){
+        //     if( vm_nums(a) > vm_nums(b) ){
+        //         return true;
+        //     }else if(vm_nums(a) == vm_nums(b)){
+        //         double surplus_ratio_a = (a->A_remain_core_num + a->A_remain_memory_size + a->B_remain_core_num + a->B_remain_memory_size) * 1.0 / (a->total_core_num + a->total_memory_size) ;
+        //         double surplus_ratio_b = (b->A_remain_core_num + b->A_remain_memory_size + b->B_remain_core_num + b->B_remain_memory_size) * 1.0 / (b->total_core_num + b->total_memory_size) ;
+        //         return surplus_ratio_a < surplus_ratio_b;
+        //     }else{
+        //         return false;
+        //     }
+        // });
 
         double min_dense_cost = 99999999999999;
         SoldServer *flag_sold_server;
