@@ -346,7 +346,7 @@ vector<int> print_req_num(vector<RequestData> &intraday_requests)
         if (operation == "add")
         {
             string vm_name = req.vm_name;
-            cpu_add += (vm_name2info[vm_name].cpu_cores) * (vm_name2info[vm_name].deployment_way +1);
+            cpu_add += (vm_name2info[vm_name].cpu_cores) * (vm_name2info[vm_name].deployment_way +1 );
             memory_add += (vm_name2info[vm_name].memory_size) * (vm_name2info[vm_name].deployment_way+1);
         }
         else if (operation == "del")
@@ -685,6 +685,9 @@ PurchasedServer *SearchSuitPurchasedServer(int deployed_way, int cpu_cores, int 
     // temp_purchase_servers.insert(purchase_servers.begin(),purchase_servers.end());
 
     bool use_Balance = true;
+
+    vector<PurchasedServer*> SuitServers;
+
     if (deployed_way == 1)
     {
         if (from_open)
@@ -697,6 +700,23 @@ PurchasedServer *SearchSuitPurchasedServer(int deployed_way, int cpu_cores, int 
                 // if(cpu_cores+memory_size > max(purchase_server->A_remain_core_num,purchase_server->B_remain_core_num) + max(purchase_server->A_remain_memory_size,purchase_server->B_remain_memory_size)){
                 //     break;
                 // }
+                if(SuitServers.size() == 3){
+                    // cout<<"wedweedweweqwe"<<endl;
+                    double min_rate = DBL_MAX;
+                    for(auto& server : SuitServers){
+                        double _cpu_remain_rate = min(1.0 * (server->A_remain_core_num - cpu_cores) / server->total_core_num, 1.0 * (server->B_remain_core_num - cpu_cores) / server->total_core_num);
+                        double _memory_remain_rate = min(1.0 * (server->A_remain_memory_size - memory_size) / server->total_memory_size, 1.0 * (server->B_remain_memory_size - memory_size) / server->total_memory_size);
+                        double _rate = _cpu_remain_rate + _memory_remain_rate;
+                        if(_rate < min_rate){
+                            flag_server = server;
+                            min_rate = _rate;
+                        }
+                    }
+                    // cout<<"CutCut"<<endl;
+                    return flag_server;
+                   
+
+                }
                 if (purchase_server->A_remain_core_num >= cpu_cores && purchase_server->A_remain_memory_size >= memory_size && purchase_server->B_remain_core_num >= cpu_cores && purchase_server->B_remain_memory_size >= memory_size && (purchase_server->A_vm_id.size() + purchase_server->B_vm_id.size() + purchase_server->AB_vm_id.size() != 0))
                 {
                     // double _cpu_remain_rate = (1.0*(purchase_server->A_remain_core_num - cpu_cores)/purchase_server->total_core_num + 1.0*(purchase_server->B_remain_core_num - cpu_cores)/ purchase_server->total_core_num) / 2;
@@ -730,15 +750,17 @@ PurchasedServer *SearchSuitPurchasedServer(int deployed_way, int cpu_cores, int 
                         }
                     }
 
-                    if (_cpu_remain_rate < 0.10 && _memory_remain_rate < 0.10)
-                    {
-                        use_Balance = false;
-                    }
-
                     if (2 * max(_cpu_remain_rate, _memory_remain_rate) < min_remain_rate)
                     {
                         min_remain_rate = _cpu_remain_rate + _memory_remain_rate;
                         flag_server = purchase_server;
+                    }
+                    if (_cpu_remain_rate < 0.10 && _memory_remain_rate < 0.10)
+                    {
+                        if(_cpu_remain_rate < 0.05 && _memory_remain_rate < 0.05){
+                            SuitServers.emplace_back(flag_server);
+                        }
+                        use_Balance = false;
                     }
                 }
             }
@@ -752,8 +774,10 @@ PurchasedServer *SearchSuitPurchasedServer(int deployed_way, int cpu_cores, int 
         else
         {
             double min_dense_cost = DBL_MAX;
+            
             for (auto &purchase_server : purchase_servers)
             {
+
                 // if(cpu_cores+memory_size > max(purchase_server->A_remain_core_num,purchase_server->B_remain_core_num) + max(purchase_server->A_remain_memory_size,purchase_server->B_remain_memory_size)){
                 //     break;
                 // }
