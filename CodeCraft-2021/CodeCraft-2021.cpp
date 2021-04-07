@@ -394,10 +394,7 @@ vector<MigrationInfo> Migration()
         }
     });
     
-    sort(target_servers.begin(),target_servers.end(),[](PurchasedServer* server1,PurchasedServer* server2){
-        return remain_rate(server1,'C') < remain_rate(server2,'C');
-    });
-
+    
     unordered_set<int> success_vm;
     for (auto &vm_info : migrating_vms) {
         if (vm_info->node != 'C') {
@@ -490,6 +487,7 @@ vector<MigrationInfo> Migration()
     // 第二步迁移。
 {   vector<PurchasedServer *> merging_servers; //要合并的服务器。
     for (auto server : purchase_servers) {
+        if(migration_infos.size()>=max_migration_num) cout<<"asdasdasdsadasd"<<endl;
         double rate_a = remain_rate(server, 'A'), rate_b = remain_rate(server, 'B');
         if ((rate_a < _near_full_threshold && rate_b > 1 - _near_full_threshold) || (rate_b < _near_full_threshold && rate_a > 1 - _near_full_threshold)) merging_servers.emplace_back(server);
     }
