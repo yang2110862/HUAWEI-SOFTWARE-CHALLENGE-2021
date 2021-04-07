@@ -11,7 +11,7 @@
 #include <cmath>
 #include <climits>
 #include <cfloat>
-// #include <omp.h>
+#include <omp.h>
 
 using namespace std;
 
