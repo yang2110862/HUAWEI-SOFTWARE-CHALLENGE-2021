@@ -853,8 +853,14 @@ PurchasedServer *SearchSuitPurchasedServer(int deployed_way, int cpu_cores, int 
             {
                 if (purchase_server->A_remain_core_num >= cpu_cores && purchase_server->A_remain_memory_size >= memory_size && purchase_server->B_remain_core_num >= cpu_cores && purchase_server->B_remain_memory_size >= memory_size && (purchase_server->A_vm_id.size() + purchase_server->B_vm_id.size() + purchase_server->AB_vm_id.size() != 0))
                 {
-                    double _cpu_remain_rate = min(1.0 * (purchase_server->A_remain_core_num - cpu_cores) / purchase_server->total_core_num, 1.0 * (purchase_server->B_remain_core_num - cpu_cores) / purchase_server->total_core_num);
-                    double _memory_remain_rate = min(1.0 * (purchase_server->A_remain_memory_size - memory_size) / purchase_server->total_memory_size, 1.0 * (purchase_server->B_remain_memory_size - memory_size) / purchase_server->total_memory_size);
+                    double _cpu_remain_rate = max(1.0 * (purchase_server->A_remain_core_num - cpu_cores) / purchase_server->total_core_num, 1.0 * (purchase_server->B_remain_core_num - cpu_cores) / purchase_server->total_core_num);
+                    double _memory_remain_rate = max(1.0 * (purchase_server->A_remain_memory_size - memory_size) / purchase_server->total_memory_size, 1.0 * (purchase_server->B_remain_memory_size - memory_size) / purchase_server->total_memory_size);
+                    // if(_cpu_remain_rate == 0 && _memory_remain_rate == 0) {
+                    //     // cout<<"asdasdasda"<<endl;
+                    //     use_Balance = false;
+                    //     flag_server = purchase_server;
+                    //     break;
+                    // }
 
                     if (use_Balance)
                     {
