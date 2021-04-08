@@ -1038,9 +1038,6 @@ PurchasedServer *BuyNewServer(int deployment_way, int cpu_cores, int memory_size
                     // double use_rate = max(1.0 *(cpu_cores) / sold_server.cpu_cores , 1.0 *(memory_size) / sold_server.memory_size) ;
                     double _cpu_rate = 1.0 * cpu_cores / sold_server.cpu_cores;
                     double _memory_rate = 1.0 * (memory_size) / sold_server.memory_size;
-                    
-                    
-
                     // double use_rate = 1.0 * (_cpu_rate + _memory_rate) / 2;
                     double use_rate = _cpu_rate * r1 + _memory_rate * r2;
                     // dense_cost = 1.0 * sold_server.hardware_cost * use_rate;
@@ -1076,59 +1073,6 @@ PurchasedServer *BuyNewServer(int deployment_way, int cpu_cores, int memory_size
     return purchase_server;
 }
 
-// PurchasedServer *BuyNewServer_2(int deployment_way, int cpu_cores, int memory_size)
-// {
-//     /**
-//      * @description: 购买新服务器并加入已购序列中
-//      * @param {*}
-//      * @return {刚刚购买的服务器PurchasedServer*}
-//      */
-//     SoldServer *flag_sold_server = 0;
-//     double max_dense_cost = -1;
-//     double min_dense_cost = 99999999999999;
-//         for (auto &sold_server : sold_servers)
-//         {
-//             if (sold_server.cpu_cores >= cpu_cores && sold_server.memory_size >= memory_size)
-//             {
-//                 double dense_cost;
-//                 if (isDenseBuy == 1){
-//                     //  dense_cost =1.0 * min(2.2 * cpu_cores / allResourceOfNReqs[2] , 1.0 * memory_size / allResourceOfNReqs[3]) / (sold_server.hardware_cost + (total_days_num - now_day) * sold_server.daily_cost ) * 1000000;
-//                     //  dense_cost =1.0 * min(1.0 * cpu_cores / allResourceOfNReqs[2] , 1.0 * memory_size / allResourceOfNReqs[3]) / (sold_server.hardware_cost + (total_days_num - now_day) * sold_server.daily_cost ) * 1000000;
-//                     dense_cost = 1.0 * (2.2*sold_server.cpu_cores + sold_server.memory_size) / (sold_server.hardware_cost + (total_days_num - now_day) * sold_server.daily_cost );
-                     
-//                 }else{
-//                    dense_cost = sold_server.hardware_cost + sold_server.daily_cost * (total_days_num - now_day);
-//                 }
-//                 if(isDenseBuy == 1){
-//                     if (dense_cost > max_dense_cost)
-//                     {
-//                         max_dense_cost = dense_cost;
-//                         flag_sold_server = &sold_server;
-//                     }
-//                 }else{
-//                     if (dense_cost < min_dense_cost)
-//                     {
-//                         min_dense_cost = dense_cost;
-//                         flag_sold_server = &sold_server;
-//                     }
-//                 }
-//             }
-//         }
-
-//     total_server_cost += flag_sold_server->hardware_cost;
-//     PurchasedServer *purchase_server = new PurchasedServer;
-//     purchase_server->total_core_num = flag_sold_server->cpu_cores;
-//     purchase_server->total_memory_size = flag_sold_server->memory_size;
-//     purchase_server->A_remain_core_num = flag_sold_server->cpu_cores;
-//     purchase_server->A_remain_memory_size = flag_sold_server->memory_size;
-//     purchase_server->B_remain_core_num = flag_sold_server->cpu_cores;
-//     purchase_server->daily_cost = flag_sold_server->daily_cost;
-//     purchase_server->B_remain_memory_size = flag_sold_server->memory_size;
-//     purchase_server->server_name = flag_sold_server->server_name;
-//     purchase_servers.emplace_back(purchase_server);
-//     purchase_infos[flag_sold_server->server_name].emplace_back(purchase_server);
-//     return purchase_server;
-// }
 
 
 string AddVm(AddData &add_data)
