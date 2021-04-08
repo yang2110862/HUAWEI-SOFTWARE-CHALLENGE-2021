@@ -390,6 +390,7 @@ vector<MigrationInfo> Migration()
             return false;
         }
     });
+
     unordered_set<int> success_vm;
     for (auto &vm_info : migrating_vms) {
         if (vm_info->node != 'C') {
@@ -404,7 +405,6 @@ vector<MigrationInfo> Migration()
             for (auto &target_server : target_servers) { //找最合适的服务器。
                 if (!(target_server == original_server && vm_info->node == 'A')
                         && (target_server->A_remain_core_num >= cpu_cores && target_server->A_remain_memory_size >= memory_size)) {
-                    
                     double rate = r1 * (target_server->A_remain_core_num - cpu_cores) / target_server->total_core_num * target_server->daily_cost
                         + r2 * (target_server->A_remain_memory_size - memory_size) / target_server->total_memory_size * target_server->daily_cost;
                     #pragma omp flush(min_rate, best_server, which_node)
@@ -416,12 +416,6 @@ vector<MigrationInfo> Migration()
                             which_node = 'A';
                         }
                     }
-                    // double temp = fabs(_cpu_remain_rate - _memory_remain_rate);
-                    // if (temp < min_rate) {
-                    //     min_rate = temp;
-                    //     best_server = target_server;
-                    //     which_node = 'A';
-                    // }
                 }
                 if (!(target_server == original_server && vm_info->node == 'B')
                         && (target_server->B_remain_core_num >= cpu_cores && target_server->B_remain_memory_size >= memory_size)) {
@@ -454,6 +448,7 @@ vector<MigrationInfo> Migration()
                 if (target_server == original_server) continue;
                 if (target_server->A_remain_core_num >= cpu_cores && target_server->A_remain_memory_size >= memory_size
                         && target_server->B_remain_core_num >= cpu_cores && target_server->B_remain_memory_size >= memory_size) {
+                            
                     double rate = r1 * (target_server->A_remain_core_num - cpu_cores + target_server->B_remain_core_num - cpu_cores) / target_server->total_core_num / 2 * target_server->daily_cost
                         + r2 * (target_server->A_remain_memory_size - memory_size + target_server->B_remain_memory_size - memory_size) / target_server->total_memory_size / 2 * target_server->daily_cost;
                     if (rate < min_rate) {
@@ -1226,8 +1221,6 @@ string AddVm(AddData &add_data)
                 double _cpu_remain_rate = 1.0 * (purchase_server->A_remain_core_num - cpu_cores) / purchase_server->total_core_num;
                 double _memory_remain_rate = 1.0 * (purchase_server->A_remain_memory_size - memory_size) / purchase_server->total_memory_size;
 
-                
-
                 // if (2 * max(_cpu_remain_rate, _memory_remain_rate) < min_remain_rate)
                 if ( (_cpu_remain_rate+ _memory_remain_rate) < min_remain_rate)
                 {
@@ -1238,13 +1231,6 @@ string AddVm(AddData &add_data)
 
                 _cpu_remain_rate = 1.0 * (purchase_server->B_remain_core_num - cpu_cores) / purchase_server->total_core_num;
                 _memory_remain_rate = 1.0 * (purchase_server->B_remain_memory_size - memory_size) / purchase_server->total_memory_size;
-                // _cpu_remain_rate = (1.0*(purchase_server->A_remain_core_num )/purchase_server->total_core_num + 1.0*(purchase_server->B_remain_core_num- cpu_cores) / purchase_server->total_core_num) / 2;
-                // _memory_remain_rate = (1.0*(purchase_server->A_remain_memory_size)/purchase_server->total_memory_size + 1.0*(purchase_server->B_remain_memory_size- memory_size) / purchase_server->total_memory_size) / 2;
-                // if(_cpu_remain_rate + _memory_remain_rate < min_remain_rate) {
-                //     min_remain_rate = _cpu_remain_rate + _memory_remain_rate;
-                //     flag_server = purchase_server;
-                //     which_node = 'B';
-                // }
                 // if (2 * max(_cpu_remain_rate, _memory_remain_rate) < min_remain_rate)
                 if ( (_cpu_remain_rate+ _memory_remain_rate) < min_remain_rate)
                 {
@@ -1257,13 +1243,6 @@ string AddVm(AddData &add_data)
             {
                 double _cpu_remain_rate = 1.0 * (purchase_server->A_remain_core_num - cpu_cores) / purchase_server->total_core_num;
                 double _memory_remain_rate = 1.0 * (purchase_server->A_remain_memory_size - memory_size) / purchase_server->total_memory_size;
-                // double _cpu_remain_rate = (1.0*(purchase_server->A_remain_core_num - cpu_cores)/purchase_server->total_core_num + 1.0*(purchase_server->B_remain_core_num) / purchase_server->total_core_num) / 2;
-                // double _memory_remain_rate = (1.0*(purchase_server->A_remain_memory_size - memory_size)/purchase_server->total_memory_size + 1.0*(purchase_server->B_remain_memory_size) / purchase_server->total_memory_size) / 2;
-                // if(_cpu_remain_rate + _memory_remain_rate < min_remain_rate) {
-                //     min_remain_rate = _cpu_remain_rate + _memory_remain_rate;
-                //     flag_server = purchase_server;
-                //     which_node = 'A';
-                // }
                 // if (2 * max(_cpu_remain_rate, _memory_remain_rate) < min_remain_rate)
                 if ( (_cpu_remain_rate+ _memory_remain_rate) < min_remain_rate)
                 {
@@ -1276,15 +1255,6 @@ string AddVm(AddData &add_data)
             {
                 double _cpu_remain_rate = 1.0 * (purchase_server->B_remain_core_num - cpu_cores) / purchase_server->total_core_num;
                 double _memory_remain_rate = 1.0 * (purchase_server->B_remain_memory_size - memory_size) / purchase_server->total_memory_size;
-                // double _cpu_remain_rate = (1.0*(purchase_server->A_remain_core_num )/purchase_server->total_core_num + 1.0*(purchase_server->B_remain_core_num- cpu_cores) / purchase_server->total_core_num) / 2;
-                // double _memory_remain_rate = (1.0*(purchase_server->A_remain_memory_size)/purchase_server->total_memory_size + 1.0*(purchase_server->B_remain_memory_size- memory_size) / purchase_server->total_memory_size) / 2;
-                //  double _cpu_remain_rate = max(1.0*(purchase_server->A_remain_core_num )/purchase_server->total_core_num , 1.0*(purchase_server->B_remain_core_num - cpu_cores)/ purchase_server->total_core_num) ;
-                // double _memory_remain_rate =  max(1.0*(purchase_server->A_remain_memory_size )/purchase_server->total_memory_size , 1.0*(purchase_server->B_remain_memory_size - memory_size) / purchase_server->total_memory_size) ;
-                // if(_cpu_remain_rate + _memory_remain_rate < min_remain_rate) {
-                //     min_remain_rate = _cpu_remain_rate + _memory_remain_rate;
-                //     flag_server = purchase_server;
-                //     which_node = 'B';
-                // }
                 // if (2 * max(_cpu_remain_rate, _memory_remain_rate) < min_remain_rate)
                 if ( (_cpu_remain_rate+ _memory_remain_rate) < min_remain_rate)
                 {
