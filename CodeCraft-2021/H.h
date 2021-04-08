@@ -203,7 +203,14 @@ public:
         } else {
             return (a.cpu_cores + a.memory_size) > (b.cpu_cores + b.memory_size);
         }*/
-        return (a.cpu_cores + a.memory_size) * (a.deployment_way + 1) > (b.cpu_cores + b.memory_size) * (b.deployment_way + 1);
+        // if ((a.cpu_cores + a.memory_size) * (a.deployment_way==1?1 : 1) > (b.cpu_cores + b.memory_size) * (b.deployment_way == 1?1:  1)) return true;
+        // else if((a.cpu_cores + a.memory_size) * (a.deployment_way==1?1 : 1)  ==  (b.cpu_cores + b.memory_size) * (b.deployment_way == 1?1:  1)){
+        //     return fabs(log(1.0 * a.cpu_cores / a.memory_size)) < fabs(log(1.0 * b.cpu_cores / b.memory_size));
+        // }else{
+        //     return false;
+        // }
+        return (a.cpu_cores + a.memory_size) * (a.deployment_way==1?1 : 1) > (b.cpu_cores + b.memory_size) * (b.deployment_way == 1?1:  1);
+        // return (a.cpu_cores + a.memory_size) * (a.deployment_way + 1) > (b.cpu_cores + b.memory_size) * (b.deployment_way + 1);
     }
 
     static bool CanDeployDouble (PurchasedServer* a, PurchasedServer* b) {
