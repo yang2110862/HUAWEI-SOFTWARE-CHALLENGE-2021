@@ -847,39 +847,42 @@ PurchasedServer *SearchSuitPurchasedServer(int deployed_way, int cpu_cores, int 
         if (from_open)
         {
             double min_remain_rate = 2.0;
-            double min_balance_rate = 1.25;
+            double min_balance_rate =2.5;
 
             for (auto &purchase_server : purchase_servers)
             {
-                // if(cpu_cores+memory_size > max(purchase_server->A_remain_core_num,purchase_server->B_remain_core_num) + max(purchase_server->A_remain_memory_size,purchase_server->B_remain_memory_size)){
-                //     break;
-                // }
                 if (purchase_server->A_remain_core_num >= cpu_cores && purchase_server->A_remain_memory_size >= memory_size && purchase_server->B_remain_core_num >= cpu_cores && purchase_server->B_remain_memory_size >= memory_size && (purchase_server->A_vm_id.size() + purchase_server->B_vm_id.size() + purchase_server->AB_vm_id.size() != 0))
                 {
-                    // double _cpu_remain_rate = (1.0*(purchase_server->A_remain_core_num - cpu_cores)/purchase_server->total_core_num + 1.0*(purchase_server->B_remain_core_num - cpu_cores)/ purchase_server->total_core_num) / 2;
-                    // double _memory_remain_rate = (1.0*(purchase_server->A_remain_memory_size - memory_size)/purchase_server->total_memory_size + 1.0*(purchase_server->B_remain_memory_size - memory_size) / purchase_server->total_memory_size) / 2;
-                    // if(_cpu_remain_rate + _memory_remain_rate < min_remain_rate) {
-                    //     min_remain_rate = _cpu_remain_rate + _memory_remain_rate;
-                    //     flag_server = purchase_server;
-                    // }
                     double _cpu_remain_rate = min(1.0 * (purchase_server->A_remain_core_num - cpu_cores) / purchase_server->total_core_num, 1.0 * (purchase_server->B_remain_core_num - cpu_cores) / purchase_server->total_core_num);
                     double _memory_remain_rate = min(1.0 * (purchase_server->A_remain_memory_size - memory_size) / purchase_server->total_memory_size, 1.0 * (purchase_server->B_remain_memory_size - memory_size) / purchase_server->total_memory_size);
-                    // if((_cpu_remain_rate + _memory_remain_rate)  < min_remain_rate) {
-                    //     min_remain_rate = _cpu_remain_rate + _memory_remain_rate;
-                    //     flag_server = purchase_server;
-                    // }
 
                     if (use_Balance)
                     {
                         double _cpu_remain = purchase_server->A_remain_core_num - cpu_cores + purchase_server->B_remain_core_num - cpu_cores;
                         double _memory_remain = purchase_server->A_remain_memory_size - memory_size + purchase_server->B_remain_memory_size - memory_size;
+                        double _cpu_remain_A = purchase_server->A_remain_core_num - cpu_cores;
+                        double _cpu_remain_B = purchase_server->B_remain_core_num - cpu_cores;
+                        double _memory_remain_A = purchase_server->A_remain_memory_size - memory_size;
+                        double _memory_remain_B = purchase_server->B_remain_memory_size - memory_size;
 
-                        if (_memory_remain == 0)
+
+
+                        // if (_memory_remain == 0)
+                        // {
+                        //     //防止除0
+                        //     _memory_remain = 0.0000001;
+                        // }
+                        if (_memory_remain_A == 0)
                         {
                             //防止除0
-                            _memory_remain = 0.0000001;
+                            _memory_remain_A = 0.0000001;
                         }
-                        double balance_rate = fabs(log(1.0 * _cpu_remain / _memory_remain));
+                        if (_memory_remain_B == 0)
+                        {
+                            //防止除0
+                            _memory_remain_B = 0.0000001;
+                        }
+                        double balance_rate = (fabs(log(1.0 * _cpu_remain_A / _memory_remain_A)) + fabs(log(1.0 * _cpu_remain_B / _memory_remain_B))) ;
                         if (balance_rate < min_balance_rate)
                         {
                             min_balance_rate = balance_rate;
@@ -917,17 +920,13 @@ PurchasedServer *SearchSuitPurchasedServer(int deployed_way, int cpu_cores, int 
                 if (purchase_server->A_remain_core_num >= cpu_cores && purchase_server->A_remain_memory_size >= memory_size && purchase_server->B_remain_core_num >= cpu_cores && purchase_server->B_remain_memory_size >= memory_size && (purchase_server->A_vm_id.size() + purchase_server->B_vm_id.size() + purchase_server->AB_vm_id.size() == 0))
                 {
                     double dense_cost;
-                    if (isDenseBuy == 0)
+                    if (true)
                     {
                         double _cpu_rate = 1.0 * cpu_cores / purchase_server->A_remain_core_num;
                         double _memory_rate = 1.0 * (memory_size) / purchase_server->A_remain_memory_size;
                         double use_rate = 1.0 * (_cpu_rate + _memory_rate) / 2;
                         // double use_rate = min (_cpu_rate , _memory_rate) ;
                         dense_cost = 1.0 * (server_name2info[purchase_server->server_name].daily_cost) * use_rate;
-                    }
-                    else
-                    {
-                        dense_cost = 1.0 * (server_name2info[purchase_server->server_name].daily_cost);
                     }
                     if (dense_cost < min_dense_cost)
                     {
@@ -1052,8 +1051,8 @@ void BuyAndDeployTwoVM_2(string vm_1_name, string vm_2_name, int vmID_1, int vmI
     purchase_server->A_vm_id.insert(vmID_1);
     purchase_server->B_vm_id.insert(vmID_2);
 
-    vm_id2info.erase(vmID_1);
-    vm_id2info.erase(vmID_2);
+    // vm_id2info.erase(vmID_1);
+    // vm_id2info.erase(vmID_2);
     vmIDs.erase(vmID_1);
     vmIDs.erase(vmID_2);
 
@@ -1147,6 +1146,7 @@ string AddVm(AddData &add_data)
     Evaluate evaluate; //创建一个评价类的实例
     int deployment_way = add_data.deployment_way;
     vmIDs.insert(add_data.vm_id);
+
     if (deployment_way == 1)
     { //双节点部署
         int cpu_cores = add_data.cpu_cores;
@@ -1390,7 +1390,7 @@ string AddVm(AddData &add_data)
             if (sold_server.cpu_cores >= cpu_cores && sold_server.memory_size >= memory_size)
             {
                 double dense_cost;
-                if (isDenseBuy == 1)
+                if (true)
                 {
                     double _cpu_rate = 1.0 * cpu_cores / sold_server.cpu_cores;
                     double _memory_rate = 1.0 * (memory_size) / sold_server.memory_size;
@@ -1762,7 +1762,7 @@ void revokeBuy(int vmID)
     {
         purchase_infos.erase(server_name);
     }
-    vm_id2info.erase(vmID);
+    // vm_id2info.erase(vmID);
     vmIDs.erase(vmID);
 }
 
@@ -1772,7 +1772,9 @@ void revokeBuy(int vmID)
 void SolveProblem()
 {
     Cmp cmp;
+
     sort(sold_servers.begin(), sold_servers.end(), cmp.SoldServers);
+
     for (int i = 0; i < total_days_num; ++i)
     {
         now_day = i + 1;
@@ -1783,6 +1785,7 @@ void SolveProblem()
 #endif
 
         from_off_2_start.erase(from_off_2_start.begin(), from_off_2_start.end());
+
         // vector<MigrationInfo> migration_infos;
         vector<MigrationInfo> migration_infos = Migration();
 
@@ -1796,6 +1799,7 @@ void SolveProblem()
         intraday_requests = request_datas.front();
 
         request_datas.pop();
+
         int request_num = intraday_requests.size();
         vector<int> vm_ids;
         for (int j = 0; j < request_num; ++j)
@@ -1808,7 +1812,6 @@ void SolveProblem()
 
         //获取当天请求所需要的峰值时刻的cpu和memory
         vector<long long> max_resource_of_today_reqs = GetMaxResourceOfToday(intraday_requests);
-        
 
         double _rate = 1.0;
         if (allResouceAfterMigration[0] * _rate >= max_resource_of_today_reqs[0] && allResouceAfterMigration[1] * _rate >= max_resource_of_today_reqs[1])
@@ -1821,12 +1824,10 @@ void SolveProblem()
         }
 
         vector<int> add_del_count = print_req_num(intraday_requests);
-        
-    
+
 
         bool isContinueBuy =( allResouceAfterMigration[0] >  add_del_count[0] && allResouceAfterMigration[1] > add_del_count[1]) && (1.1 *( add_del_count[2] + add_del_count[3]) < add_del_count[0]+ add_del_count[1]);
         // bool isContinueBuy =( allResouceAfterMigration[0] + allResouceAfterMigration[1] > ( add_del_count[0]  + add_del_count[1])) && (1.1 *( add_del_count[2] + add_del_count[3]) < add_del_count[0]+ add_del_count[1]);
-        if(isContinueBuy) count_add_more_del++;
         // cout<<allResouceAfterMigration[0] << "  "<<add_del_count[0]<<"  "<<allResouceAfterMigration[1]<<"  "<<add_del_count[1]<< endl;
 
         // 一般的处理
@@ -1948,7 +1949,7 @@ void SolveProblem()
                     now_req_num++;
                     int vm_id = intraday_requests[j].vm_id;
                     DeleteVm(vm_id);
-                    vm_id2info.erase(vm_id);
+                    // vm_id2info.erase(vm_id);
                 }
             }
         }
@@ -2118,7 +2119,7 @@ void SolveProblem()
                     int vm_id = intraday_requests[j].vm_id;
                     DeleteVm(vm_id);
                     if(vm_id2info.count(vm_id)!=0){
-                        vm_id2info.erase(vm_id);
+                        // vm_id2info.erase(vm_id);
                     }
                     
                 }
@@ -2174,6 +2175,7 @@ int main(int argc, char *argv[])
 #ifdef PRINTINFO
     _start = clock();
 #endif
+
     ParseInput();
     ans = sta.linear_regression(sold_servers);
     // cout<<ans[0]<<" " <<ans[1]<<endl;
