@@ -344,16 +344,16 @@ vector<int> print_req_num(vector<RequestData> &intraday_requests)
         if (operation == "add")
         {
             string vm_name = req.vm_name;
-            cpu_add += (vm_name2info[vm_name].cpu_cores) * (vm_name2info[vm_name].deployment_way);
-            memory_add += (vm_name2info[vm_name].memory_size) * (vm_name2info[vm_name].deployment_way);
+            cpu_add += (vm_name2info[vm_name].cpu_cores) * (vm_name2info[vm_name].deployment_way +1);
+            memory_add += (vm_name2info[vm_name].memory_size) * (vm_name2info[vm_name].deployment_way+1);
         }
         else if (operation == "del")
         {
 
             int vm_id = req.vm_id;
             string vm_name = vm_id2info[vm_id].vm_name;
-            cpu_del += (vm_name2info[vm_name].cpu_cores) * (vm_name2info[vm_name].deployment_way);
-            memory_del += (vm_name2info[vm_name].memory_size) * (vm_name2info[vm_name].deployment_way);
+            cpu_del += (vm_name2info[vm_name].cpu_cores) * (vm_name2info[vm_name].deployment_way+1);
+            memory_del += (vm_name2info[vm_name].memory_size) * (vm_name2info[vm_name].deployment_way+1);
         }
     }
     return {cpu_add, memory_add, cpu_del, memory_del};
@@ -1523,8 +1523,10 @@ vector<int> GetAllResourceOfOwnServers(bool isRemained = false)
     {
         for (auto &purchase_server : purchase_servers)
         {
-            _total_cpu += purchase_server->A_remain_core_num + purchase_server->B_remain_core_num;
+            _total_cpu +=  purchase_server->A_remain_core_num + purchase_server->B_remain_core_num;
             _total_memory += purchase_server->A_remain_memory_size + purchase_server->B_remain_memory_size;
+            // _total_cpu +=  max(purchase_server->A_remain_core_num , purchase_server->B_remain_core_num);
+            // _total_memory += max(purchase_server->A_remain_memory_size , purchase_server->B_remain_memory_size);
         }
     }
     return {_total_cpu, _total_memory};
@@ -1802,17 +1804,14 @@ void SolveProblem()
         }
 
         vector<int> add_del_count = print_req_num(intraday_requests);
-        // cout<<add_del_count[0]<<"  "<<add_del_count[1]<<"  "<<add_del_count[2]<<"  "<<add_del_count[3]<<"  "<<endl;
-        // if (add_del_count[0] + add_del_count[1] > 1.2 * (add_del_count[2] + add_del_count[3]))
-        // {
-        //     count_add_more_del++;
-        // }
-        // if(add_del_count[0] > add_del_count[2]&&add_del_count[1]> add_del_count[3]){
-        //     count_add_more_del++;
-        // }
+        
+        bool isContinueBuy =( allResouceAfterMigration[0] >  add_del_count[0] && allResouceAfterMigration[1] > add_del_count[1]) && (1.1 *( add_del_count[2] + add_del_count[3]) < add_del_count[0]+ add_del_count[1]);
+        // bool isContinueBuy =( allResouceAfterMigration[0] + allResouceAfterMigration[1] > ( add_del_count[0]  + add_del_count[1])) && (1.1 *( add_del_count[2] + add_del_count[3]) < add_del_count[0]+ add_del_count[1]);
+        if(isContinueBuy) count_add_more_del++;
+        // cout<<allResouceAfterMigration[0] << "  "<<add_del_count[0]<<"  "<<allResouceAfterMigration[1]<<"  "<<add_del_count[1]<< endl;
 
         // 一般的处理
-        if (add_del_count[0] + add_del_count[1] < 1.0 * (add_del_count[2] + add_del_count[3]))
+        if (!isContinueBuy)
         {
             for (int j = 0; j < request_num; ++j)
             {
@@ -2107,7 +2106,7 @@ void SolveProblem()
             }
         }
         Numbering(); //给购买了的服务器编号
-        // Print(vm_ids, migration_infos);
+        Print(vm_ids, migration_infos);
         fflush(stdout);
         purchase_infos.clear();
         from_off_2_start.clear();
