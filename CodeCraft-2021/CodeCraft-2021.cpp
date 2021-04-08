@@ -39,7 +39,6 @@ double _future_N_reqs_cpu_rate = 0;
 double _future_N_reqs_memory_rate = 0;
 double _migration_threshold = 0.03; //减小能增加迁移数量。
 double _near_full_threshold = 0.02; //增大能去掉更多的服务器，减少时间；同时迁移次数会有轻微减少，成本有轻微增加。
-double _nodes_diff_threshold = 0;
 
 double k1 = 0.695, k2 = 1 - k1; //CPU和memory的加权系数
 double r1 = 0.695, r2 = 1 - r1; //CPU和memory剩余率的加权系数
@@ -398,7 +397,8 @@ vector<MigrationInfo> Migration()
             int vm_id = vm_info->vm_id;
             int cpu_cores = vm_info->cpu_cores;
             int memory_size = vm_info->memory_size;
-            double min_rate = remain_rate(original_server, vm_info->node) * original_server->daily_cost;
+            double _original_rate = remain_rate(original_server, vm_info->node) * original_server->daily_cost;
+            double min_rate = _original_rate;
             PurchasedServer* best_server;
             char which_node = '!';
             for (auto &target_server : target_servers) { //找最合适的服务器。
@@ -427,7 +427,7 @@ vector<MigrationInfo> Migration()
                     
                 }
             }
-            if (which_node != '!') { //开始迁移。
+            if (which_node != '!' && min_rate<0.5  *_original_rate) { //开始迁移。
                 migrate_to(vm_info, best_server, which_node, migration_infos);
                 if (migration_infos.size() == max_migration_num) return migration_infos;
             }
@@ -436,7 +436,8 @@ vector<MigrationInfo> Migration()
             int vm_id = vm_info->vm_id;
             int cpu_cores = vm_info->cpu_cores;
             int memory_size = vm_info->memory_size;
-            double min_rate = (remain_rate(original_server, 'A') +  remain_rate(original_server, 'B')) / 2 * original_server->daily_cost;
+            double _original_rate = (remain_rate(original_server, 'A') +  remain_rate(original_server, 'B')) / 2 * original_server->daily_cost;
+            double min_rate = _original_rate;
             PurchasedServer* best_server = NULL;
             for (auto &target_server : target_servers) { //找最合适的服务器。
                 if (target_server == original_server) continue;
@@ -452,7 +453,7 @@ vector<MigrationInfo> Migration()
                    
                 }
             }
-            if (best_server != NULL) { //开始迁移。
+            if (best_server != NULL && min_rate<0.5*_original_rate) { //开始迁移。
                 migrate_to(vm_info, best_server, 'C', migration_infos);
                 if (migration_infos.size() == max_migration_num) return migration_infos;
             }
@@ -2106,7 +2107,7 @@ void SolveProblem()
             }
         }
         Numbering(); //给购买了的服务器编号
-        // Print(vm_ids, migration_infos);
+        Print(vm_ids, migration_infos);
         fflush(stdout);
         purchase_infos.clear();
         from_off_2_start.clear();
