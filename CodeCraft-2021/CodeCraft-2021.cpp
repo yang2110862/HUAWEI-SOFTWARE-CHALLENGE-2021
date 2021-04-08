@@ -853,8 +853,8 @@ PurchasedServer *SearchSuitPurchasedServer(int deployed_way, int cpu_cores, int 
             {
                 if (purchase_server->A_remain_core_num >= cpu_cores && purchase_server->A_remain_memory_size >= memory_size && purchase_server->B_remain_core_num >= cpu_cores && purchase_server->B_remain_memory_size >= memory_size && (purchase_server->A_vm_id.size() + purchase_server->B_vm_id.size() + purchase_server->AB_vm_id.size() != 0))
                 {
-                    double _cpu_remain_rate = max(1.0 * (purchase_server->A_remain_core_num - cpu_cores) / purchase_server->total_core_num, 1.0 * (purchase_server->B_remain_core_num - cpu_cores) / purchase_server->total_core_num);
-                    double _memory_remain_rate = max(1.0 * (purchase_server->A_remain_memory_size - memory_size) / purchase_server->total_memory_size, 1.0 * (purchase_server->B_remain_memory_size - memory_size) / purchase_server->total_memory_size);
+                    double _cpu_remain_rate = min(1.0 * (purchase_server->A_remain_core_num - cpu_cores) / purchase_server->total_core_num, 1.0 * (purchase_server->B_remain_core_num - cpu_cores) / purchase_server->total_core_num);
+                    double _memory_remain_rate = min(1.0 * (purchase_server->A_remain_memory_size - memory_size) / purchase_server->total_memory_size, 1.0 * (purchase_server->B_remain_memory_size - memory_size) / purchase_server->total_memory_size);
                     // if(_cpu_remain_rate == 0 && _memory_remain_rate == 0) {
                     //     // cout<<"asdasdasda"<<endl;
                     //     use_Balance = false;
@@ -870,25 +870,19 @@ PurchasedServer *SearchSuitPurchasedServer(int deployed_way, int cpu_cores, int 
                         double _cpu_remain_B = purchase_server->B_remain_core_num - cpu_cores;
                         double _memory_remain_A = purchase_server->A_remain_memory_size - memory_size;
                         double _memory_remain_B = purchase_server->B_remain_memory_size - memory_size;
+                        double balance_rate;
 
-
-
-                        // if (_memory_remain == 0)
-                        // {
-                        //     //防止除0
-                        //     _memory_remain = 0.0000001;
-                        // }
                         if (_memory_remain_A == 0)
                         {
                             //防止除0
-                            _memory_remain_A = 0.0000001;
-                        }
-                        if (_memory_remain_B == 0)
+                            balance_rate = 1000;
+                        }else if (_memory_remain_B == 0)
                         {
                             //防止除0
-                            _memory_remain_B = 0.0000001;
+                            balance_rate = 1000;
+                        }else{
+                            balance_rate = (fabs(log(1.0 * _cpu_remain_A / _memory_remain_A)) + fabs(log(1.0 * _cpu_remain_B / _memory_remain_B))) ;
                         }
-                        double balance_rate = (fabs(log(1.0 * _cpu_remain_A / _memory_remain_A)) + fabs(log(1.0 * _cpu_remain_B / _memory_remain_B))) ;
                         if (balance_rate < min_balance_rate)
                         {
                             min_balance_rate = balance_rate;
@@ -896,7 +890,7 @@ PurchasedServer *SearchSuitPurchasedServer(int deployed_way, int cpu_cores, int 
                         }
                     }
 
-                    if (_cpu_remain_rate < 0.10 && _memory_remain_rate < 0.10)
+                    if (_cpu_remain_rate < 0.1 && _memory_remain_rate < 0.1)
                     {
                         use_Balance = false;
                     }
@@ -1879,7 +1873,7 @@ void SolveProblem()
                             int memory_cores = last_add_data.memory_size + add_data.memory_size;
 
                             SoldServer *suitServer = 0;
-                            if (r2 * memory_cores > r1 * cpu_cores)
+                            if ( memory_cores >  cpu_cores)
                             {
                                 suitServer = SearchForContinueVM(1, cpu_cores, memory_cores);
                             }
@@ -1892,7 +1886,7 @@ void SolveProblem()
                                 int old_cost = server_name2info[last_buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[last_buy_server_name].daily_cost + server_name2info[buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[buy_server_name].daily_cost;
                                 // cout<<new_cost<<"   "<<old_cost<<endl;
                                 int num1 = vm_id2info.size();
-                                if (new_cost < old_cost)
+                                if (new_cost <  old_cost)
                                 {
                                     count_continue_buy++;
                                     revokeBuy(add_data.vm_id);
