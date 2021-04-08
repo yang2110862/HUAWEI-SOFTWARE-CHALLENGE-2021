@@ -1190,9 +1190,11 @@ string AddVm(AddData &add_data)
         int cpu_cores = add_data.cpu_cores;
         int memory_size = add_data.memory_size;
         vector<PurchasedServer *> can_deploy_servers;
+
+        //选出开机的合适的服务器
         for (auto &purchase_server : purchase_servers)
-        { //先筛选能用的服务器
-            if ((purchase_server->A_remain_core_num < cpu_cores || purchase_server->A_remain_memory_size < memory_size) && (purchase_server->B_remain_core_num < cpu_cores || purchase_server->B_remain_memory_size < memory_size))
+        { //先筛选能用的开机服务器
+            if ((purchase_server->A_remain_core_num < cpu_cores || purchase_server->A_remain_memory_size < memory_size) && (purchase_server->B_remain_core_num < cpu_cores || purchase_server->B_remain_memory_size < memory_size) || (vm_nums(purchase_server) == 0 ))
             {
                 continue;
             }
@@ -1209,6 +1211,7 @@ string AddVm(AddData &add_data)
                 }
             }
         }
+
         //sort(can_deploy_servers.begin(), can_deploy_servers.end(), cmp.CanDeploySingle);
         double min_remain_rate = 2.0;
         PurchasedServer *flag_server;
@@ -1294,9 +1297,9 @@ string AddVm(AddData &add_data)
                 }
             }
         }
+
         if (min_remain_rate != 2.0)
         {
-            //代表从关机的服务器中选取的
             if (flag_server->A_vm_id.size() + flag_server->B_vm_id.size() + flag_server->AB_vm_id.size() == 0)
             {
                 from_off_2_start.insert(flag_server->server_id);
@@ -1333,7 +1336,76 @@ string AddVm(AddData &add_data)
                 vm_id_info.vm_id = add_data.vm_id;
                 vm_id2info[add_data.vm_id] = vm_id_info;
             }
+        }else{
+            can_deploy_servers.erase(can_deploy_servers.begin(),can_deploy_servers.end());
+            for (auto &purchase_server : purchase_servers)
+            { //先筛选能用的服务器
+                if ((purchase_server->A_remain_core_num < cpu_cores || purchase_server->A_remain_memory_size < memory_size) && (purchase_server->B_remain_core_num < cpu_cores || purchase_server->B_remain_memory_size < memory_size) || (vm_nums(purchase_server) != 0 ))
+                {
+                    continue;
+                }
+                else
+                {
+                    can_deploy_servers.emplace_back(purchase_server);
+                    if (purchase_server->A_remain_core_num >= cpu_cores && purchase_server->A_remain_memory_size >= memory_size)
+                    {
+                        purchase_server->can_deploy_A = true;
+                    }
+                    if (purchase_server->B_remain_core_num >= cpu_cores && purchase_server->B_remain_memory_size >= memory_size)
+                    {
+                        purchase_server->can_deploy_B = true;
+                    }
+                }
+            }
+            //sort(can_deploy_servers.begin(), can_deploy_servers.end(), cmp.CanDeploySingle);
+            min_remain_rate = 2.0;
+            double min_cost = DBL_MAX;
+            flag_server = 0;
+            which_node = 'C';
+            for (auto &purchase_server : can_deploy_servers)
+            {
+                if (deployed)
+                {
+                    break;
+                }
+
+                double _cpu_rate = 1.0 * (cpu_cores / purchase_server->total_core_num);
+                double _memory_rate = 1.0 * (memory_size / purchase_server->total_memory_size);
+                double use_rate = (_cpu_rate + _memory_rate) / 2;
+                double cost = purchase_server->daily_cost * use_rate ;
+                if(cost < min_cost){
+                    min_cost = cost;
+                    flag_server = purchase_server;
+                    which_node = 'A';
+                }
+                
+            }
+
+            if (min_cost != DBL_MAX)
+            {
+                //代表从关机的服务器中选取的
+                if (flag_server->A_vm_id.size() + flag_server->B_vm_id.size() + flag_server->AB_vm_id.size() == 0)
+                {
+                    from_off_2_start.insert(flag_server->server_id);
+                }
+                deployed = true;
+                flag_server->A_remain_core_num -= cpu_cores;
+                flag_server->A_remain_memory_size -= memory_size;
+                flag_server->A_vm_id.insert(add_data.vm_id);
+
+                VmIdInfo vm_id_info;
+                vm_id_info.purchase_server = flag_server;
+                vm_id_info.vm_name = add_data.vm_name;
+                vm_id_info.cpu_cores = cpu_cores;
+                vm_id_info.memory_size = memory_size;
+                vm_id_info.node = 'A';
+                vm_id_info.vm_id = add_data.vm_id;
+                vm_id2info[add_data.vm_id] = vm_id_info;
+                
+                
+            }
         }
+
 
         double min_dense_cost = 99999999999999;
         SoldServer *flag_sold_server;
@@ -1348,18 +1420,9 @@ string AddVm(AddData &add_data)
                 double dense_cost;
                 if (isDenseBuy == 1)
                 {
-                    // double use_rate = (1.0 *(cpu_cores) / sold_server.cpu_cores + 1.0 *(memory_size) / sold_server.memory_size) / 2;
-                    // double use_rate = max(1.0 *(cpu_cores) / sold_server.cpu_cores , 1.0 *(memory_size) / sold_server.memory_size) ;
-                    // double use_cpu_rate = pow(2.718,1.0 *(cpu_cores) / sold_server.cpu_cores) / ( pow(2.718,1.0 *(cpu_cores) / sold_server.cpu_cores)+pow(2.718,1.0 *(memory_size) / sold_server.memory_size)) ;
-                    // double use_memory_rate = pow(2.718,1.0 *(memory_size) / sold_server.memory_size) / ( pow(2.718,1.0 *(cpu_cores) / sold_server.cpu_cores)+pow(2.718,1.0 *(memory_size) / sold_server.memory_size)) ;
-                    // double use_rate = 0.5 * (use_cpu_rate + use_memory_rate);
                     double _cpu_rate = 1.0 * cpu_cores / sold_server.cpu_cores;
                     double _memory_rate = 1.0 * (memory_size) / sold_server.memory_size;
-                    // double T = 0.9;
-                    // double _temp_sum = pow(_cpu_rate, 1.0 / T) + pow(_memory_rate, 1.0 / T);
-                    // double use_cpu_rate = pow(_cpu_rate, 1.0 / T) / _temp_sum;
-                    // double use_memory_rate = pow(_memory_rate, 1.0 / T) / _temp_sum;
-                    double use_rate = max(_cpu_rate, _memory_rate);
+                    double use_rate = 0.5 * (_cpu_rate+ _memory_rate);
             
 
                     dense_cost = 1.0 * (sold_server.hardware_cost + sold_server.daily_cost * (total_days_num - now_day)) * use_rate;
@@ -1697,24 +1760,14 @@ SoldServer *SearchForContinueVM(int deployment_way, int cpu_cores, int memory_si
                 double dense_cost;
                 if (isDenseBuy == 1)
                 {
-                    // double use_rate = (1.0 *(cpu_cores) / sold_server.cpu_cores + 1.0 *(memory_size) / sold_server.memory_size) / 2;
-                    // double use_rate = max(1.0 *(cpu_cores) / sold_server.cpu_cores , 1.0 *(memory_size) / sold_server.memory_size) ;
                     double _cpu_rate = 1.0 * cpu_cores / sold_server.cpu_cores;
                     double _memory_rate = 1.0 * (memory_size) / sold_server.memory_size;
-                    // double T = 0.9;
-                    // double _temp_sum = pow(_cpu_rate,1.0 / T) + pow(_memory_rate,1.0 / T);
-                    // double use_cpu_rate = pow(_cpu_rate,1.0 / T) / _temp_sum;
-                    // double use_memory_rate = pow(_memory_rate,1.0 / T) / _temp_sum;
-                    // double use_rate = max  (use_cpu_rate , use_memory_rate);
-                    // double use_rate = 1.0 * (_cpu_rate + _memory_rate) / 2;
-                    double use_rate = 1.0 * (_cpu_rate * r1 + _memory_rate * r2);
+                    double use_rate = 1.0 * (_cpu_rate + _memory_rate) / 2;
                     
-                    // dense_cost = 1.0 * sold_server.hardware_cost * use_rate;
                     dense_cost = 1.0 * (sold_server.hardware_cost + sold_server.daily_cost * (total_days_num - now_day)) * use_rate;
                 }
                 else
                 {
-                    // dense_cost = sold_server.hardware_cost;
                     dense_cost = sold_server.hardware_cost + sold_server.daily_cost * (total_days_num - now_day);
                 }
                 if (dense_cost < min_dense_cost)
@@ -2106,7 +2159,7 @@ void SolveProblem()
             }
         }
         Numbering(); //给购买了的服务器编号
-        Print(vm_ids, migration_infos);
+        // Print(vm_ids, migration_infos);
         fflush(stdout);
         purchase_infos.clear();
         from_off_2_start.clear();
