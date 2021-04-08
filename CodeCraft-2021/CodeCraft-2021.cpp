@@ -39,7 +39,6 @@ double _future_N_reqs_cpu_rate = 0;
 double _future_N_reqs_memory_rate = 0;
 double _migration_threshold = 0.03; //减小能增加迁移数量。
 double _near_full_threshold = 0.02; //增大能去掉更多的服务器，减少时间；同时迁移次数会有轻微减少，成本有轻微增加。
-double _nodes_diff_threshold = 0.1; //服务器两结点间利用率之差的阈值，大于它则进行内部调整。
 
 double k1 = 0.695, k2 = 1 - k1; //CPU和memory的加权系数
 double r1 = 0.695, r2 = 1 - r1; //CPU和memory剩余率的加权系数
@@ -88,6 +87,8 @@ inline double remain_rate(PurchasedServer *server, char node)
         return r1 * server->B_remain_core_num / server->total_core_num + r2 * server->B_remain_memory_size / server->total_memory_size;
     }
 }
+
+
 void ParseServerInfo()
 {
     int server_num;
@@ -476,113 +477,114 @@ vector<MigrationInfo> Migration()
 
 
     // 第二步迁移。
-{   vector<PurchasedServer *> merging_servers; //要合并的服务器。
+{
+    vector<PurchasedServer *> merging_servers; //要合并的服务器。
     for (auto server : purchase_servers) {
-        if(migration_infos.size()>=max_migration_num) cout<<"asdasdasdsadasd"<<endl;
         double rate_a = remain_rate(server, 'A'), rate_b = remain_rate(server, 'B');
         if ((rate_a < _near_full_threshold && rate_b > 1 - _near_full_threshold) || (rate_b < _near_full_threshold && rate_a > 1 - _near_full_threshold)) merging_servers.emplace_back(server);
     }
-
- 
     for (auto original_server : merging_servers) {
+        if (migration_infos.size() > max_migration_num - original_server->A_vm_id.size() && migration_infos.size() > max_migration_num - original_server->B_vm_id.size()) continue;
         double rate1a = remain_rate(original_server, 'A'), rate1b = remain_rate(original_server, 'B');
         if ((rate1a < _near_full_threshold && rate1b > 1 - _near_full_threshold) || (rate1b < _near_full_threshold && rate1a > 1 - _near_full_threshold)) {
-            int sum_cpu, sum_memory;
-            char original_node;
-            if (rate1a < _near_full_threshold) {
-                sum_cpu = original_server->total_core_num - original_server->A_remain_core_num;
-                sum_memory = original_server->total_memory_size - original_server->A_remain_memory_size;
-                original_node = 'A';
-            } else {
-                sum_cpu = original_server->total_core_num - original_server->B_remain_core_num;
-                sum_memory = original_server->total_memory_size - original_server->B_remain_memory_size;
-                original_node = 'B';
+            int sum_cpu[] = {0, 0, 0}, sum_memory[] = {0, 0, 0}; //分别代表A，B，C结点的已有大小。
+            for (int vm_id : original_server->AB_vm_id) {
+                VmIdInfo *vm_info = &vm_id2info[vm_id];
+                sum_cpu[2] += vm_info->cpu_cores;
+                sum_memory[2] += vm_info->memory_size;
             }
-            double min_diff = DBL_MAX;
-            PurchasedServer *best_server;
-            char which_node;
-            for (auto target_server : merging_servers) { //找最合适的服务器。
+            sum_cpu[0] = original_server->total_core_num - original_server->A_remain_core_num - sum_cpu[2];
+            sum_cpu[1] = original_server->total_core_num - original_server->B_remain_core_num - sum_cpu[2];
+            sum_memory[0] = original_server->total_memory_size - original_server->A_remain_memory_size - sum_memory[2];
+            sum_memory[1] = original_server->total_memory_size - original_server->B_remain_memory_size - sum_memory[2];
+            char original_node = rate1a < _near_full_threshold ? 'A' : 'B';
+            double min_diff[] = {DBL_MAX, DBL_MAX};
+            PurchasedServer *best_server[2];
+            char which_node[2];
+            #pragma omp parallel for num_threads(2)
+            for (int j = 0; j < merging_servers.size(); ++j) {
+                PurchasedServer *target_server = merging_servers[j];
                 if (original_server == target_server) continue;
                 double rate2a = remain_rate(target_server, 'A'), rate2b = remain_rate(target_server, 'B');
                 if (rate2a < _near_full_threshold) {
-                    if (target_server->B_remain_core_num >= sum_cpu && target_server->B_remain_memory_size >= sum_memory) {
-                        double diff = k1 * (target_server->B_remain_core_num - sum_cpu) + k2 * (target_server->B_remain_memory_size - sum_memory);
-                        if (diff < min_diff) {
-                            min_diff = diff;
-                            best_server = target_server;
-                            which_node = 'B';
+                    if (target_server->B_remain_core_num >= sum_cpu[original_node - 'A'] && target_server->B_remain_memory_size >= sum_memory[original_node - 'A']) {
+                        double diff = k1 * (target_server->B_remain_core_num - sum_cpu[original_node - 'A']) + k2 * (target_server->B_remain_memory_size - sum_memory[original_node - 'A']);
+                        int thread_num = 0;
+                        if (diff < min_diff[thread_num]) {
+                            min_diff[thread_num] = diff;
+                            best_server[thread_num] = target_server;
+                            which_node[thread_num] = 'B';
                         }
                     }
                 } else if (rate2b < _near_full_threshold) {
-                    if (target_server->A_remain_core_num >= sum_cpu && target_server->A_remain_memory_size >= sum_memory) {
-                        double diff = k1 * (target_server->A_remain_core_num - sum_cpu) + k2 *(target_server->A_remain_memory_size - sum_memory);
-                        if (diff < min_diff) {
-                            min_diff = diff;
-                            best_server = target_server;
-                            which_node = 'A';
+                    if (target_server->A_remain_core_num >= sum_cpu[original_node - 'A'] && target_server->A_remain_memory_size >= sum_memory[original_node - 'A']) {
+                        double diff = k1 * (target_server->A_remain_core_num - sum_cpu[original_node - 'A']) + k2 *(target_server->A_remain_memory_size - sum_memory[original_node - 'A']);
+                        int thread_num = 0;
+                        if (diff < min_diff[thread_num]) {
+                            min_diff[thread_num] = diff;
+                            best_server[thread_num] = target_server;
+                            which_node[thread_num] = 'A';
                         }
                     }
                 }
             }
-            if (min_diff < DBL_MAX) { //开始迁移。
-            if(migration_infos.size()>=max_migration_num) cout<<"asdasdasdsadasd"<<endl;
+            int index = min_diff[0] <= min_diff[1] ? 0 : 1;
+            if (min_diff[index] < DBL_MAX) { //开始迁移。
                 if (original_node == 'A') { //迁移A结点。
-                if(migration_infos.size()>=max_migration_num) cout<<"asdasdasdsadasd"<<endl;
                     if (migration_infos.size() <= max_migration_num - original_server->A_vm_id.size()) {
-                        migrate_to(original_server, 'A', best_server, which_node, migration_infos);
+                        migrate_to(original_server, 'A', best_server[index], which_node[index], migration_infos);
                         if (migration_infos.size() == max_migration_num) return migration_infos;
                     }
                     // 如果能，顺带迁B。
                     bool flag = false; //是否两个结点都能迁，是那么双节点虚拟机也能迁走。
-                    int sum_cpu_b = original_server->total_core_num - original_server->B_remain_core_num;
-                    int sum_memory_b = original_server->total_memory_size - original_server->B_remain_memory_size;
-                    if (best_server->A_remain_core_num >= sum_cpu_b && best_server->A_remain_memory_size >= sum_memory_b && which_node == 'B') { //B迁A。
+                    // int sum_cpu_b = original_server->total_core_num - original_server->B_remain_core_num;
+                    // int sum_memory_b = original_server->total_memory_size - original_server->B_remain_memory_size;
+                    if (best_server[index]->A_remain_core_num >= sum_cpu[1] && best_server[index]->A_remain_memory_size >= sum_memory[1] && which_node[index] == 'B') { //B迁A。
                         if (migration_infos.size() <= max_migration_num - original_server->B_vm_id.size()) {
                             flag == true;
-                            migrate_to(original_server, 'B', best_server, 'A', migration_infos);
+                            migrate_to(original_server, 'B', best_server[index], 'A', migration_infos);
                             if (migration_infos.size() == max_migration_num) return migration_infos;
                         }
                     }
-                    if (best_server->B_remain_core_num >= sum_cpu_b && best_server->B_remain_memory_size >= sum_memory_b && which_node == 'A') { //B迁B。
+                    if (best_server[index]->B_remain_core_num >= sum_cpu[1] && best_server[index]->B_remain_memory_size >= sum_memory[1] && which_node[index] == 'A') { //B迁B。
                         if (migration_infos.size() <= max_migration_num - original_server->B_vm_id.size()) {
                             flag == true;
-                            migrate_to(original_server, 'B', best_server, 'B', migration_infos);
+                            migrate_to(original_server, 'B', best_server[index], 'B', migration_infos);
                             if (migration_infos.size() == max_migration_num) return migration_infos;
                         }
                     }
                     if (flag) { //双节点虚拟机迁移。
                         if (migration_infos.size() <= max_migration_num - original_server->AB_vm_id.size()) {
-                            migrate_to(original_server, 'C', best_server, 'C', migration_infos);
+                            migrate_to(original_server, 'C', best_server[index], 'C', migration_infos);
                             if (migration_infos.size() == max_migration_num) return migration_infos;
                         }
                     }
                 } else {
-                    if(migration_infos.size()>=max_migration_num) cout<<"asdasdasdsadasd"<<endl;
                     if (migration_infos.size() <= max_migration_num - original_server->B_vm_id.size()) {
-                        migrate_to(original_server, 'B', best_server, which_node, migration_infos);
+                        migrate_to(original_server, 'B', best_server[index], which_node[index], migration_infos);
                         if (migration_infos.size() == max_migration_num) return migration_infos;
                     }
                     // 如果能，顺带迁A。
                     bool flag = false; //是否两个结点都能迁，是那么双节点虚拟机也能迁走。
-                    int sum_cpu_a = original_server->total_core_num - original_server->A_remain_core_num;
-                    int sum_memory_a = original_server->total_memory_size - original_server->A_remain_memory_size;
-                    if (best_server->A_remain_core_num >= sum_cpu_a && best_server->A_remain_memory_size >= sum_memory_a && which_node == 'B') { //A迁A。
+                    // int sum_cpu_a = original_server->total_core_num - original_server->A_remain_core_num;
+                    // int sum_memory_a = original_server->total_memory_size - original_server->A_remain_memory_size;
+                    if (best_server[index]->A_remain_core_num >= sum_cpu[0] && best_server[index]->A_remain_memory_size >= sum_memory[0] && which_node[index] == 'B') { //A迁A。
                         if (migration_infos.size() <= max_migration_num - original_server->A_vm_id.size()) {
                             flag == true;
-                            migrate_to(original_server, 'A', best_server, 'A', migration_infos);
+                            migrate_to(original_server, 'A', best_server[index], 'A', migration_infos);
                             if (migration_infos.size() == max_migration_num) return migration_infos;
                         }
                     }
-                    if (best_server->B_remain_core_num >= sum_cpu_a && best_server->B_remain_memory_size >= sum_memory_a && which_node == 'A') { //A迁B。
+                    if (best_server[index]->B_remain_core_num >= sum_cpu[0] && best_server[index]->B_remain_memory_size >= sum_memory[0] && which_node[index] == 'A') { //A迁B。
                         if (migration_infos.size() <= max_migration_num - original_server->A_vm_id.size()) {
                             flag == true;
-                            migrate_to(original_server, 'A', best_server, 'B', migration_infos);
+                            migrate_to(original_server, 'A', best_server[index], 'B', migration_infos);
                             if (migration_infos.size() == max_migration_num) return migration_infos;
                         }
                     }
                     if (flag) { //双节点虚拟机迁移。
                         if (migration_infos.size() <= max_migration_num - original_server->AB_vm_id.size()) {
-                            migrate_to(original_server, 'C', best_server, 'C', migration_infos);
+                            migrate_to(original_server, 'C', best_server[index], 'C', migration_infos);
                             if (migration_infos.size() == max_migration_num) return migration_infos;
                         }
                     }
@@ -590,8 +592,68 @@ vector<MigrationInfo> Migration()
             }
         }
     }
+/*     // 服务器内部结构调整。
+    // #pragma omp parallel for num_threads(2)
+    for (int i = 0; i < purchase_servers.size(); ++i) {
+        PurchasedServer *server = purchase_servers[i];
+        double rate_a = remain_rate(server, 'A'), rate_b = remain_rate(server, 'B');
+        if (fabs(rate_a - rate_b) > _nodes_diff_threshold) { //如果结点差距过大，则进行内部调整。
+            if (rate_a < rate_b) { //A往B迁。
+                unordered_map<int, double> vm_rates; //预先存储每个虚拟机的资源占比，避免重复计算。
+                for (auto vm_id : server->A_vm_id) {
+                    VmIdInfo *vm_info = &vm_id2info[vm_id];
+                    vm_rates[vm_id] = max(vm_info->cpu_cores / server->total_core_num, vm_info->memory_size / server->total_memory_size);
+                    // vm_rates[vm_id] = r1 * vm_info->cpu_cores / server->total_core_num + r2 * vm_info->memory_size / server->total_memory_size;
+                }
+                while (rate_a < rate_b) {
+                    if (migration_infos.size() == max_migration_num) return migration_infos;
+                    double min_rate = DBL_MAX;
+                    VmIdInfo *best_vm;
+                    for (auto vm_id : server->A_vm_id) { //找大小最接近的虚拟机。
+                        VmIdInfo *vm_info = &vm_id2info[vm_id];
+                        if (server->B_remain_core_num < vm_info->cpu_cores || server->B_remain_memory_size < vm_info->memory_size) continue;
+                        double rate = fabs(vm_rates[vm_id] - (rate_b - rate_a) / 2);
+                        if (rate < min_rate && rate < (rate_b - rate_a) / 2) {
+                            min_rate = rate;
+                            best_vm = vm_info;
+                        }
+                    }
+                    if (min_rate < DBL_MAX) { //找到了就迁移。
+                        migrate_to(best_vm, server, 'B', migration_infos);
+                        if (migration_infos.size() == max_migration_num) return migration_infos;
+                        rate_a = remain_rate(server, 'A'), rate_b = remain_rate(server, 'B');
+                    } else break; //找不到则退出，不然死循环。
+                }
+            } else { //B往A迁。
+                unordered_map<int, double> vm_rates; //预先存储每个虚拟机的资源占比，避免重复计算。
+                for (auto vm_id : server->B_vm_id) {
+                    VmIdInfo *vm_info = &vm_id2info[vm_id];
+                    vm_rates[vm_id] = max(vm_info->cpu_cores / server->total_core_num, vm_info->memory_size / server->total_memory_size);
+                    // vm_rates[vm_id] = r1 * vm_info->cpu_cores / server->total_core_num + r2 * vm_info->memory_size / server->total_memory_size;
+                }
+                while (rate_a > rate_b) {
+                    if (migration_infos.size() == max_migration_num) return migration_infos;
+                    double min_rate = DBL_MAX;
+                    VmIdInfo *best_vm;
+                    for (auto vm_id : server->B_vm_id) { //找大小最接近的虚拟机。
+                        VmIdInfo *vm_info = &vm_id2info[vm_id];
+                        if (server->A_remain_core_num < vm_info->cpu_cores || server->A_remain_memory_size < vm_info->memory_size) continue;
+                        double rate = fabs(vm_rates[vm_id] - (rate_a - rate_b) / 2);
+                        if (rate < min_rate && rate < (rate_a - rate_b) / 2) {
+                            min_rate = rate;
+                            best_vm = vm_info;
+                        }
+                    }
+                    if (min_rate < DBL_MAX) { //找到了就迁移。
+                        migrate_to(best_vm, server, 'A', migration_infos);
+                        if (migration_infos.size() == max_migration_num) return migration_infos;
+                        rate_a = remain_rate(server, 'A'), rate_b = remain_rate(server, 'B');
+                    } else break; //找不到则退出，不然死循环。
+                }
+            }
+        }
+    } */
 }
-
 // 第三步迁移。
 {
     vector<PurchasedServer *> original_servers, target_servers;
@@ -601,14 +663,17 @@ vector<MigrationInfo> Migration()
         // if(vm_nums(server) == 0 ) target_servers.emplace_back(server);
     }
     sort(original_servers.begin(), original_servers.end(), [](PurchasedServer *server1, PurchasedServer *server2) {
-        return server1->daily_cost > server2->daily_cost;
+        if(server1->daily_cost > server2->daily_cost) return true;
+        else {
+            return false;
+        }
     });
     sort(target_servers.begin(), target_servers.end(), [](PurchasedServer *server1, PurchasedServer *server2) {
         // return (vm_nums(server1)==0? server1->daily_cost:0) < (vm_nums(server2)==0? server2->daily_cost:0);
         if((vm_nums(server1)==0? server1->daily_cost:0) < (vm_nums(server2)==0? server2->daily_cost:0)){
             return true;
         }else if((vm_nums(server1)==0? server1->daily_cost:0) == (vm_nums(server2)==0? server2->daily_cost:0)){
-            return 2*server1->total_core_num - server1->A_remain_core_num - server1->B_remain_core_num + 2* server1->total_memory_size - server1->A_remain_memory_size - server1->B_remain_memory_size <2*server2->total_core_num - server2->A_remain_core_num - server2->B_remain_core_num + 2* server2->total_memory_size - server2->A_remain_memory_size - server2->B_remain_memory_size;
+            return 2*server1->total_core_num - server1->A_remain_core_num - server1->B_remain_core_num + 2* server1->total_memory_size - server1->A_remain_memory_size - server1->B_remain_memory_size < 2*server2->total_core_num - server2->A_remain_core_num - server2->B_remain_core_num + 2* server2->total_memory_size - server2->A_remain_memory_size - server2->B_remain_memory_size;
         }else{
             return false;
         }
@@ -1538,17 +1603,17 @@ vector<int> GetAllResourceOfToday(vector<RequestData> &reqInfoOfToday)
     return {_total_cpu, _total_memory};
 }
 
-vector<int> GetMaxResourceOfToday(vector<RequestData> &reqInfoOfToday)
+vector<long long> GetMaxResourceOfToday(vector<RequestData> &reqInfoOfToday)
 {
     /**
  * @description: 获取当天请求巅峰时刻的Cpu值和Memory值
  * @param {reqInfoOfToday ： 当天的请求信息}
  * @return {vector<int> 二维数组 [0]--max_cpu，[1]--max_memory}
  */
-    int _total_cpu = 0;
-    int _total_memory = 0;
-    int _max_cpu = 0;
-    int _max_memory = 0;
+    long long _total_cpu = 0;
+    long long _total_memory = 0;
+    long long _max_cpu = 0;
+    long long _max_memory = 0;
     for (auto &req : reqInfoOfToday)
     {
         string vm_name = req.vm_name;
@@ -1726,7 +1791,7 @@ void SolveProblem()
 
         //获取未来N条请求所需要的总资源
         allResourceOfNReqs = GetAllResourceOfFutureNDays(300);
-
+        // cout<<allResourceOfNReqs[0] << "  "<<allResourceOfNReqs[1]<<endl;
 
         intraday_requests = request_datas.front();
 
@@ -1742,7 +1807,9 @@ void SolveProblem()
         }
 
         //获取当天请求所需要的峰值时刻的cpu和memory
-        vector<int> max_resource_of_today_reqs = GetMaxResourceOfToday(intraday_requests);
+        vector<long long> max_resource_of_today_reqs = GetMaxResourceOfToday(intraday_requests);
+        
+
         double _rate = 1.0;
         if (allResouceAfterMigration[0] * _rate >= max_resource_of_today_reqs[0] && allResouceAfterMigration[1] * _rate >= max_resource_of_today_reqs[1])
         {
@@ -1755,6 +1822,8 @@ void SolveProblem()
 
         vector<int> add_del_count = print_req_num(intraday_requests);
         
+    
+
         bool isContinueBuy =( allResouceAfterMigration[0] >  add_del_count[0] && allResouceAfterMigration[1] > add_del_count[1]) && (1.1 *( add_del_count[2] + add_del_count[3]) < add_del_count[0]+ add_del_count[1]);
         // bool isContinueBuy =( allResouceAfterMigration[0] + allResouceAfterMigration[1] > ( add_del_count[0]  + add_del_count[1])) && (1.1 *( add_del_count[2] + add_del_count[3]) < add_del_count[0]+ add_del_count[1]);
         if(isContinueBuy) count_add_more_del++;
