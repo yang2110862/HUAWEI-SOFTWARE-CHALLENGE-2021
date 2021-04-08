@@ -366,11 +366,10 @@ vector<MigrationInfo> Migration()
     vector<MigrationInfo> migration_infos;
     if (max_migration_num == 0)
         return migration_infos;
-    unordered_map<int, pair<PurchasedServer *, char>> initial_pos; //记录迁移的虚拟机最开始的位置，避免最后迁移回去。
     vector<PurchasedServer *> left_servers;
 
 // 第一步迁移。
-{   
+{
     vector<VmIdInfo *> migrating_vms;
     vector<PurchasedServer *> target_servers;
     for (auto server : purchase_servers) {
@@ -381,7 +380,6 @@ vector<MigrationInfo> Migration()
         }
         if (vm_nums(server) > 0 && !NearlyFull(server)) target_servers.emplace_back(server);
     }
-   
 
     sort(migrating_vms.begin(), migrating_vms.end(), [&](VmIdInfo *vm1,VmIdInfo *vm2) {     
         PurchasedServer *server1 = vm1->purchase_server, *server2 = vm2->purchase_server;
@@ -392,8 +390,6 @@ vector<MigrationInfo> Migration()
             return false;
         }
     });
-    
-    
     unordered_set<int> success_vm;
     for (auto &vm_info : migrating_vms) {
         if (vm_info->node != 'C') {
@@ -1230,12 +1226,10 @@ string AddVm(AddData &add_data)
                 double _cpu_remain_rate = 1.0 * (purchase_server->A_remain_core_num - cpu_cores) / purchase_server->total_core_num;
                 double _memory_remain_rate = 1.0 * (purchase_server->A_remain_memory_size - memory_size) / purchase_server->total_memory_size;
 
-                // if(_cpu_remain_rate + _memory_remain_rate < min_remain_rate) {
-                //     min_remain_rate = _cpu_remain_rate + _memory_remain_rate;
-                //     flag_server = purchase_server;
-                //     which_node = 'A';
-                // }
-                if (2 * max(_cpu_remain_rate, _memory_remain_rate) < min_remain_rate)
+                
+
+                // if (2 * max(_cpu_remain_rate, _memory_remain_rate) < min_remain_rate)
+                if ( (_cpu_remain_rate+ _memory_remain_rate) < min_remain_rate)
                 {
                     min_remain_rate = _cpu_remain_rate + _memory_remain_rate;
                     flag_server = purchase_server;
@@ -1251,7 +1245,8 @@ string AddVm(AddData &add_data)
                 //     flag_server = purchase_server;
                 //     which_node = 'B';
                 // }
-                if (2 * max(_cpu_remain_rate, _memory_remain_rate) < min_remain_rate)
+                // if (2 * max(_cpu_remain_rate, _memory_remain_rate) < min_remain_rate)
+                if ( (_cpu_remain_rate+ _memory_remain_rate) < min_remain_rate)
                 {
                     min_remain_rate = _cpu_remain_rate + _memory_remain_rate;
                     flag_server = purchase_server;
@@ -1269,7 +1264,8 @@ string AddVm(AddData &add_data)
                 //     flag_server = purchase_server;
                 //     which_node = 'A';
                 // }
-                if (2 * max(_cpu_remain_rate, _memory_remain_rate) < min_remain_rate)
+                // if (2 * max(_cpu_remain_rate, _memory_remain_rate) < min_remain_rate)
+                if ( (_cpu_remain_rate+ _memory_remain_rate) < min_remain_rate)
                 {
                     min_remain_rate = _cpu_remain_rate + _memory_remain_rate;
                     flag_server = purchase_server;
@@ -1289,7 +1285,8 @@ string AddVm(AddData &add_data)
                 //     flag_server = purchase_server;
                 //     which_node = 'B';
                 // }
-                if (2 * max(_cpu_remain_rate, _memory_remain_rate) < min_remain_rate)
+                // if (2 * max(_cpu_remain_rate, _memory_remain_rate) < min_remain_rate)
+                if ( (_cpu_remain_rate+ _memory_remain_rate) < min_remain_rate)
                 {
                     min_remain_rate = _cpu_remain_rate + _memory_remain_rate;
                     flag_server = purchase_server;
@@ -1357,7 +1354,8 @@ string AddVm(AddData &add_data)
                     }
                 }
             }
-            //sort(can_deploy_servers.begin(), can_deploy_servers.end(), cmp.CanDeploySingle);
+            // sort(can_deploy_servers.begin(), can_deploy_servers.end(), cmp.CanDeploySingle);
+
             min_remain_rate = 2.0;
             double min_cost = DBL_MAX;
             flag_server = 0;
@@ -1368,7 +1366,6 @@ string AddVm(AddData &add_data)
                 {
                     break;
                 }
-
                 double _cpu_rate = 1.0 * (cpu_cores / purchase_server->total_core_num);
                 double _memory_rate = 1.0 * (memory_size / purchase_server->total_memory_size);
                 double use_rate = (_cpu_rate + _memory_rate) / 2;
@@ -1378,7 +1375,6 @@ string AddVm(AddData &add_data)
                     flag_server = purchase_server;
                     which_node = 'A';
                 }
-                
             }
 
             if (min_cost != DBL_MAX)
@@ -1401,13 +1397,10 @@ string AddVm(AddData &add_data)
                 vm_id_info.node = 'A';
                 vm_id_info.vm_id = add_data.vm_id;
                 vm_id2info[add_data.vm_id] = vm_id_info;
-                
-                
             }
         }
 
-
-        double min_dense_cost = 99999999999999;
+        double min_dense_cost = DBL_MAX;
         SoldServer *flag_sold_server;
         for (auto &sold_server : sold_servers)
         {
@@ -1423,8 +1416,6 @@ string AddVm(AddData &add_data)
                     double _cpu_rate = 1.0 * cpu_cores / sold_server.cpu_cores;
                     double _memory_rate = 1.0 * (memory_size) / sold_server.memory_size;
                     double use_rate = 0.5 * (_cpu_rate+ _memory_rate);
-            
-
                     dense_cost = 1.0 * (sold_server.hardware_cost + sold_server.daily_cost * (total_days_num - now_day)) * use_rate;
                 }
                 else
@@ -1750,7 +1741,7 @@ SoldServer *SearchForContinueVM(int deployment_way, int cpu_cores, int memory_si
      * @return {SoldServer*}
      */
     SoldServer *flag_sold_server;
-    double min_dense_cost = 99999999999999;
+    double min_dense_cost = DBL_MAX;
     if (deployment_way == 1)
     {
         for (auto &sold_server : sold_servers)
@@ -1792,14 +1783,6 @@ void revokeBuy(int vmID)
     {
         purchase_infos.erase(server_name);
     }
-    // int cpu_cores = vm_id2info[vmID].cpu_cores;
-    // int memory_size = vm_id2info[vmID].memory_size;
-
-    // vm_id2info[vmID].purchase_server->A_remain_core_num += cpu_cores;
-    // vm_id2info[vmID].purchase_server->A_remain_memory_size += memory_size;
-    // vm_id2info[vmID].purchase_server->B_remain_core_num += cpu_cores;
-    // vm_id2info[vmID].purchase_server->B_remain_memory_size += memory_size;
-    // vm_id2info[vmID].purchase_server->AB_vm_id.erase(vmID);
     vm_id2info.erase(vmID);
     vmIDs.erase(vmID);
 }
