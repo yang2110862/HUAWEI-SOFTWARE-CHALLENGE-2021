@@ -38,9 +38,13 @@ double _future_N_reqs_cpu_rate = 0;
 double _future_N_reqs_memory_rate = 0;
 double _migration_threshold = 0.03; //减小能增加迁移数量。
 double _near_full_threshold = 0.02; //增大能去掉更多的服务器，减少时间；同时迁移次数会有轻微减少，成本有轻微增加。
-
+double _near_full_threshold_2 = 0.2;
 double k1 = 0.695, k2 = 1 - k1; //CPU和memory的加权系数
 double r1 = 0.695, r2 = 1 - r1; //CPU和memory剩余率的加权系数
+
+double m1_time = 0;
+double m2_time = 0;
+double m3_time = 0;
 
 void init()
 {
@@ -62,6 +66,9 @@ void init()
     //现在是第几天
     total_req_num = 0;
 
+    m1_time = 0;
+    m2_time = 0;
+    m3_time = 0;
     number = 0; //给服务器编号
     total_server_cost = 0;
     total_power_cost = 0;
@@ -233,6 +240,11 @@ bool NearlyFull(PurchasedServer *server)
     return (1.0 * server->A_remain_core_num / server->total_core_num < _near_full_threshold || 1.0 * server->A_remain_memory_size / server->total_memory_size < _near_full_threshold) && (1.0 * server->B_remain_core_num / server->total_core_num < _near_full_threshold || 1.0 * server->B_remain_memory_size / server->total_memory_size < _near_full_threshold);
 }
 
+bool NearlyFull_2(PurchasedServer *server)
+{
+    return (1.0 * server->A_remain_core_num / server->total_core_num < _near_full_threshold_2 || 1.0 * server->A_remain_memory_size / server->total_memory_size < _near_full_threshold_2) && (1.0 * server->B_remain_core_num / server->total_core_num < _near_full_threshold_2 || 1.0 * server->B_remain_memory_size / server->total_memory_size < _near_full_threshold_2);
+}
+
 // 将某台虚拟机迁移至指定位置，调用前请确保能装入。
 void migrate_to(VmIdInfo *vm_info, PurchasedServer *target_server, char target_node, vector<MigrationInfo> &migration_infos)
 {
@@ -399,6 +411,8 @@ void MigrationRevoke(){
 
 }
 
+clock_t m1_s,m1_e,m2_s,m2_e,m3_s,m3_e;
+
 
 vector<MigrationInfo> Migration()
 {
@@ -410,6 +424,8 @@ vector<MigrationInfo> Migration()
 
     // cout<<"1  :"<<NumOfOffServer()<<endl;
     // 第一步迁移。
+
+    m1_s = clock();
     {
 
         vector<VmIdInfo *> migrating_vms;
@@ -452,7 +468,9 @@ vector<MigrationInfo> Migration()
         //         return false;
         //     }
         // });
-
+        sort(target_servers.begin(),target_servers.end(),[](PurchasedServer* server1,PurchasedServer* server2){
+            return (remain_rate(server1, 'A') + remain_rate(server2, 'B')) / 2 * server1->daily_cost < (remain_rate(server2, 'A') + remain_rate(server2, 'B')) / 2 * server2->daily_cost;;
+        });
         for (auto &vm_info : migrating_vms)
         {
             if (vm_info->node != 'C')
@@ -468,10 +486,10 @@ vector<MigrationInfo> Migration()
                 char which_node = '!';
                 for (auto &target_server : target_servers)
                 { //找最合适的服务器。
+
                     if (!(target_server == original_server && vm_info->node == 'A') && (target_server->A_remain_core_num >= cpu_cores && target_server->A_remain_memory_size >= memory_size))
                     {
                         double rate = r1 * (target_server->A_remain_core_num - cpu_cores) / target_server->total_core_num * target_server->daily_cost + r2 * (target_server->A_remain_memory_size - memory_size) / target_server->total_memory_size * target_server->daily_cost;
-
                         if (rate < min_rate)
                         {
                             min_rate = rate;
@@ -513,8 +531,16 @@ vector<MigrationInfo> Migration()
                         continue;
                     if (target_server->A_remain_core_num >= cpu_cores && target_server->A_remain_memory_size >= memory_size && target_server->B_remain_core_num >= cpu_cores && target_server->B_remain_memory_size >= memory_size)
                     {
-
                         double rate = r1 * (target_server->A_remain_core_num - cpu_cores + target_server->B_remain_core_num - cpu_cores) / target_server->total_core_num / 2 * target_server->daily_cost + r2 * (target_server->A_remain_memory_size - memory_size + target_server->B_remain_memory_size - memory_size) / target_server->total_memory_size / 2 * target_server->daily_cost;
+                        // if(rate < 0.75*_original_rate){
+                        //     migrate_to(vm_info, target_server, 'C', migration_infos);
+                        //     if (migration_infos.size() == max_migration_num)
+                        //         return migration_infos;
+                        //     break;
+                        // }
+                        
+
+                        // double rate = r1 * (target_server->A_remain_core_num - cpu_cores + target_server->B_remain_core_num - cpu_cores) / target_server->total_core_num / 2 * target_server->daily_cost + r2 * (target_server->A_remain_memory_size - memory_size + target_server->B_remain_memory_size - memory_size) / target_server->total_memory_size / 2 * target_server->daily_cost;
                         if (rate < min_rate)
                         {
                             min_rate = rate;
@@ -531,9 +557,15 @@ vector<MigrationInfo> Migration()
             }
         }
     }
+
+    m1_e = clock();
+    m1_time += double(m1_e - m1_s) /CLOCKS_PER_SEC;
+
     // cout<<"1  end:"<<NumOfOffServer()<<endl;
     // cout<<"2  :"<<NumOfOffServer()<<endl;
     // 第二步迁移。
+
+    m2_s = clock();
     {
         vector<PurchasedServer *> merging_servers; //要合并的服务器。
         for (auto server : purchase_servers)
@@ -896,6 +928,10 @@ vector<MigrationInfo> Migration()
     //     }
     // }
 
+    m2_e = clock();
+    m2_time += double(m2_e - m2_s) /CLOCKS_PER_SEC;
+
+    m3_s = clock();
     // 第三步迁移。
     {
         vector<PurchasedServer *> original_servers, target_servers;
@@ -903,7 +939,7 @@ vector<MigrationInfo> Migration()
         {
             if (NeedMigration(server))
                 original_servers.emplace_back(server);
-            if (!NearlyFull(server))
+            if (!NearlyFull_2(server))
                 target_servers.emplace_back(server);
             // if(vm_nums(server) == 0 ) target_servers.emplace_back(server);
         }
@@ -957,7 +993,8 @@ vector<MigrationInfo> Migration()
             }
         }
     }
-
+    m3_e = clock();
+    m3_time += double(m3_e - m3_s) /CLOCKS_PER_SEC;
     // 第三步迁移。
     // {
     //     vector<PurchasedServer *> target_off_servers = {};
@@ -2636,6 +2673,10 @@ void SolveProblem()
     // cout<<save_cost<<endl;
     // cout<<count_add_more_del<< "  "<<total_days_num - count_add_more_del<<endl;
     // cout<<total_migration_num<<endl;
+    
+    #ifdef PRINTINFO
+    cout<<m1_time<<"  "<<m2_time<<"  "<<m3_time<<endl;
+    #endif
 }
 
 vector<double> solve_functions(int x1, int y1, int z1, int x2, int y2, int z2)
