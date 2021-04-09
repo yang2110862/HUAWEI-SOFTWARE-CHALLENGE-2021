@@ -1340,7 +1340,7 @@ int main(int argc, char* argv[]) {
 #ifdef REDIRECT
     freopen("training-2.txt", "r", stdin);
     //freopen("/Users/wangtongling/Desktop/training-data/training-2.txt", "r", stdin);
-    freopen("out2.txt", "w", stdout);
+    freopen("out1.txt", "w", stdout);
 #endif
 #ifdef PRINTINFO
     _start = clock();
