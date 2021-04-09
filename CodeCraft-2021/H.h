@@ -73,6 +73,13 @@ struct AddData {
     int vm_id;
     string vm_name;
 };
+struct DelData {
+    DelData() = default;
+    DelData(int _vm_id) :
+            vm_id(_vm_id) {}
+    int vm_id;
+};
+
 struct MigrationInfo {
     int vm_id;
     PurchasedServer *server;
