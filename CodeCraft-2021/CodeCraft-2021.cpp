@@ -384,6 +384,14 @@ vector<int> print_req_num(vector<RequestData> &intraday_requests)
     // cout<<add_count<<"   "<<del_count<<endl;
 }
 
+int NumOfOffServer(){
+    int cnt = 0;
+    for(auto& server:purchase_servers){
+        if(vm_nums(server) == 0) cnt++;
+    }
+    return cnt;
+}
+
 vector<MigrationInfo> Migration()
 {
     int max_migration_num = vmIDs.size() * 30 / 1000;
@@ -391,8 +399,10 @@ vector<MigrationInfo> Migration()
     if (max_migration_num == 0)
         return migration_infos;
 
+    // cout<<"1  :"<<NumOfOffServer()<<endl;
     // 第一步迁移。
     {
+
         vector<VmIdInfo *> migrating_vms;
         vector<PurchasedServer *> target_servers;
         for (auto server : purchase_servers)
@@ -438,6 +448,7 @@ vector<MigrationInfo> Migration()
         {
             if (vm_info->node != 'C')
             {
+
                 PurchasedServer *original_server = vm_info->purchase_server;
                 int vm_id = vm_info->vm_id;
                 int cpu_cores = vm_info->cpu_cores;
@@ -511,7 +522,8 @@ vector<MigrationInfo> Migration()
             }
         }
     }
-
+    // cout<<"1  end:"<<NumOfOffServer()<<endl;
+    // cout<<"2  :"<<NumOfOffServer()<<endl;
     // 第二步迁移。
     {
         vector<PurchasedServer *> merging_servers; //要合并的服务器。
@@ -724,6 +736,9 @@ vector<MigrationInfo> Migration()
         //     }
         // }
     }
+
+    // cout<<"2  end  :"<<NumOfOffServer()<<endl;
+    // cout<<"3  :"<<NumOfOffServer()<<endl;
     // 第三步迁移。
     {
         vector<PurchasedServer *> original_servers, target_servers;
@@ -896,7 +911,7 @@ vector<MigrationInfo> Migration()
     //         }
     //     }
     // }
-
+    // cout<<"3 end :"<<NumOfOffServer()<<endl;
     return migration_infos;
 }
 
@@ -1908,172 +1923,410 @@ void SolveProblem()
 
 
         // 一般的处理
-        if (true)
-        {
-            int j = 0;
-            allResouceAfterMigration = GetAllResourceOfOwnServers(true);
-            string operation = intraday_requests[j].operation;
-            vector<AddData> continuous_add_datas;
-            vector<DelData> continuous_del_datas;
-            int cpu_add_need = 0;
-            int memory_add_need = 0;
+        // if (true)
+        // {
+        //     int j = 0;
+        //     allResouceAfterMigration = GetAllResourceOfOwnServers(true);
+        //     allResourceOfNReqs = GetAllResourceOfFutureNDays(300);
+        //     // cout<<allResourceOfNReqs[2]<<"  " << allResourceOfNReqs[3]<<endl;
+        //     string operation = intraday_requests[j].operation;
+        //     vector<AddData> continuous_add_datas;
+        //     vector<DelData> continuous_del_datas;
+        //     int cpu_add_need = 0;
+        //     int memory_add_need = 0;
 
-            while (j < request_num)
+        //     while (j < request_num)
+        //     {
+        //         string operation = intraday_requests[j].operation;
+        //         if (operation == "add")
+        //         {
+        //             string vm_name = intraday_requests[j].vm_name;
+        //             SoldVm sold_vm = vm_name2info[vm_name];
+        //             int deployment_way = sold_vm.deployment_way;
+        //             int cpu_cores = sold_vm.cpu_cores;
+        //             int memory_size = sold_vm.memory_size;
+
+        //             int vm_id = intraday_requests[j].vm_id;
+        //             cpu_add_need += (deployment_way + 1) * cpu_cores;
+        //             memory_add_need += ((deployment_way + 1) * memory_size);
+        //             continuous_add_datas.emplace_back(deployment_way, cpu_cores, memory_size, vm_id, vm_name);
+        //             ++j;
+        //             if (j == request_num)
+        //             {
+        //                 break;
+        //             }
+        //         }
+        //         else
+        //         {
+        //             int vmID = intraday_requests[j].vm_id;
+        //             // cout<<allResourceOfNReqs[2]<<"  "<<cpu_add_need<<endl;
+        //             if (allResourceOfNReqs[2] >  cpu_add_need && allResourceOfNReqs[3] > memory_add_need)
+        //             {
+        //                 // cout<<"继续加"<<endl;
+        //                 //继续加 把del保存
+        //                 continuous_del_datas.emplace_back(vmID);
+        //                 ++j;
+        //                 if (j == request_num)
+        //                 {
+        //                     break;
+        //                 }
+        //             }
+        //             else
+        //             {
+        //                 // 处理所有的Add 然后进行删除
+        //                 // cout<<1<< " "<<allResouceAfterMigration[0]<<"  "<<allResouceAfterMigration[1]<<endl;
+        //                 // cout<<cpu_add_need<<"  "<<memory_add_need<<endl;
+        //                 sort(continuous_add_datas.begin(), continuous_add_datas.end(), cmp.ContinuousADD);
+        //                 string last_buy_server_name = "";
+        //                 AddData last_add_data;
+        //                 for (auto &add_data : continuous_add_datas)
+        //                 {
+        //                     string buy_server_name = AddVm(add_data);
+
+        //                     bool isSuccess = false;
+
+        //                     if (last_buy_server_name != "" && buy_server_name != "")
+        //                     {
+        //                         //连续两次购买
+
+        //                         if (last_add_data.deployment_way == 1 && add_data.deployment_way == 1)
+        //                         {
+        //                             int cpu_cores = last_add_data.cpu_cores + add_data.cpu_cores;
+        //                             int memory_cores = last_add_data.memory_size + add_data.memory_size;
+
+        //                             SoldServer *suitServer = 0;
+        //                             if (memory_cores > cpu_cores)
+        //                             {
+        //                                 suitServer = SearchForContinueVM(1, cpu_cores, memory_cores);
+        //                             }
+
+        //                             if (suitServer != 0)
+        //                             {
+        //                                 // int new_cost = suitServer->hardware_cost+ (total_days_num - now_day) * suitServer->daily_cost;
+        //                                 // int old_cost = server_name2info[last_buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[last_buy_server_name].daily_cost + server_name2info[buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[buy_server_name].daily_cost;
+        //                                 int new_cost = suitServer->hardware_cost + (total_days_num - now_day) * suitServer->daily_cost;
+        //                                 int old_cost = server_name2info[last_buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[last_buy_server_name].daily_cost + server_name2info[buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[buy_server_name].daily_cost;
+        //                                 // cout<<new_cost<<"   "<<old_cost<<endl;
+        //                                 int num1 = vm_id2info.size();
+        //                                 if (new_cost < old_cost)
+        //                                 {
+        //                                     count_continue_buy++;
+        //                                     revokeBuy(add_data.vm_id);
+        //                                     revokeBuy(last_add_data.vm_id);
+
+        //                                     // last_buy_server_name = AddVm(last_add_data);
+        //                                     // buy_server_name = AddVm(add_data);
+        //                                     BuyAndDeployTwoVM(last_add_data.vm_name, add_data.vm_name, last_add_data.vm_id, add_data.vm_id, suitServer->server_name);
+        //                                     isSuccess = true;
+        //                                 }
+        //                             }
+        //                         }
+
+        //                         else if (last_add_data.deployment_way == 0 && add_data.deployment_way == 0)
+        //                         {
+        //                             int cpu_cores = max(last_add_data.cpu_cores, add_data.cpu_cores);
+        //                             int memory_cores = max(last_add_data.memory_size, add_data.memory_size);
+        //                             SoldServer *suitServer = SearchForContinueVM(1, cpu_cores, memory_cores);
+        //                             if (suitServer != 0)
+        //                             {
+        //                                 int new_cost = suitServer->hardware_cost + (total_days_num - now_day) * suitServer->daily_cost;
+        //                                 int old_cost = server_name2info[last_buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[last_buy_server_name].daily_cost + server_name2info[buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[buy_server_name].daily_cost;
+        //                                 // int new_cost = suitServer->hardware_cost;
+        //                                 // int old_cost = server_name2info[last_buy_server_name].hardware_cost + server_name2info[buy_server_name].hardware_cost ;
+        //                                 // cout<<new_cost<<"   "<<old_cost<<endl;
+        //                                 if (new_cost < old_cost)
+        //                                 {
+        //                                     count_continue_buy++;
+        //                                     revokeBuy(add_data.vm_id);
+        //                                     revokeBuy(last_add_data.vm_id);
+        //                                     // last_buy_server_name = AddVm(last_add_data);
+        //                                     // buy_server_name = AddVm(add_data);
+        //                                     BuyAndDeployTwoVM_2(last_add_data.vm_name, add_data.vm_name, last_add_data.vm_id, add_data.vm_id, suitServer->server_name);
+        //                                     isSuccess = true;
+        //                                 }
+        //                             }
+        //                         }
+        //                     }
+
+        //                     if (isSuccess)
+        //                     {
+        //                         last_buy_server_name = "";
+        //                     }
+        //                     else
+        //                     {
+        //                         last_buy_server_name = buy_server_name;
+        //                         last_add_data = add_data;
+        //                     }
+        //                 }
+        //                 // allResouceAfterMigration = GetAllResourceOfOwnServers(true);
+        //                 // cout<<2<< " "<<allResouceAfterMigration[0]<<"  "<<allResouceAfterMigration[1]<<endl;
+        //                 //处理删除
+        //                 continuous_del_datas.emplace_back(vmID);
+        //                 for (auto &del : continuous_del_datas)
+        //                 {
+        //                     DeleteVm(del.vm_id);
+        //                 }
+        //                 continuous_add_datas.erase(continuous_add_datas.begin(), continuous_add_datas.end());
+        //                 continuous_del_datas.erase(continuous_del_datas.begin(), continuous_del_datas.end());
+        //                 cpu_add_need = 0;
+        //                 memory_add_need = 0;
+        //                 allResourceOfNReqs = GetAllResourceOfFutureNDays(300);
+        //                 // cout<<3<< " "<<allResouceAfterMigration[0]<<"  "<<allResouceAfterMigration[1]<<endl;
+        //                 ++j;
+        //                 if (j == request_num)
+        //                 {
+        //                     break;
+        //                 }
+        //             }
+        //         }
+        //     }
+        //     if (continuous_add_datas.size() != 0)
+        //     {
+        //         sort(continuous_add_datas.begin(), continuous_add_datas.end(), cmp.ContinuousADD);
+        //         string last_buy_server_name = "";
+        //         AddData last_add_data;
+        //         for (auto &add_data : continuous_add_datas)
+        //         {
+        //             string buy_server_name = AddVm(add_data);
+
+        //             bool isSuccess = false;
+
+        //             if (last_buy_server_name != "" && buy_server_name != "")
+        //             {
+        //                 //连续两次购买
+
+        //                 if (last_add_data.deployment_way == 1 && add_data.deployment_way == 1)
+        //                 {
+        //                     int cpu_cores = last_add_data.cpu_cores + add_data.cpu_cores;
+        //                     int memory_cores = last_add_data.memory_size + add_data.memory_size;
+
+        //                     SoldServer *suitServer = 0;
+        //                     if (memory_cores > cpu_cores)
+        //                     {
+        //                         suitServer = SearchForContinueVM(1, cpu_cores, memory_cores);
+        //                     }
+
+        //                     if (suitServer != 0)
+        //                     {
+        //                         // int new_cost = suitServer->hardware_cost+ (total_days_num - now_day) * suitServer->daily_cost;
+        //                         // int old_cost = server_name2info[last_buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[last_buy_server_name].daily_cost + server_name2info[buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[buy_server_name].daily_cost;
+        //                         int new_cost = suitServer->hardware_cost + (total_days_num - now_day) * suitServer->daily_cost;
+        //                         int old_cost = server_name2info[last_buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[last_buy_server_name].daily_cost + server_name2info[buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[buy_server_name].daily_cost;
+        //                         // cout<<new_cost<<"   "<<old_cost<<endl;
+        //                         int num1 = vm_id2info.size();
+        //                         if (new_cost < old_cost)
+        //                         {
+        //                             count_continue_buy++;
+        //                             revokeBuy(add_data.vm_id);
+        //                             revokeBuy(last_add_data.vm_id);
+
+        //                             // last_buy_server_name = AddVm(last_add_data);
+        //                             // buy_server_name = AddVm(add_data);
+        //                             BuyAndDeployTwoVM(last_add_data.vm_name, add_data.vm_name, last_add_data.vm_id, add_data.vm_id, suitServer->server_name);
+        //                             isSuccess = true;
+        //                         }
+        //                     }
+        //                 }
+
+        //                 else if (last_add_data.deployment_way == 0 && add_data.deployment_way == 0)
+        //                 {
+        //                     int cpu_cores = max(last_add_data.cpu_cores, add_data.cpu_cores);
+        //                     int memory_cores = max(last_add_data.memory_size, add_data.memory_size);
+        //                     SoldServer *suitServer = SearchForContinueVM(1, cpu_cores, memory_cores);
+        //                     if (suitServer != 0)
+        //                     {
+        //                         int new_cost = suitServer->hardware_cost + (total_days_num - now_day) * suitServer->daily_cost;
+        //                         int old_cost = server_name2info[last_buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[last_buy_server_name].daily_cost + server_name2info[buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[buy_server_name].daily_cost;
+        //                         // int new_cost = suitServer->hardware_cost;
+        //                         // int old_cost = server_name2info[last_buy_server_name].hardware_cost + server_name2info[buy_server_name].hardware_cost ;
+        //                         // cout<<new_cost<<"   "<<old_cost<<endl;
+        //                         if (new_cost < old_cost)
+        //                         {
+        //                             count_continue_buy++;
+        //                             revokeBuy(add_data.vm_id);
+        //                             revokeBuy(last_add_data.vm_id);
+        //                             // last_buy_server_name = AddVm(last_add_data);
+        //                             // buy_server_name = AddVm(add_data);
+        //                             BuyAndDeployTwoVM_2(last_add_data.vm_name, add_data.vm_name, last_add_data.vm_id, add_data.vm_id, suitServer->server_name);
+        //                             isSuccess = true;
+        //                         }
+        //                     }
+        //                 }
+        //             }
+
+        //             if (isSuccess)
+        //             {
+        //                 last_buy_server_name = "";
+        //             }
+        //             else
+        //             {
+        //                 last_buy_server_name = buy_server_name;
+        //                 last_add_data = add_data;
+        //             }
+        //         }
+        //     }
+
+        //     if (continuous_del_datas.size() != 0)
+        //     {
+        //         for (auto &del : continuous_del_datas)
+        //         {
+        //             DeleteVm(del.vm_id);
+        //         }
+        //         continuous_add_datas.erase(continuous_add_datas.begin(), continuous_add_datas.end());
+        //         continuous_del_datas.erase(continuous_del_datas.begin(), continuous_del_datas.end());
+        //     }
+
+            if (!isContinueBuy)
             {
-                string operation = intraday_requests[j].operation;
-                if (operation == "add")
+                for (int j = 0; j < request_num; ++j)
                 {
-                    string vm_name = intraday_requests[j].vm_name;
-                    SoldVm sold_vm = vm_name2info[vm_name];
-                    int deployment_way = sold_vm.deployment_way;
-                    int cpu_cores = sold_vm.cpu_cores;
-                    int memory_size = sold_vm.memory_size;
+                    string operation = intraday_requests[j].operation;
+                    vector<AddData> continuous_add_datas;
+                    while (operation == "add" && j < request_num)
+                    {
+                        string vm_name = intraday_requests[j].vm_name;
+                        SoldVm sold_vm = vm_name2info[vm_name];
+                        int deployment_way = sold_vm.deployment_way;
+                        int cpu_cores = sold_vm.cpu_cores;
+                        int memory_size = sold_vm.memory_size;
+                        int vm_id = intraday_requests[j].vm_id;
+                        continuous_add_datas.emplace_back(deployment_way, cpu_cores, memory_size, vm_id, vm_name);
+                        ++j;
+                        if (j == request_num)
+                        {
+                            break;
+                        }
+                        operation = intraday_requests[j].operation;
+                    }
+                    sort(continuous_add_datas.begin(), continuous_add_datas.end(), cmp.ContinuousADD);
 
-                    int vm_id = intraday_requests[j].vm_id;
-                    cpu_add_need += (deployment_way + 1) * cpu_cores;
-                    memory_add_need += ((deployment_way + 1) * memory_size);
-                    continuous_add_datas.emplace_back(deployment_way, cpu_cores, memory_size, vm_id, vm_name);
-                    ++j;
+                    string last_buy_server_name = "";
+                    AddData last_add_data;
+                    for (auto &add_data : continuous_add_datas)
+                    {
+                        string buy_server_name = AddVm(add_data);
+
+                        bool isSuccess = false;
+
+                        if (last_buy_server_name != "" && buy_server_name != "")
+                        {
+                            //连续两次购买
+
+                            if (last_add_data.deployment_way == 1 && add_data.deployment_way == 1)
+                            {
+                                int cpu_cores = last_add_data.cpu_cores + add_data.cpu_cores;
+                                int memory_cores = last_add_data.memory_size + add_data.memory_size;
+
+                                SoldServer *suitServer = 0;
+                                if (memory_cores > cpu_cores)
+                                {
+                                    suitServer = SearchForContinueVM(1, cpu_cores, memory_cores);
+                                }
+
+                                if (suitServer != 0)
+                                {
+                                    // int new_cost = suitServer->hardware_cost+ (total_days_num - now_day) * suitServer->daily_cost;
+                                    // int old_cost = server_name2info[last_buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[last_buy_server_name].daily_cost + server_name2info[buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[buy_server_name].daily_cost;
+                                    int new_cost = suitServer->hardware_cost + (total_days_num - now_day) * suitServer->daily_cost;
+                                    int old_cost = server_name2info[last_buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[last_buy_server_name].daily_cost + server_name2info[buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[buy_server_name].daily_cost;
+                                    // cout<<new_cost<<"   "<<old_cost<<endl;
+                                    int num1 = vm_id2info.size();
+                                    if (new_cost < old_cost)
+                                    {
+                                        count_continue_buy++;
+                                        revokeBuy(add_data.vm_id);
+                                        revokeBuy(last_add_data.vm_id);
+
+                                        // last_buy_server_name = AddVm(last_add_data);
+                                        // buy_server_name = AddVm(add_data);
+                                        BuyAndDeployTwoVM(last_add_data.vm_name, add_data.vm_name, last_add_data.vm_id, add_data.vm_id, suitServer->server_name);
+                                        isSuccess = true;
+                                    }
+                                }
+                            }
+
+                            else if (last_add_data.deployment_way == 0 && add_data.deployment_way == 0)
+                            {
+                                int cpu_cores = max(last_add_data.cpu_cores, add_data.cpu_cores);
+                                int memory_cores = max(last_add_data.memory_size, add_data.memory_size);
+                                SoldServer *suitServer = SearchForContinueVM(1, cpu_cores, memory_cores);
+                                if (suitServer != 0)
+                                {
+                                    int new_cost = suitServer->hardware_cost + (total_days_num - now_day) * suitServer->daily_cost;
+                                    int old_cost = server_name2info[last_buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[last_buy_server_name].daily_cost + server_name2info[buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[buy_server_name].daily_cost;
+                                    // int new_cost = suitServer->hardware_cost;
+                                    // int old_cost = server_name2info[last_buy_server_name].hardware_cost + server_name2info[buy_server_name].hardware_cost ;
+                                    // cout<<new_cost<<"   "<<old_cost<<endl;
+                                    if (new_cost < old_cost)
+                                    {
+                                        count_continue_buy++;
+                                        revokeBuy(add_data.vm_id);
+                                        revokeBuy(last_add_data.vm_id);
+                                        // last_buy_server_name = AddVm(last_add_data);
+                                        // buy_server_name = AddVm(add_data);
+                                        BuyAndDeployTwoVM_2(last_add_data.vm_name, add_data.vm_name, last_add_data.vm_id, add_data.vm_id, suitServer->server_name);
+                                        isSuccess = true;
+                                    }
+                                }
+                            }
+                        }
+
+                        if (isSuccess)
+                        {
+                            last_buy_server_name = "";
+                        }
+                        else
+                        {
+                            last_buy_server_name = buy_server_name;
+                            last_add_data = add_data;
+                        }
+                    }
                     if (j == request_num)
                     {
                         break;
                     }
-                }
-                else
-                {
-                    int vmID = intraday_requests[j].vm_id;
-                    // cout<<allResouceAfterMigration[0]<<"  "<<cpu_add_need<<endl;
-                    if (allResouceAfterMigration[0] >1.5* cpu_add_need && allResouceAfterMigration[1] >1.5* memory_add_need)
+                    if (operation == "del")
                     {
-                        // cout<<"继续加"<<endl;
-                        //继续加 把del保存
-                        continuous_del_datas.emplace_back(vmID);
-                        ++j;
-                        if (j == request_num)
-                        {
-                            break;
-                        }
-                    }
-                    else
-                    {
-                        // 处理所有的Add 然后进行删除
-                        // cout<<1<< " "<<allResouceAfterMigration[0]<<"  "<<allResouceAfterMigration[1]<<endl;
-                        // cout<<cpu_add_need<<"  "<<memory_add_need<<endl;
-                        sort(continuous_add_datas.begin(), continuous_add_datas.end(), cmp.ContinuousADD);
-                        string last_buy_server_name = "";
-                        AddData last_add_data;
-                        for (auto &add_data : continuous_add_datas)
-                        {
-                            string buy_server_name = AddVm(add_data);
-
-                            bool isSuccess = false;
-
-                            if (last_buy_server_name != "" && buy_server_name != "")
-                            {
-                                //连续两次购买
-
-                                if (last_add_data.deployment_way == 1 && add_data.deployment_way == 1)
-                                {
-                                    int cpu_cores = last_add_data.cpu_cores + add_data.cpu_cores;
-                                    int memory_cores = last_add_data.memory_size + add_data.memory_size;
-
-                                    SoldServer *suitServer = 0;
-                                    if (memory_cores > cpu_cores)
-                                    {
-                                        suitServer = SearchForContinueVM(1, cpu_cores, memory_cores);
-                                    }
-
-                                    if (suitServer != 0)
-                                    {
-                                        // int new_cost = suitServer->hardware_cost+ (total_days_num - now_day) * suitServer->daily_cost;
-                                        // int old_cost = server_name2info[last_buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[last_buy_server_name].daily_cost + server_name2info[buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[buy_server_name].daily_cost;
-                                        int new_cost = suitServer->hardware_cost + (total_days_num - now_day) * suitServer->daily_cost;
-                                        int old_cost = server_name2info[last_buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[last_buy_server_name].daily_cost + server_name2info[buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[buy_server_name].daily_cost;
-                                        // cout<<new_cost<<"   "<<old_cost<<endl;
-                                        int num1 = vm_id2info.size();
-                                        if (new_cost < old_cost)
-                                        {
-                                            count_continue_buy++;
-                                            revokeBuy(add_data.vm_id);
-                                            revokeBuy(last_add_data.vm_id);
-
-                                            // last_buy_server_name = AddVm(last_add_data);
-                                            // buy_server_name = AddVm(add_data);
-                                            BuyAndDeployTwoVM(last_add_data.vm_name, add_data.vm_name, last_add_data.vm_id, add_data.vm_id, suitServer->server_name);
-                                            isSuccess = true;
-                                        }
-                                    }
-                                }
-
-                                else if (last_add_data.deployment_way == 0 && add_data.deployment_way == 0)
-                                {
-                                    int cpu_cores = max(last_add_data.cpu_cores, add_data.cpu_cores);
-                                    int memory_cores = max(last_add_data.memory_size, add_data.memory_size);
-                                    SoldServer *suitServer = SearchForContinueVM(1, cpu_cores, memory_cores);
-                                    if (suitServer != 0)
-                                    {
-                                        int new_cost = suitServer->hardware_cost + (total_days_num - now_day) * suitServer->daily_cost;
-                                        int old_cost = server_name2info[last_buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[last_buy_server_name].daily_cost + server_name2info[buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[buy_server_name].daily_cost;
-                                        // int new_cost = suitServer->hardware_cost;
-                                        // int old_cost = server_name2info[last_buy_server_name].hardware_cost + server_name2info[buy_server_name].hardware_cost ;
-                                        // cout<<new_cost<<"   "<<old_cost<<endl;
-                                        if (new_cost < old_cost)
-                                        {
-                                            count_continue_buy++;
-                                            revokeBuy(add_data.vm_id);
-                                            revokeBuy(last_add_data.vm_id);
-                                            // last_buy_server_name = AddVm(last_add_data);
-                                            // buy_server_name = AddVm(add_data);
-                                            BuyAndDeployTwoVM_2(last_add_data.vm_name, add_data.vm_name, last_add_data.vm_id, add_data.vm_id, suitServer->server_name);
-                                            isSuccess = true;
-                                        }
-                                    }
-                                }
-                            }
-
-                            if (isSuccess)
-                            {
-                                last_buy_server_name = "";
-                            }
-                            else
-                            {
-                                last_buy_server_name = buy_server_name;
-                                last_add_data = add_data;
-                            }
-                        }
-                        // allResouceAfterMigration = GetAllResourceOfOwnServers(true);
-                        // cout<<2<< " "<<allResouceAfterMigration[0]<<"  "<<allResouceAfterMigration[1]<<endl;
-                        //处理删除
-                        continuous_del_datas.emplace_back(vmID);
-                        for (auto &del : continuous_del_datas)
-                        {
-                            DeleteVm(del.vm_id);
-                        }
-                        continuous_add_datas.erase(continuous_add_datas.begin(), continuous_add_datas.end());
-                        continuous_del_datas.erase(continuous_del_datas.begin(), continuous_del_datas.end());
-                        cpu_add_need = 0;
-                        memory_add_need = 0;
-                        allResouceAfterMigration = GetAllResourceOfOwnServers(true);
-                        // cout<<3<< " "<<allResouceAfterMigration[0]<<"  "<<allResouceAfterMigration[1]<<endl;
-                        ++j;
-                        if (j == request_num)
-                        {
-                            break;
-                        }
+                        int vm_id = intraday_requests[j].vm_id;
+                        DeleteVm(vm_id);
+                        // vm_id2info.erase(vm_id);
                     }
                 }
             }
-            if (continuous_add_datas.size() != 0)
+            else
             {
+
+                //收集所有的add操作
+                vector<AddData> continuous_add_datas;
+                for (int j = 0; j < request_num; ++j)
+                {
+                    string operation = intraday_requests[j].operation;
+                    if (operation == "add")
+                    {
+                        string vm_name = intraday_requests[j].vm_name;
+                        SoldVm sold_vm = vm_name2info[vm_name];
+                        int deployment_way = sold_vm.deployment_way;
+                        int cpu_cores = sold_vm.cpu_cores;
+                        int memory_size = sold_vm.memory_size;
+                        int vm_id = intraday_requests[j].vm_id;
+                        continuous_add_datas.emplace_back(deployment_way, cpu_cores, memory_size, vm_id, vm_name);
+                        operation = intraday_requests[j].operation;
+                    }
+                }
+
+                //对连续的add排序
                 sort(continuous_add_datas.begin(), continuous_add_datas.end(), cmp.ContinuousADD);
+
                 string last_buy_server_name = "";
                 AddData last_add_data;
                 for (auto &add_data : continuous_add_datas)
                 {
                     string buy_server_name = AddVm(add_data);
-
+                    // if(buy_server_name!=""){
+                    //     revokeBuy(add_data.vm_id);
+                    //     buy_server_name = AddVm(add_data);
+                    // }
                     bool isSuccess = false;
-
                     if (last_buy_server_name != "" && buy_server_name != "")
                     {
                         //连续两次购买
@@ -2091,13 +2344,12 @@ void SolveProblem()
 
                             if (suitServer != 0)
                             {
-                                // int new_cost = suitServer->hardware_cost+ (total_days_num - now_day) * suitServer->daily_cost;
+                                int new_cost = suitServer->hardware_cost;
+                                int old_cost = server_name2info[last_buy_server_name].hardware_cost + server_name2info[buy_server_name].hardware_cost;
+                                // int new_cost = suitServer->hardware_cost + (total_days_num - now_day) * suitServer->daily_cost;
                                 // int old_cost = server_name2info[last_buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[last_buy_server_name].daily_cost + server_name2info[buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[buy_server_name].daily_cost;
-                                int new_cost = suitServer->hardware_cost + (total_days_num - now_day) * suitServer->daily_cost;
-                                int old_cost = server_name2info[last_buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[last_buy_server_name].daily_cost + server_name2info[buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[buy_server_name].daily_cost;
                                 // cout<<new_cost<<"   "<<old_cost<<endl;
-                                int num1 = vm_id2info.size();
-                                if (new_cost < old_cost)
+                                if (new_cost < 2.0 / 3 * old_cost)
                                 {
                                     count_continue_buy++;
                                     revokeBuy(add_data.vm_id);
@@ -2110,8 +2362,58 @@ void SolveProblem()
                                 }
                             }
                         }
+                        // if(last_add_data.deployment_way == 1 && add_data.deployment_way == 0){
+                        //     int cpu_cores = last_add_data.cpu_cores+add_data.cpu_cores;
+                        //     int memory_cores = last_add_data.memory_size + add_data.memory_size;
+                        //     SoldServer* suitServer = 0;
+                        //     if(memory_cores > 1.5 * cpu_cores){
+                        //         suitServer = SearchForContinueVM(1,cpu_cores,memory_cores);
+                        //     }
+                        //     if(suitServer!=0){
+                        //         // int new_cost = suitServer->hardware_cost+ (total_days_num - now_day) * suitServer->daily_cost;
+                        //         // int old_cost = server_name2info[last_buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[last_buy_server_name].daily_cost + server_name2info[buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[buy_server_name].daily_cost;
+                        //         int new_cost = suitServer->hardware_cost;
+                        //         int old_cost = server_name2info[last_buy_server_name].hardware_cost + server_name2info[buy_server_name].hardware_cost ;
+                        //         // cout<<new_cost<<"   "<<old_cost<<endl;
+                        //         if(new_cost <2.0 / 3 * old_cost){
+                        //             save_cost+=old_cost - new_cost;
+                        //             count_continue_buy ++;
+                        //             revokeBuy(add_data.vm_id);
+                        //             revokeBuy(last_add_data.vm_id);
 
-                        else if (last_add_data.deployment_way == 0 && add_data.deployment_way == 0)
+                        //             // last_buy_server_name = AddVm(last_add_data);
+                        //             // buy_server_name = AddVm(add_data);
+                        //             BuyAndDeployTwoVM(last_add_data.vm_name,add_data.vm_name,last_add_data.vm_id,add_data.vm_id,suitServer->server_name);
+                        //             isSuccess = true;
+                        //         }
+                        //     }
+                        // }
+                        // if(last_add_data.deployment_way == 0 && add_data.deployment_way == 1){
+                        //     int cpu_cores = last_add_data.cpu_cores+add_data.cpu_cores;
+                        //     int memory_cores = last_add_data.memory_size + add_data.memory_size;
+                        //     SoldServer* suitServer = 0;
+                        //     if(memory_cores > cpu_cores){
+                        //         suitServer = SearchForContinueVM(1,cpu_cores,memory_cores);
+                        //     }
+                        //     if(suitServer!=0){
+                        //         // int new_cost = suitServer->hardware_cost+ (total_days_num - now_day) * suitServer->daily_cost;
+                        //         // int old_cost = server_name2info[last_buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[last_buy_server_name].daily_cost + server_name2info[buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[buy_server_name].daily_cost;
+                        //         int new_cost = suitServer->hardware_cost;
+                        //         int old_cost = server_name2info[last_buy_server_name].hardware_cost + server_name2info[buy_server_name].hardware_cost ;
+                        //         // cout<<new_cost<<"   "<<old_cost<<endl;
+                        //         if(new_cost <2.0 / 3 * old_cost){
+                        //             save_cost+=old_cost - new_cost;
+                        //             count_continue_buy ++;
+                        //             revokeBuy(add_data.vm_id);
+                        //             revokeBuy(last_add_data.vm_id);
+                        //             // last_buy_server_name = AddVm(last_add_data);
+                        //             // buy_server_name = AddVm(add_data);
+                        //             BuyAndDeployTwoVM(last_add_data.vm_name,add_data.vm_name,last_add_data.vm_id,add_data.vm_id,suitServer->server_name);
+                        //             isSuccess = true;
+                        //         }
+                        //     }
+                        // }
+                        if (last_add_data.deployment_way == 0 && add_data.deployment_way == 0)
                         {
                             int cpu_cores = max(last_add_data.cpu_cores, add_data.cpu_cores);
                             int memory_cores = max(last_add_data.memory_size, add_data.memory_size);
@@ -2136,7 +2438,6 @@ void SolveProblem()
                             }
                         }
                     }
-
                     if (isSuccess)
                     {
                         last_buy_server_name = "";
@@ -2147,305 +2448,21 @@ void SolveProblem()
                         last_add_data = add_data;
                     }
                 }
-            }
 
-            if (continuous_del_datas.size() != 0)
-            {
-                for (auto &del : continuous_del_datas)
+                //处理所有的del
+                for (int j = 0; j < request_num; ++j)
                 {
-                    DeleteVm(del.vm_id);
+                    string operation = intraday_requests[j].operation;
+                    if (operation == "del")
+                    {
+                        int vm_id = intraday_requests[j].vm_id;
+                        DeleteVm(vm_id);
+                        if (vm_id2info.count(vm_id) != 0)
+                        {
+                            // vm_id2info.erase(vm_id);
+                        }
+                    }
                 }
-                continuous_add_datas.erase(continuous_add_datas.begin(), continuous_add_datas.end());
-                continuous_del_datas.erase(continuous_del_datas.begin(), continuous_del_datas.end());
-            }
-
-            // if (!isContinueBuy)
-            // {
-            //     for (int j = 0; j < request_num; ++j)
-            //     {
-            //         string operation = intraday_requests[j].operation;
-            //         vector<AddData> continuous_add_datas;
-            //         while (operation == "add" && j < request_num)
-            //         {
-            //             string vm_name = intraday_requests[j].vm_name;
-            //             SoldVm sold_vm = vm_name2info[vm_name];
-            //             int deployment_way = sold_vm.deployment_way;
-            //             int cpu_cores = sold_vm.cpu_cores;
-            //             int memory_size = sold_vm.memory_size;
-            //             int vm_id = intraday_requests[j].vm_id;
-            //             continuous_add_datas.emplace_back(deployment_way, cpu_cores, memory_size, vm_id, vm_name);
-            //             ++j;
-            //             if (j == request_num)
-            //             {
-            //                 break;
-            //             }
-            //             operation = intraday_requests[j].operation;
-            //         }
-            //         sort(continuous_add_datas.begin(), continuous_add_datas.end(), cmp.ContinuousADD);
-
-            //         string last_buy_server_name = "";
-            //         AddData last_add_data;
-            //         for (auto &add_data : continuous_add_datas)
-            //         {
-            //             string buy_server_name = AddVm(add_data);
-
-            //             bool isSuccess = false;
-
-            //             if (last_buy_server_name != "" && buy_server_name != "")
-            //             {
-            //                 //连续两次购买
-
-            //                 if (last_add_data.deployment_way == 1 && add_data.deployment_way == 1)
-            //                 {
-            //                     int cpu_cores = last_add_data.cpu_cores + add_data.cpu_cores;
-            //                     int memory_cores = last_add_data.memory_size + add_data.memory_size;
-
-            //                     SoldServer *suitServer = 0;
-            //                     if (memory_cores > cpu_cores)
-            //                     {
-            //                         suitServer = SearchForContinueVM(1, cpu_cores, memory_cores);
-            //                     }
-
-            //                     if (suitServer != 0)
-            //                     {
-            //                         // int new_cost = suitServer->hardware_cost+ (total_days_num - now_day) * suitServer->daily_cost;
-            //                         // int old_cost = server_name2info[last_buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[last_buy_server_name].daily_cost + server_name2info[buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[buy_server_name].daily_cost;
-            //                         int new_cost = suitServer->hardware_cost + (total_days_num - now_day) * suitServer->daily_cost;
-            //                         int old_cost = server_name2info[last_buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[last_buy_server_name].daily_cost + server_name2info[buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[buy_server_name].daily_cost;
-            //                         // cout<<new_cost<<"   "<<old_cost<<endl;
-            //                         int num1 = vm_id2info.size();
-            //                         if (new_cost < old_cost)
-            //                         {
-            //                             count_continue_buy++;
-            //                             revokeBuy(add_data.vm_id);
-            //                             revokeBuy(last_add_data.vm_id);
-
-            //                             // last_buy_server_name = AddVm(last_add_data);
-            //                             // buy_server_name = AddVm(add_data);
-            //                             BuyAndDeployTwoVM(last_add_data.vm_name, add_data.vm_name, last_add_data.vm_id, add_data.vm_id, suitServer->server_name);
-            //                             isSuccess = true;
-            //                         }
-            //                     }
-            //                 }
-
-            //                 else if (last_add_data.deployment_way == 0 && add_data.deployment_way == 0)
-            //                 {
-            //                     int cpu_cores = max(last_add_data.cpu_cores, add_data.cpu_cores);
-            //                     int memory_cores = max(last_add_data.memory_size, add_data.memory_size);
-            //                     SoldServer *suitServer = SearchForContinueVM(1, cpu_cores, memory_cores);
-            //                     if (suitServer != 0)
-            //                     {
-            //                         int new_cost = suitServer->hardware_cost + (total_days_num - now_day) * suitServer->daily_cost;
-            //                         int old_cost = server_name2info[last_buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[last_buy_server_name].daily_cost + server_name2info[buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[buy_server_name].daily_cost;
-            //                         // int new_cost = suitServer->hardware_cost;
-            //                         // int old_cost = server_name2info[last_buy_server_name].hardware_cost + server_name2info[buy_server_name].hardware_cost ;
-            //                         // cout<<new_cost<<"   "<<old_cost<<endl;
-            //                         if (new_cost < old_cost)
-            //                         {
-            //                             count_continue_buy++;
-            //                             revokeBuy(add_data.vm_id);
-            //                             revokeBuy(last_add_data.vm_id);
-            //                             // last_buy_server_name = AddVm(last_add_data);
-            //                             // buy_server_name = AddVm(add_data);
-            //                             BuyAndDeployTwoVM_2(last_add_data.vm_name, add_data.vm_name, last_add_data.vm_id, add_data.vm_id, suitServer->server_name);
-            //                             isSuccess = true;
-            //                         }
-            //                     }
-            //                 }
-            //             }
-
-            //             if (isSuccess)
-            //             {
-            //                 last_buy_server_name = "";
-            //             }
-            //             else
-            //             {
-            //                 last_buy_server_name = buy_server_name;
-            //                 last_add_data = add_data;
-            //             }
-            //         }
-            //         if (j == request_num)
-            //         {
-            //             break;
-            //         }
-            //         if (operation == "del")
-            //         {
-            //             int vm_id = intraday_requests[j].vm_id;
-            //             DeleteVm(vm_id);
-            //             // vm_id2info.erase(vm_id);
-            //         }
-            //     }
-            // }
-            // else
-            // {
-
-            //     //收集所有的add操作
-            //     vector<AddData> continuous_add_datas;
-            //     for (int j = 0; j < request_num; ++j)
-            //     {
-            //         string operation = intraday_requests[j].operation;
-            //         if (operation == "add")
-            //         {
-            //             string vm_name = intraday_requests[j].vm_name;
-            //             SoldVm sold_vm = vm_name2info[vm_name];
-            //             int deployment_way = sold_vm.deployment_way;
-            //             int cpu_cores = sold_vm.cpu_cores;
-            //             int memory_size = sold_vm.memory_size;
-            //             int vm_id = intraday_requests[j].vm_id;
-            //             continuous_add_datas.emplace_back(deployment_way, cpu_cores, memory_size, vm_id, vm_name);
-            //             operation = intraday_requests[j].operation;
-            //         }
-            //     }
-
-            //     //对连续的add排序
-            //     sort(continuous_add_datas.begin(), continuous_add_datas.end(), cmp.ContinuousADD);
-
-            //     string last_buy_server_name = "";
-            //     AddData last_add_data;
-            //     for (auto &add_data : continuous_add_datas)
-            //     {
-            //         string buy_server_name = AddVm(add_data);
-            //         // if(buy_server_name!=""){
-            //         //     revokeBuy(add_data.vm_id);
-            //         //     buy_server_name = AddVm(add_data);
-            //         // }
-            //         bool isSuccess = false;
-            //         if (last_buy_server_name != "" && buy_server_name != "")
-            //         {
-            //             //连续两次购买
-
-            //             if (last_add_data.deployment_way == 1 && add_data.deployment_way == 1)
-            //             {
-            //                 int cpu_cores = last_add_data.cpu_cores + add_data.cpu_cores;
-            //                 int memory_cores = last_add_data.memory_size + add_data.memory_size;
-
-            //                 SoldServer *suitServer = 0;
-            //                 if (memory_cores > cpu_cores)
-            //                 {
-            //                     suitServer = SearchForContinueVM(1, cpu_cores, memory_cores);
-            //                 }
-
-            //                 if (suitServer != 0)
-            //                 {
-            //                     int new_cost = suitServer->hardware_cost;
-            //                     int old_cost = server_name2info[last_buy_server_name].hardware_cost + server_name2info[buy_server_name].hardware_cost;
-            //                     // int new_cost = suitServer->hardware_cost + (total_days_num - now_day) * suitServer->daily_cost;
-            //                     // int old_cost = server_name2info[last_buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[last_buy_server_name].daily_cost + server_name2info[buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[buy_server_name].daily_cost;
-            //                     // cout<<new_cost<<"   "<<old_cost<<endl;
-            //                     if (new_cost < 2.0 / 3 * old_cost)
-            //                     {
-            //                         count_continue_buy++;
-            //                         revokeBuy(add_data.vm_id);
-            //                         revokeBuy(last_add_data.vm_id);
-
-            //                         // last_buy_server_name = AddVm(last_add_data);
-            //                         // buy_server_name = AddVm(add_data);
-            //                         BuyAndDeployTwoVM(last_add_data.vm_name, add_data.vm_name, last_add_data.vm_id, add_data.vm_id, suitServer->server_name);
-            //                         isSuccess = true;
-            //                     }
-            //                 }
-            //             }
-            //             // if(last_add_data.deployment_way == 1 && add_data.deployment_way == 0){
-            //             //     int cpu_cores = last_add_data.cpu_cores+add_data.cpu_cores;
-            //             //     int memory_cores = last_add_data.memory_size + add_data.memory_size;
-            //             //     SoldServer* suitServer = 0;
-            //             //     if(memory_cores > 1.5 * cpu_cores){
-            //             //         suitServer = SearchForContinueVM(1,cpu_cores,memory_cores);
-            //             //     }
-            //             //     if(suitServer!=0){
-            //             //         // int new_cost = suitServer->hardware_cost+ (total_days_num - now_day) * suitServer->daily_cost;
-            //             //         // int old_cost = server_name2info[last_buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[last_buy_server_name].daily_cost + server_name2info[buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[buy_server_name].daily_cost;
-            //             //         int new_cost = suitServer->hardware_cost;
-            //             //         int old_cost = server_name2info[last_buy_server_name].hardware_cost + server_name2info[buy_server_name].hardware_cost ;
-            //             //         // cout<<new_cost<<"   "<<old_cost<<endl;
-            //             //         if(new_cost <2.0 / 3 * old_cost){
-            //             //             save_cost+=old_cost - new_cost;
-            //             //             count_continue_buy ++;
-            //             //             revokeBuy(add_data.vm_id);
-            //             //             revokeBuy(last_add_data.vm_id);
-
-            //             //             // last_buy_server_name = AddVm(last_add_data);
-            //             //             // buy_server_name = AddVm(add_data);
-            //             //             BuyAndDeployTwoVM(last_add_data.vm_name,add_data.vm_name,last_add_data.vm_id,add_data.vm_id,suitServer->server_name);
-            //             //             isSuccess = true;
-            //             //         }
-            //             //     }
-            //             // }
-            //             // if(last_add_data.deployment_way == 0 && add_data.deployment_way == 1){
-            //             //     int cpu_cores = last_add_data.cpu_cores+add_data.cpu_cores;
-            //             //     int memory_cores = last_add_data.memory_size + add_data.memory_size;
-            //             //     SoldServer* suitServer = 0;
-            //             //     if(memory_cores > cpu_cores){
-            //             //         suitServer = SearchForContinueVM(1,cpu_cores,memory_cores);
-            //             //     }
-            //             //     if(suitServer!=0){
-            //             //         // int new_cost = suitServer->hardware_cost+ (total_days_num - now_day) * suitServer->daily_cost;
-            //             //         // int old_cost = server_name2info[last_buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[last_buy_server_name].daily_cost + server_name2info[buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[buy_server_name].daily_cost;
-            //             //         int new_cost = suitServer->hardware_cost;
-            //             //         int old_cost = server_name2info[last_buy_server_name].hardware_cost + server_name2info[buy_server_name].hardware_cost ;
-            //             //         // cout<<new_cost<<"   "<<old_cost<<endl;
-            //             //         if(new_cost <2.0 / 3 * old_cost){
-            //             //             save_cost+=old_cost - new_cost;
-            //             //             count_continue_buy ++;
-            //             //             revokeBuy(add_data.vm_id);
-            //             //             revokeBuy(last_add_data.vm_id);
-            //             //             // last_buy_server_name = AddVm(last_add_data);
-            //             //             // buy_server_name = AddVm(add_data);
-            //             //             BuyAndDeployTwoVM(last_add_data.vm_name,add_data.vm_name,last_add_data.vm_id,add_data.vm_id,suitServer->server_name);
-            //             //             isSuccess = true;
-            //             //         }
-            //             //     }
-            //             // }
-            //             if (last_add_data.deployment_way == 0 && add_data.deployment_way == 0)
-            //             {
-            //                 int cpu_cores = max(last_add_data.cpu_cores, add_data.cpu_cores);
-            //                 int memory_cores = max(last_add_data.memory_size, add_data.memory_size);
-            //                 SoldServer *suitServer = SearchForContinueVM(1, cpu_cores, memory_cores);
-            //                 if (suitServer != 0)
-            //                 {
-            //                     int new_cost = suitServer->hardware_cost + (total_days_num - now_day) * suitServer->daily_cost;
-            //                     int old_cost = server_name2info[last_buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[last_buy_server_name].daily_cost + server_name2info[buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[buy_server_name].daily_cost;
-            //                     // int new_cost = suitServer->hardware_cost;
-            //                     // int old_cost = server_name2info[last_buy_server_name].hardware_cost + server_name2info[buy_server_name].hardware_cost ;
-            //                     // cout<<new_cost<<"   "<<old_cost<<endl;
-            //                     if (new_cost < old_cost)
-            //                     {
-            //                         count_continue_buy++;
-            //                         revokeBuy(add_data.vm_id);
-            //                         revokeBuy(last_add_data.vm_id);
-            //                         // last_buy_server_name = AddVm(last_add_data);
-            //                         // buy_server_name = AddVm(add_data);
-            //                         BuyAndDeployTwoVM_2(last_add_data.vm_name, add_data.vm_name, last_add_data.vm_id, add_data.vm_id, suitServer->server_name);
-            //                         isSuccess = true;
-            //                     }
-            //                 }
-            //             }
-            //         }
-            //         if (isSuccess)
-            //         {
-            //             last_buy_server_name = "";
-            //         }
-            //         else
-            //         {
-            //             last_buy_server_name = buy_server_name;
-            //             last_add_data = add_data;
-            //         }
-            //     }
-
-            //     //处理所有的del
-            //     for (int j = 0; j < request_num; ++j)
-            //     {
-            //         string operation = intraday_requests[j].operation;
-            //         if (operation == "del")
-            //         {
-            //             int vm_id = intraday_requests[j].vm_id;
-            //             DeleteVm(vm_id);
-            //             if (vm_id2info.count(vm_id) != 0)
-            //             {
-            //                 // vm_id2info.erase(vm_id);
-            //             }
-            //         }
-            //     }
             }
             Numbering(); //给购买了的服务器编号
 #ifndef PRINTINFO
