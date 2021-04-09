@@ -2117,7 +2117,9 @@ void SolveProblem()
             }
         }
         Numbering(); //给购买了的服务器编号
+        #ifndef PRINTINFO
         Print(vm_ids, migration_infos);
+        #endif
         fflush(stdout);
         purchase_infos.clear();
         from_off_2_start.clear();
