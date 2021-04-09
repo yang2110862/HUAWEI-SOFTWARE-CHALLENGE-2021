@@ -38,7 +38,7 @@ double _future_N_reqs_cpu_rate = 0;
 double _future_N_reqs_memory_rate = 0;
 double _migration_threshold = 0.03; //减小能增加迁移数量。
 double _near_full_threshold = 0.02; //增大能去掉更多的服务器，减少时间；同时迁移次数会有轻微减少，成本有轻微增加。
-
+double _near_full_threshold_2 = 0.2;
 double k1 = 0.695, k2 = 1 - k1; //CPU和memory的加权系数
 double r1 = 0.695, r2 = 1 - r1; //CPU和memory剩余率的加权系数
 
@@ -231,6 +231,11 @@ int _HowManyCondionSuit(PurchasedServer *server)
 bool NearlyFull(PurchasedServer *server)
 {
     return (1.0 * server->A_remain_core_num / server->total_core_num < _near_full_threshold || 1.0 * server->A_remain_memory_size / server->total_memory_size < _near_full_threshold) && (1.0 * server->B_remain_core_num / server->total_core_num < _near_full_threshold || 1.0 * server->B_remain_memory_size / server->total_memory_size < _near_full_threshold);
+}
+
+bool NearlyFull_2(PurchasedServer *server)
+{
+    return (1.0 * server->A_remain_core_num / server->total_core_num < _near_full_threshold_2 || 1.0 * server->A_remain_memory_size / server->total_memory_size < _near_full_threshold_2) && (1.0 * server->B_remain_core_num / server->total_core_num < _near_full_threshold_2 || 1.0 * server->B_remain_memory_size / server->total_memory_size < _near_full_threshold_2);
 }
 
 // 将某台虚拟机迁移至指定位置，调用前请确保能装入。
@@ -903,7 +908,7 @@ vector<MigrationInfo> Migration()
         {
             if (NeedMigration(server))
                 original_servers.emplace_back(server);
-            if (!NearlyFull(server))
+            if (!NearlyFull_2(server))
                 target_servers.emplace_back(server);
             // if(vm_nums(server) == 0 ) target_servers.emplace_back(server);
         }
