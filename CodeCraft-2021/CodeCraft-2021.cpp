@@ -1096,6 +1096,68 @@ vector<MigrationInfo> Migration()
             }
         }
     }
+
+        {
+        vector<PurchasedServer *> original_servers, target_servers;
+        for (auto server : purchase_servers)
+        {
+            if (NeedMigration_2(server))
+                original_servers.emplace_back(server);
+            if (!NearlyFull_2(server))
+                target_servers.emplace_back(server);
+            // if(vm_nums(server) == 0 ) target_servers.emplace_back(server);
+        }
+        sort(original_servers.begin(), original_servers.end(), [](PurchasedServer *server1, PurchasedServer *server2) {
+            if (server1->daily_cost > server2->daily_cost)
+                return true;
+            else if (server1->daily_cost == server2->daily_cost)
+            {
+                return min(server1->A_remain_core_num, server1->A_remain_memory_size) < min(server2->A_remain_core_num, server2->A_remain_memory_size);
+            }
+            else
+            {
+                return false;
+            }
+        });
+        sort(target_servers.begin(), target_servers.end(), [](PurchasedServer *server1, PurchasedServer *server2) {
+            // return (vm_nums(server1)==0? server1->daily_cost:0) < (vm_nums(server2)==0? server2->daily_cost:0);
+            if ((vm_nums(server1) == 0 ? server1->daily_cost : 0)   < (vm_nums(server2) == 0 ? server2->daily_cost : 0) )
+            {
+                return true;
+            }
+            else if ((vm_nums(server1) == 0 ? server1->daily_cost : 0) == (vm_nums(server2) == 0 ? server2->daily_cost : 0))
+            {
+                return max(remain_rate(server1,'A') , remain_rate(server1,'B'))< max(remain_rate(server2,'A'),remain_rate(server2,'B'));
+                // return  server1->total_core_num - server1->A_remain_core_num - server1->B_remain_core_num + 2 * server1->total_memory_size - server1->A_remain_memory_size - server1->B_remain_memory_size < 2 * server2->total_core_num - server2->A_remain_core_num - server2->B_remain_core_num + 2 * server2->total_memory_size - server2->A_remain_memory_size - server2->B_remain_memory_size;
+            }
+            else
+            {
+                return false;
+            }
+        });
+        for (auto original_server : original_servers)
+        {
+            for (auto target_server : target_servers)
+            {
+                if (target_server != original_server && (vm_nums(target_server) == 0 ? target_server->daily_cost : 0) <= 1 * original_server->daily_cost && migration_infos.size() <= max_migration_num - vm_nums(original_server) && target_server->A_remain_core_num >= original_server->total_core_num - original_server->A_remain_core_num && target_server->A_remain_memory_size >= original_server->total_memory_size - original_server->A_remain_memory_size && target_server->B_remain_core_num >= original_server->total_core_num - original_server->B_remain_core_num && target_server->B_remain_memory_size >= original_server->total_memory_size - original_server->B_remain_memory_size)
+                {
+                    migrate_to(original_server, 'C', target_server, 'C', migration_infos);
+                    migrate_to(original_server, 'A', target_server, 'A', migration_infos);
+                    migrate_to(original_server, 'B', target_server, 'B', migration_infos);
+                    if (migration_infos.size() == max_migration_num)
+                        return migration_infos;
+                }
+                else if (target_server != original_server && (vm_nums(target_server) == 0 ? target_server->daily_cost : 0) <= 1 * original_server->daily_cost && migration_infos.size() <= max_migration_num - vm_nums(original_server) && target_server->A_remain_core_num >= original_server->total_core_num - original_server->B_remain_core_num && target_server->A_remain_memory_size >= original_server->total_memory_size - original_server->B_remain_memory_size && target_server->B_remain_core_num >= original_server->total_core_num - original_server->A_remain_core_num && target_server->B_remain_memory_size >= original_server->total_memory_size - original_server->A_remain_memory_size)
+                {
+                    migrate_to(original_server, 'C', target_server, 'C', migration_infos);
+                    migrate_to(original_server, 'A', target_server, 'B', migration_infos);
+                    migrate_to(original_server, 'B', target_server, 'A', migration_infos);
+                    if (migration_infos.size() == max_migration_num)
+                        return migration_infos;
+                }
+            }
+        }
+    }
     // 第三步迁移。
     // {
     //     vector<PurchasedServer *> target_off_servers = {};
