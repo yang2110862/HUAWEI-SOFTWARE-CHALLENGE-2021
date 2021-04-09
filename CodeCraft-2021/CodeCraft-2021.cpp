@@ -391,6 +391,16 @@ vector<MigrationInfo> Migration()
         }
     });
 
+    // sort(migrating_vms.begin(), migrating_vms.end(), [&](VmIdInfo *vm1,VmIdInfo *vm2) {     
+    //     PurchasedServer *server1 = vm1->purchase_server, *server2 = vm2->purchase_server;
+    //     if(1.0*(vm1->cpu_cores  + vm1->memory_size ) * (vm1->node == 'C' ? 1 : 1)  > 1.0* (vm2->cpu_cores  + vm2->memory_size ) * (vm2->node == 'C' ? 1 : 1) ) return true;
+    //     else if( 1.0*(vm1->cpu_cores  + vm1->memory_size ) * (vm1->node == 'C' ? 1 : 1)  == 1.0* (vm2->cpu_cores  + vm2->memory_size ) * (vm2->node == 'C' ? 1 : 1)){
+    //         return vm_nums(server1) > vm_nums(server2);
+    //     }else{
+    //         return false;
+    //     }
+    // });
+
     for (auto &vm_info : migrating_vms) {
         if (vm_info->node != 'C') {
             PurchasedServer *original_server = vm_info->purchase_server;
@@ -427,7 +437,7 @@ vector<MigrationInfo> Migration()
                     
                 }
             }
-            if (which_node != '!' && min_rate<0.5  *_original_rate) { //开始迁移。
+            if (which_node != '!' && min_rate < 0.5  *_original_rate) { //开始迁移。
                 migrate_to(vm_info, best_server, which_node, migration_infos);
                 if (migration_infos.size() == max_migration_num) return migration_infos;
             }
@@ -663,7 +673,7 @@ vector<MigrationInfo> Migration()
     });
     for (auto original_server : original_servers) {
         for (auto target_server : target_servers) {
-            if (target_server != original_server && (vm_nums(target_server)==0? target_server->daily_cost : 0) <= original_server->daily_cost && migration_infos.size() <= max_migration_num - vm_nums(original_server)
+            if (target_server != original_server && (vm_nums(target_server)==0? target_server->daily_cost : 0) <= 0.9* original_server->daily_cost && migration_infos.size() <= max_migration_num - vm_nums(original_server)
             && target_server->A_remain_core_num >= original_server->total_core_num - original_server->A_remain_core_num
             && target_server->A_remain_memory_size >= original_server->total_memory_size - original_server->A_remain_memory_size
             &&target_server->B_remain_core_num >= original_server->total_core_num - original_server->B_remain_core_num
@@ -673,7 +683,7 @@ vector<MigrationInfo> Migration()
                 migrate_to(original_server, 'B', target_server, 'B', migration_infos);
                 if (migration_infos.size() == max_migration_num) return migration_infos;
             } 
-            else if (target_server != original_server && (vm_nums(target_server)==0? target_server->daily_cost : 0) <= original_server->daily_cost && migration_infos.size() <= max_migration_num - vm_nums(original_server)
+            else if (target_server != original_server && (vm_nums(target_server)==0? target_server->daily_cost : 0) <= 0.9* original_server->daily_cost && migration_infos.size() <= max_migration_num - vm_nums(original_server)
             && target_server->A_remain_core_num >= original_server->total_core_num - original_server->B_remain_core_num
             && target_server->A_remain_memory_size >= original_server->total_memory_size - original_server->B_remain_memory_size
             &&target_server->B_remain_core_num >= original_server->total_core_num - original_server->A_remain_core_num
@@ -834,8 +844,8 @@ PurchasedServer *SearchSuitPurchasedServer(int deployed_way, int cpu_cores, int 
             {
                 if (purchase_server->A_remain_core_num >= cpu_cores && purchase_server->A_remain_memory_size >= memory_size && purchase_server->B_remain_core_num >= cpu_cores && purchase_server->B_remain_memory_size >= memory_size && (purchase_server->A_vm_id.size() + purchase_server->B_vm_id.size() + purchase_server->AB_vm_id.size() != 0))
                 {
-                    double _cpu_remain_rate = min(1.0 * (purchase_server->A_remain_core_num - cpu_cores) / purchase_server->total_core_num, 1.0 * (purchase_server->B_remain_core_num - cpu_cores) / purchase_server->total_core_num);
-                    double _memory_remain_rate = min(1.0 * (purchase_server->A_remain_memory_size - memory_size) / purchase_server->total_memory_size, 1.0 * (purchase_server->B_remain_memory_size - memory_size) / purchase_server->total_memory_size);
+                    double _cpu_remain_rate = max(1.0 * (purchase_server->A_remain_core_num - cpu_cores) / purchase_server->total_core_num, 1.0 * (purchase_server->B_remain_core_num - cpu_cores) / purchase_server->total_core_num);
+                    double _memory_remain_rate = max(1.0 * (purchase_server->A_remain_memory_size - memory_size) / purchase_server->total_memory_size, 1.0 * (purchase_server->B_remain_memory_size - memory_size) / purchase_server->total_memory_size);
                     // if(_cpu_remain_rate == 0 && _memory_remain_rate == 0) {
                     //     // cout<<"asdasdasda"<<endl;
                     //     use_Balance = false;
