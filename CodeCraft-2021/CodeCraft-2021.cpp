@@ -2357,8 +2357,8 @@ void PrintCostInfo()
 int main(int argc, char *argv[])
 {
 
-    Statistics sta;
-    vector<double> ans;
+    // Statistics sta;
+    // vector<double> ans;
 #ifdef REDIRECT
     // freopen("training-1.txt", "r", stdin);
     freopen("/Users/wangtongling/Desktop/training-data/training-1.txt", "r", stdin);
