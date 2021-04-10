@@ -37,6 +37,7 @@ int isDenseBuy = 0; // 0--非密度购买  1--密度购买
 double _future_N_reqs_cpu_rate = 0;
 double _future_N_reqs_memory_rate = 0;
 double _migration_threshold = 0.03; //减小能增加迁移数量。
+
 double _near_full_threshold = 0.02; //增大能去掉更多的服务器，减少时间；同时迁移次数会有轻微减少，成本有轻微增加。
 double _near_full_threshold_2 = 0.2;
 double k1 = 0.695, k2 = 1 - k1; //CPU和memory的加权系数
@@ -411,7 +412,6 @@ int NumOfOffServer()
     }
     return cnt;
 }
-
 
 vector<MigrationInfo> Migration()
 {
