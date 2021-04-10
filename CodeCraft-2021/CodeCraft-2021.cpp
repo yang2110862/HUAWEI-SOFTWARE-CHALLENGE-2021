@@ -1424,20 +1424,22 @@ string AddVm(AddData &add_data)
                 double _cpu_remain_rate = 1.0 * (purchase_server->A_remain_core_num - cpu_cores) / purchase_server->total_core_num;
                 double _memory_remain_rate = 1.0 * (purchase_server->A_remain_memory_size - memory_size) / purchase_server->total_memory_size;
 
-                // if (2 * max(_cpu_remain_rate, _memory_remain_rate) < min_remain_rate)
-                if ((_cpu_remain_rate + _memory_remain_rate) < min_remain_rate)
+                if (2 * max(_cpu_remain_rate, _memory_remain_rate) < min_remain_rate)
+                // if ((_cpu_remain_rate + _memory_remain_rate) < min_remain_rate)
                 {
-                    min_remain_rate = _cpu_remain_rate + _memory_remain_rate;
+                    // min_remain_rate = _cpu_remain_rate + _memory_remain_rate;
+                    min_remain_rate = 2 * max(_cpu_remain_rate, _memory_remain_rate) ;
                     flag_server = purchase_server;
                     which_node = 'A';
                 }
 
                 _cpu_remain_rate = 1.0 * (purchase_server->B_remain_core_num - cpu_cores) / purchase_server->total_core_num;
                 _memory_remain_rate = 1.0 * (purchase_server->B_remain_memory_size - memory_size) / purchase_server->total_memory_size;
-                // if (2 * max(_cpu_remain_rate, _memory_remain_rate) < min_remain_rate)
-                if ((_cpu_remain_rate + _memory_remain_rate) < min_remain_rate)
+                if (2 * max(_cpu_remain_rate, _memory_remain_rate) < min_remain_rate)
+                // if ((_cpu_remain_rate + _memory_remain_rate) < min_remain_rate)
                 {
-                    min_remain_rate = _cpu_remain_rate + _memory_remain_rate;
+                    // min_remain_rate = _cpu_remain_rate + _memory_remain_rate;
+                    min_remain_rate = 2 * max(_cpu_remain_rate, _memory_remain_rate) ;
                     flag_server = purchase_server;
                     which_node = 'B';
                 }
@@ -1446,10 +1448,11 @@ string AddVm(AddData &add_data)
             {
                 double _cpu_remain_rate = 1.0 * (purchase_server->A_remain_core_num - cpu_cores) / purchase_server->total_core_num;
                 double _memory_remain_rate = 1.0 * (purchase_server->A_remain_memory_size - memory_size) / purchase_server->total_memory_size;
-                // if (2 * max(_cpu_remain_rate, _memory_remain_rate) < min_remain_rate)
-                if ((_cpu_remain_rate + _memory_remain_rate) < min_remain_rate)
+                if (2 * max(_cpu_remain_rate, _memory_remain_rate) < min_remain_rate)
+                // if ((_cpu_remain_rate + _memory_remain_rate) < min_remain_rate)
                 {
-                    min_remain_rate = _cpu_remain_rate + _memory_remain_rate;
+                    // min_remain_rate = _cpu_remain_rate + _memory_remain_rate;
+                    min_remain_rate = 2 * max(_cpu_remain_rate, _memory_remain_rate) ;
                     flag_server = purchase_server;
                     which_node = 'A';
                 }
@@ -1458,10 +1461,11 @@ string AddVm(AddData &add_data)
             {
                 double _cpu_remain_rate = 1.0 * (purchase_server->B_remain_core_num - cpu_cores) / purchase_server->total_core_num;
                 double _memory_remain_rate = 1.0 * (purchase_server->B_remain_memory_size - memory_size) / purchase_server->total_memory_size;
-                // if (2 * max(_cpu_remain_rate, _memory_remain_rate) < min_remain_rate)
-                if ((_cpu_remain_rate + _memory_remain_rate) < min_remain_rate)
+                if (2 * max(_cpu_remain_rate, _memory_remain_rate) < min_remain_rate)
+                // if ((_cpu_remain_rate + _memory_remain_rate) < min_remain_rate)
                 {
-                    min_remain_rate = _cpu_remain_rate + _memory_remain_rate;
+                    // min_remain_rate = _cpu_remain_rate + _memory_remain_rate;
+                    min_remain_rate = 2 * max(_cpu_remain_rate, _memory_remain_rate) ;
                     flag_server = purchase_server;
                     which_node = 'B';
                 }
@@ -2358,7 +2362,7 @@ void SolveProblem()
                                 // int new_cost = suitServer->hardware_cost;
                                 // int old_cost = server_name2info[last_buy_server_name].hardware_cost + server_name2info[buy_server_name].hardware_cost ;
                                 // cout<<new_cost<<"   "<<old_cost<<endl;
-                                if (new_cost < old_cost)
+                                if (new_cost <  old_cost)
                                 {
                                     count_continue_buy++;
                                     revokeBuy(add_data.vm_id);
