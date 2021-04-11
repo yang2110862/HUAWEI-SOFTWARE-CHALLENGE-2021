@@ -19,6 +19,9 @@ int count_continue_buy = 0;
 
 int count_add_more_del = 0;
 
+double Start_rate = 1.0 / 2;
+double End_rate = 4.0 / 4;
+
 int total_days_num, foreseen_days_num; //总天数和可预知的天数
 int now_day;                           //现在是第几天
 int total_req_num = 0;
@@ -28,6 +31,8 @@ long long total_server_cost = 0;
 long long total_power_cost = 0;
 int total_migration_num = 0;
 
+bool isUsed = false;
+
 #ifdef PRINTINFO
 clock_t _start, _end;
 #endif
@@ -36,12 +41,13 @@ clock_t _start, _end;
 int isDenseBuy = 0; // 0--非密度购买  1--密度购买
 double _future_N_reqs_cpu_rate = 0;
 double _future_N_reqs_memory_rate = 0;
-double _migration_threshold = 0.03; //减小能增加迁移数量。
+double _migration_threshold = 0.024; //减小能增加迁移数量。
 
 double _near_full_threshold = 0.02; //增大能去掉更多的服务器，减少时间；同时迁移次数会有轻微减少，成本有轻微增加。
 double _near_full_threshold_2 = 0.2;
 double k1 = 0.695, k2 = 1 - k1; //CPU和memory的加权系数
 double r1 = 0.695, r2 = 1 - r1; //CPU和memory剩余率的加权系数
+
 
 void init()
 {
@@ -70,12 +76,53 @@ void init()
     isDenseBuy = 0;
 }
 
+int FindMaxDel(){
+    vector<int> delNums;
+    for(int i = now_day;i < now_day + foreseen_days_num ;i++){
+        if(i<total_days_num+1){
+            vector<RequestData> temp = request_datas.front();
+            int cnt_del = 0;
+            for(auto & data : temp){
+                if(data.operation == "del"){
+                    cnt_del++;
+
+                }
+            }
+            delNums.emplace_back(cnt_del);
+        }
+        
+        request_datas.push(request_datas.front());
+        request_datas.pop();
+        
+    }
+
+    int max_del_num = -1;
+    int flag_day =  0;
+    int sum = 0;
+
+    for(int i = 0;i<delNums.size();i++){
+        if(delNums[i]>max_del_num){
+            max_del_num = delNums[i];
+            flag_day = now_day+i;
+        }
+        sum += delNums[i];
+    }
+
+    if(max_del_num > 2.0 * (1.0 * sum / delNums.size())){
+        return flag_day;
+    }else{
+        return -1;
+    }
+    return -1;
+}
+
 // 返回服务器里虚拟机的数量。
 inline int vm_nums(PurchasedServer *server)
 {
     return server->A_vm_id.size() + server->B_vm_id.size() + server->AB_vm_id.size();
 }
 // 返回服务器某结点的加权平均剩余率，CPU和memory的权重分别是r1和r2。
+
 inline double remain_rate(PurchasedServer *server, char node)
 {
     if (node == 'A')
@@ -239,6 +286,8 @@ int _HowManyCondionSuit(PurchasedServer *server)
     double _B_memory_remain_rate = 1.0 * server->B_remain_memory_size / server->total_memory_size;
     return (_A_cpu_remain_rate > _migration_threshold) + (_A_memory_remain_rate > _migration_threshold) + (_B_cpu_remain_rate > _migration_threshold) + (_B_memory_remain_rate > _migration_threshold);
 }
+
+
 
 // 筛选出几乎满了的服务器，不作为目标服务器。
 bool NearlyFull(PurchasedServer *server)
@@ -415,6 +464,7 @@ int NumOfOffServer()
 
 vector<MigrationInfo> Migration()
 {
+
     int max_migration_num = vmIDs.size() * 30 / 1000;
     // total_migration_num+=max_migration_num;
     vector<MigrationInfo> migration_infos;
@@ -807,16 +857,31 @@ vector<MigrationInfo> Migration()
                     migrate_to(original_server, 'C', target_server, 'C', migration_infos);
                     migrate_to(original_server, 'A', target_server, 'A', migration_infos);
                     migrate_to(original_server, 'B', target_server, 'B', migration_infos);
-                    if (migration_infos.size() == max_migration_num)
-                        return migration_infos;
+                    if (migration_infos.size() == max_migration_num){
+                        if( Start_rate * total_days_num <=now_day&& End_rate * total_days_num >=now_day && !isUsed){
+                            isUsed = true;
+                            // cout<<"Used!!!!"<<endl;
+                            max_migration_num = vmIDs.size();
+                        }else{
+                            return migration_infos;
+                        }
+                    }
                 }
                 else if (target_server != original_server && (vm_nums(target_server) == 0 ? target_server->daily_cost : 0) <= 0.9 * original_server->daily_cost && migration_infos.size() <= max_migration_num - vm_nums(original_server) && target_server->A_remain_core_num >= original_server->total_core_num - original_server->B_remain_core_num && target_server->A_remain_memory_size >= original_server->total_memory_size - original_server->B_remain_memory_size && target_server->B_remain_core_num >= original_server->total_core_num - original_server->A_remain_core_num && target_server->B_remain_memory_size >= original_server->total_memory_size - original_server->A_remain_memory_size)
                 {
                     migrate_to(original_server, 'C', target_server, 'C', migration_infos);
                     migrate_to(original_server, 'A', target_server, 'B', migration_infos);
                     migrate_to(original_server, 'B', target_server, 'A', migration_infos);
-                    if (migration_infos.size() == max_migration_num)
-                        return migration_infos;
+                    if (migration_infos.size() == max_migration_num ){
+                        if(Start_rate * total_days_num <=now_day&& End_rate * total_days_num >=now_day && !isUsed){
+                            isUsed = true;
+                            // cout<<"Used!!!!"<<endl;
+                            max_migration_num = vmIDs.size();
+                        }else{
+                            return migration_infos;
+                        }
+                    }
+                        
                 }
             }
         }
@@ -909,8 +974,15 @@ vector<MigrationInfo> Migration()
                 if (which_node != '!' && min_rate < _original_rate)
                 { //开始迁移。
                     migrate_to(vm_info, best_server, which_node, migration_infos);
-                    if (migration_infos.size() == max_migration_num)
-                        return migration_infos;
+                    if (migration_infos.size() == max_migration_num ){
+                        if(Start_rate * total_days_num <=now_day&& End_rate * total_days_num >=now_day && !isUsed){
+                            isUsed = true;
+                            // cout<<"Used!!!!"<<endl;
+                            max_migration_num = vmIDs.size();
+                        }else{
+                            return migration_infos;
+                        }
+                    }
                 }
             }
             else
@@ -940,8 +1012,15 @@ vector<MigrationInfo> Migration()
                 if (best_server != NULL && min_rate <   _original_rate)
                 { //开始迁移。
                     migrate_to(vm_info, best_server, 'C', migration_infos);
-                    if (migration_infos.size() == max_migration_num)
-                        return migration_infos;
+                    if (migration_infos.size() == max_migration_num ){
+                        if(Start_rate * total_days_num <=now_day&& End_rate * total_days_num >=now_day && !isUsed){
+                            isUsed = true;
+                            // cout<<"Used!!!!"<<endl;
+                            max_migration_num = vmIDs.size();
+                        }else{
+                            return migration_infos;
+                        }
+                    }
                 }
             }
         }
@@ -997,16 +1076,30 @@ vector<MigrationInfo> Migration()
                     migrate_to(original_server, 'C', target_server, 'C', migration_infos);
                     migrate_to(original_server, 'A', target_server, 'A', migration_infos);
                     migrate_to(original_server, 'B', target_server, 'B', migration_infos);
-                    if (migration_infos.size() == max_migration_num)
-                        return migration_infos;
+                    if (migration_infos.size() == max_migration_num ){
+                        if(Start_rate * total_days_num <=now_day&& End_rate * total_days_num >=now_day && !isUsed){
+                            isUsed = true;
+                            // cout<<"Used!!!!"<<endl;
+                            max_migration_num = vmIDs.size();
+                        }else{
+                            return migration_infos;
+                        }
+                    }
                 }
                 else if (target_server != original_server && (vm_nums(target_server) == 0 ? target_server->daily_cost : 0) <= 1.0 * original_server->daily_cost && migration_infos.size() <= max_migration_num - vm_nums(original_server) && target_server->A_remain_core_num >= original_server->total_core_num - original_server->B_remain_core_num && target_server->A_remain_memory_size >= original_server->total_memory_size - original_server->B_remain_memory_size && target_server->B_remain_core_num >= original_server->total_core_num - original_server->A_remain_core_num && target_server->B_remain_memory_size >= original_server->total_memory_size - original_server->A_remain_memory_size)
                 {
                     migrate_to(original_server, 'C', target_server, 'C', migration_infos);
                     migrate_to(original_server, 'A', target_server, 'B', migration_infos);
                     migrate_to(original_server, 'B', target_server, 'A', migration_infos);
-                    if (migration_infos.size() == max_migration_num)
-                        return migration_infos;
+                    if (migration_infos.size() == max_migration_num ){
+                        if(Start_rate * total_days_num <=now_day&& End_rate * total_days_num >=now_day && !isUsed){
+                            isUsed = true;
+                            // cout<<"Used!!!!"<<endl;
+                            max_migration_num = vmIDs.size();
+                        }else{
+                            return migration_infos;
+                        }
+                    }
                 }
             }
         }
