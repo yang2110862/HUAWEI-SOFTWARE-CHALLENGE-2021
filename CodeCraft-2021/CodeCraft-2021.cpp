@@ -1218,7 +1218,7 @@ PurchasedServer *SearchSuitPurchasedServer(int deployed_way, int cpu_cores, int 
     return flag_server;
 }
 
-void DeployOnServer(PurchasedServer *flag_server, int deployment_way, int cpu_cores, int memory_size, int vm_id, string &vm_name)
+void DeployOnServer(PurchasedServer *flag_server, int deployment_way,char whichNode, int cpu_cores, int memory_size, int vm_id, string &vm_name)
 {
     /**
      * @description: 向某服务器部署虚拟机
@@ -1246,6 +1246,35 @@ void DeployOnServer(PurchasedServer *flag_server, int deployment_way, int cpu_co
         vm_id_info.node = 'C';
         vm_id_info.vm_id = vm_id;
         vm_id2info[vm_id] = vm_id_info;
+    }else{
+        if(whichNode == 'A'){
+            flag_server->A_remain_core_num -= cpu_cores;
+            flag_server->A_remain_memory_size -= memory_size;
+            flag_server->A_vm_id.insert(vm_id);
+
+            VmIdInfo vm_id_info;
+            vm_id_info.purchase_server = flag_server;
+            vm_id_info.vm_name = vm_name;
+            vm_id_info.cpu_cores = cpu_cores;
+            vm_id_info.memory_size = memory_size;
+            vm_id_info.node = 'A';
+            vm_id_info.vm_id = vm_id;
+            vm_id2info[vm_id] = vm_id_info;
+        }else if(whichNode == 'B'){
+            flag_server->B_remain_core_num -= cpu_cores;
+            flag_server->B_remain_memory_size -= memory_size;
+            flag_server->B_vm_id.insert(vm_id);
+
+            VmIdInfo vm_id_info;
+            vm_id_info.purchase_server = flag_server;
+            vm_id_info.vm_name = vm_name;
+            vm_id_info.cpu_cores = cpu_cores;
+            vm_id_info.memory_size = memory_size;
+            vm_id_info.node = 'B';
+            vm_id_info.vm_id = vm_id;
+            vm_id2info[vm_id] = vm_id_info;
+
+        }
     }
 }
 
@@ -1352,7 +1381,7 @@ PurchasedServer *BuyNewServer(int deployment_way, int cpu_cores, int memory_size
      * @return {刚刚购买的服务器PurchasedServer*}
      */
     SoldServer *flag_sold_server;
-    double min_dense_cost = 99999999999999;
+    double min_dense_cost = DBL_MAX;
 
     if (deployment_way == 1)
     {
@@ -1378,6 +1407,27 @@ PurchasedServer *BuyNewServer(int deployment_way, int cpu_cores, int memory_size
                     // dense_cost = sold_server.hardware_cost;
                     dense_cost = sold_server.hardware_cost + sold_server.daily_cost * (total_days_num - now_day);
                 }
+                if (dense_cost < min_dense_cost)
+                {
+                    min_dense_cost = dense_cost;
+                    flag_sold_server = &sold_server;
+                }
+            }
+        }
+    }else{
+        for (auto &sold_server : sold_servers)
+        {
+            if (sold_server.cpu_cores >= cpu_cores && sold_server.memory_size >= memory_size)
+            {
+                double dense_cost;
+                if (true)
+                {
+                    double _cpu_rate = 1.0 * cpu_cores / sold_server.cpu_cores;
+                    double _memory_rate = 1.0 * (memory_size) / sold_server.memory_size;
+                    double use_rate = 0.5 * (_cpu_rate + _memory_rate);
+                    dense_cost = 1.0 * (sold_server.hardware_cost + sold_server.daily_cost * (total_days_num - now_day)) * use_rate;
+                }
+                
                 if (dense_cost < min_dense_cost)
                 {
                     min_dense_cost = dense_cost;
@@ -1422,7 +1472,7 @@ string AddVm(AddData &add_data)
         {
             //从开机的服务器中选到了服务器
             deployed = true;
-            DeployOnServer(flag_server, 1, cpu_cores, memory_size, add_data.vm_id, add_data.vm_name);
+            DeployOnServer(flag_server, 1, 'C',cpu_cores, memory_size, add_data.vm_id, add_data.vm_name);
         }
 
         PurchasedServer *flag_off_server = 0;
@@ -1435,7 +1485,7 @@ string AddVm(AddData &add_data)
         {
             //从关机的机器里找
             deployed = true;
-            DeployOnServer(flag_off_server, 1, cpu_cores, memory_size, add_data.vm_id, add_data.vm_name);
+            DeployOnServer(flag_off_server, 1, 'C',cpu_cores, memory_size, add_data.vm_id, add_data.vm_name);
         }
 
         //购买新服务器
@@ -1443,7 +1493,7 @@ string AddVm(AddData &add_data)
         if (!deployed)
         {
             newServer = BuyNewServer(1, cpu_cores, memory_size);
-            DeployOnServer(newServer, 1, cpu_cores, memory_size, add_data.vm_id, add_data.vm_name);
+            DeployOnServer(newServer, 1,'C', cpu_cores, memory_size, add_data.vm_id, add_data.vm_name);
             deployed = true;
             return newServer->server_name;
         }
@@ -1550,34 +1600,12 @@ string AddVm(AddData &add_data)
             if (which_node == 'A')
             {
                 deployed = true;
-                flag_server->A_remain_core_num -= cpu_cores;
-                flag_server->A_remain_memory_size -= memory_size;
-                flag_server->A_vm_id.insert(add_data.vm_id);
-
-                VmIdInfo vm_id_info;
-                vm_id_info.purchase_server = flag_server;
-                vm_id_info.vm_name = add_data.vm_name;
-                vm_id_info.cpu_cores = cpu_cores;
-                vm_id_info.memory_size = memory_size;
-                vm_id_info.node = 'A';
-                vm_id_info.vm_id = add_data.vm_id;
-                vm_id2info[add_data.vm_id] = vm_id_info;
+                DeployOnServer(flag_server,0,'A',cpu_cores,memory_size,add_data.vm_id,add_data.vm_name);
             }
             else if (which_node == 'B')
             {
                 deployed = true;
-                flag_server->B_remain_core_num -= cpu_cores;
-                flag_server->B_remain_memory_size -= memory_size;
-                flag_server->B_vm_id.insert(add_data.vm_id);
-
-                VmIdInfo vm_id_info;
-                vm_id_info.purchase_server = flag_server;
-                vm_id_info.vm_name = add_data.vm_name;
-                vm_id_info.cpu_cores = cpu_cores;
-                vm_id_info.memory_size = memory_size;
-                vm_id_info.node = 'B';
-                vm_id_info.vm_id = add_data.vm_id;
-                vm_id2info[add_data.vm_id] = vm_id_info;
+                DeployOnServer(flag_server,0,'B',cpu_cores,memory_size,add_data.vm_id,add_data.vm_name);
             }
         }
         else
@@ -1634,79 +1662,15 @@ string AddVm(AddData &add_data)
                     from_off_2_start.insert(flag_server->server_id);
                 }
                 deployed = true;
-                flag_server->A_remain_core_num -= cpu_cores;
-                flag_server->A_remain_memory_size -= memory_size;
-                flag_server->A_vm_id.insert(add_data.vm_id);
-
-                VmIdInfo vm_id_info;
-                vm_id_info.purchase_server = flag_server;
-                vm_id_info.vm_name = add_data.vm_name;
-                vm_id_info.cpu_cores = cpu_cores;
-                vm_id_info.memory_size = memory_size;
-                vm_id_info.node = 'A';
-                vm_id_info.vm_id = add_data.vm_id;
-                vm_id2info[add_data.vm_id] = vm_id_info;
+                DeployOnServer(flag_server,0,'A',cpu_cores,memory_size,add_data.vm_id,add_data.vm_name);
             }
         }
 
-        double min_dense_cost = DBL_MAX;
-        SoldServer *flag_sold_server;
-        for (auto &sold_server : sold_servers)
-        {
-            if (deployed)
-            {
-                break;
-            }
-            if (sold_server.cpu_cores >= cpu_cores && sold_server.memory_size >= memory_size)
-            {
-                double dense_cost;
-                if (true)
-                {
-                    double _cpu_rate = 1.0 * cpu_cores / sold_server.cpu_cores;
-                    double _memory_rate = 1.0 * (memory_size) / sold_server.memory_size;
-                    double use_rate = 0.5 * (_cpu_rate + _memory_rate);
-                    dense_cost = 1.0 * (sold_server.hardware_cost + sold_server.daily_cost * (total_days_num - now_day)) * use_rate;
-                }
-                else
-                {
-                    dense_cost = 1.0 * (sold_server.hardware_cost + sold_server.daily_cost * (total_days_num - now_day));
-                }
-                if (dense_cost < min_dense_cost)
-                {
-                    min_dense_cost = dense_cost;
-                    flag_sold_server = &sold_server;
-                }
-            }
-        }
-
-        if (!deployed)
-        {
-            //购买一台新服务器
-            total_server_cost += flag_sold_server->hardware_cost;
+        if(!deployed){
+            PurchasedServer* new_buy_server = BuyNewServer(0,cpu_cores,memory_size);
             deployed = true;
-            PurchasedServer *purchase_server = new PurchasedServer;
-            purchase_server->total_core_num = flag_sold_server->cpu_cores;
-            purchase_server->total_memory_size = flag_sold_server->memory_size;
-            purchase_server->A_remain_core_num = flag_sold_server->cpu_cores - cpu_cores;
-            purchase_server->A_remain_memory_size = flag_sold_server->memory_size - memory_size;
-            purchase_server->B_remain_core_num = flag_sold_server->cpu_cores;
-            purchase_server->daily_cost = flag_sold_server->daily_cost;
-            purchase_server->B_remain_memory_size = flag_sold_server->memory_size;
-
-            purchase_server->A_vm_id.insert(add_data.vm_id);
-            purchase_server->server_name = flag_sold_server->server_name;
-            purchase_servers.emplace_back(purchase_server);
-            purchase_infos[flag_sold_server->server_name].emplace_back(purchase_server);
-
-            VmIdInfo vm_id_info;
-            vm_id_info.purchase_server = purchase_server;
-            vm_id_info.vm_name = add_data.vm_name;
-            vm_id_info.cpu_cores = cpu_cores;
-            vm_id_info.memory_size = memory_size;
-            vm_id_info.node = 'A';
-            vm_id_info.vm_id = add_data.vm_id;
-            vm_id2info[add_data.vm_id] = vm_id_info;
-            return purchase_server->server_name;
+            DeployOnServer(new_buy_server,0,'A',cpu_cores,memory_size,add_data.vm_id,add_data.vm_name);
+            return new_buy_server->server_name;
         }
     }
     return "";
@@ -1714,6 +1678,11 @@ string AddVm(AddData &add_data)
 
 void DeleteVm(int vm_id)
 {
+    /**
+     * @description: 按id删除指定虚拟机
+     * @param {*}
+     * @return {*}
+     */
     VmIdInfo vm_info = vm_id2info[vm_id];
     PurchasedServer *purchase_server = vm_info.purchase_server;
     char node = vm_info.node;
