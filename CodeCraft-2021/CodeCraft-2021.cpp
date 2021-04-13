@@ -466,7 +466,6 @@ int NumOfOffServer()
     return cnt;
 }
 
-
 // 第一步迁移。
 void migration1(double para) {
     vector<VmIdInfo *> migrating_vms;
@@ -861,11 +860,11 @@ void migration3(double para) {
                         return;
                     }
                 }
-                    
             }
         }
     }
 }
+
 vector<MigrationInfo> Migration()
 {
     max_migration_num = vmIDs.size() * 30 / 1000;
@@ -1831,18 +1830,12 @@ void SolveProblem()
         if (now_day % 200 == 0)
             cout << now_day << endl;
 #endif
-
         from_off_2_start.erase(from_off_2_start.begin(), from_off_2_start.end());
 
-        // vector<MigrationInfo> migration_infos;
         vector<MigrationInfo> migration_infos = Migration();
         total_migration_num += migration_infos.size();
         //获取迁移之后的系统可以提供的总资源
         vector<int> allResouceAfterMigration = GetAllResourceOfOwnServers(true);
-
-        //获取未来N条请求所需要的总资源
-        // allResourceOfNReqs = GetAllResourceOfFutureNDays(300);
-        // cout<<allResourceOfNReqs[0] << "  "<<allResourceOfNReqs[1]<<endl;
 
         intraday_requests = request_datas.front();
 
@@ -1934,8 +1927,6 @@ void SolveProblem()
                                     revokeBuy(add_data.vm_id);
                                     revokeBuy(last_add_data.vm_id);
 
-                                    // last_buy_server_name = AddVm(last_add_data);
-                                    // buy_server_name = AddVm(add_data);
                                     BuyAndDeployTwoVM(last_add_data.vm_name, add_data.vm_name, last_add_data.vm_id, add_data.vm_id, suitServer->server_name);
                                     isSuccess = true;
                                 }
@@ -1981,13 +1972,11 @@ void SolveProblem()
                 {
                     int vm_id = intraday_requests[j].vm_id;
                     DeleteVm(vm_id);
-                    // vm_id2info.erase(vm_id);
                 }
             }
         }
         else
         {
-
             //收集所有的add操作
             vector<AddData> continuous_add_datas;
             for (int j = 0; j < request_num; ++j)
@@ -2084,10 +2073,7 @@ void SolveProblem()
                 {
                     int vm_id = intraday_requests[j].vm_id;
                     DeleteVm(vm_id);
-                    if (vm_id2info.count(vm_id) != 0)
-                    {
-                        // vm_id2info.erase(vm_id);
-                    }
+
                 }
             }
         }
