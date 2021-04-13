@@ -1115,7 +1115,7 @@ struct serverCmp1
     }
 };
 
-PurchasedServer *SearchSuitPurchasedServer(int deployed_way, int cpu_cores, int memory_size, bool from_open)
+pair< PurchasedServer *, char> SearchSuitPurchasedServer(int deployed_way, int cpu_cores, int memory_size, bool from_open)
 {
     /**
      * @description: 从已有服务器中搜寻合适服务器
@@ -1186,10 +1186,10 @@ PurchasedServer *SearchSuitPurchasedServer(int deployed_way, int cpu_cores, int 
             }
             if (use_Balance)
             {
-                return balance_server;
+                return  make_pair (balance_server,'C');
             }
             else
-                return flag_server;
+                return make_pair(flag_server,'C');
         }
         else
         {
@@ -1213,9 +1213,18 @@ PurchasedServer *SearchSuitPurchasedServer(int deployed_way, int cpu_cores, int 
                     }
                 }
             }
+            return make_pair(flag_server,'C');
+        }
+    }else{
+        if(from_open){
+            
+        }else{
+
         }
     }
-    return flag_server;
+    
+    
+    return make_pair( flag_server,'C');
 }
 
 void DeployOnServer(PurchasedServer *flag_server, int deployment_way,char whichNode, int cpu_cores, int memory_size, int vm_id, string &vm_name)
@@ -1466,7 +1475,7 @@ string AddVm(AddData &add_data)
         int memory_size = add_data.memory_size;
 
         PurchasedServer *flag_server = 0;
-        flag_server = SearchSuitPurchasedServer(1, cpu_cores, memory_size, true);
+        flag_server = SearchSuitPurchasedServer(1, cpu_cores, memory_size, true).first;
 
         if (flag_server != 0)
         {
@@ -1478,7 +1487,7 @@ string AddVm(AddData &add_data)
         PurchasedServer *flag_off_server = 0;
         if (!deployed)
         {
-            flag_off_server = SearchSuitPurchasedServer(1, cpu_cores, memory_size, false);
+            flag_off_server = SearchSuitPurchasedServer(1, cpu_cores, memory_size, false).first;
         }
 
         if (!deployed && flag_off_server != nullptr)
@@ -1502,6 +1511,9 @@ string AddVm(AddData &add_data)
     { //单节点部署
         int cpu_cores = add_data.cpu_cores;
         int memory_size = add_data.memory_size;
+
+
+
         vector<PurchasedServer *> can_deploy_servers;
 
         //选出开机的合适的服务器
@@ -1526,7 +1538,7 @@ string AddVm(AddData &add_data)
         }
 
         //sort(can_deploy_servers.begin(), can_deploy_servers.end(), cmp.CanDeploySingle);
-        double min_remain_rate = 2.0;
+        double min_remain_rate = DBL_MAX;
         PurchasedServer *flag_server;
         char which_node = 'C';
         for (auto &purchase_server : can_deploy_servers)
@@ -1591,8 +1603,9 @@ string AddVm(AddData &add_data)
             }
         }
 
-        if (min_remain_rate != 2.0)
+        if (min_remain_rate != DBL_MAX)
         {
+            //在开机的服务器中找到了合适的放置位置
             if (flag_server->A_vm_id.size() + flag_server->B_vm_id.size() + flag_server->AB_vm_id.size() == 0)
             {
                 from_off_2_start.insert(flag_server->server_id);
@@ -1610,6 +1623,7 @@ string AddVm(AddData &add_data)
         }
         else
         {
+            //在开机的服务器中未找到，在关机的服务器中找
             can_deploy_servers.erase(can_deploy_servers.begin(), can_deploy_servers.end());
             for (auto &purchase_server : purchase_servers)
             { //先筛选能用的服务器
@@ -1632,7 +1646,7 @@ string AddVm(AddData &add_data)
             }
             // sort(can_deploy_servers.begin(), can_deploy_servers.end(), cmp.CanDeploySingle);
 
-            min_remain_rate = 2.0;
+            min_remain_rate = DBL_MAX;
             double min_cost = DBL_MAX;
             flag_server = 0;
             which_node = 'C';
@@ -1666,6 +1680,7 @@ string AddVm(AddData &add_data)
             }
         }
 
+        //购买新服务器并部署
         if(!deployed){
             PurchasedServer* new_buy_server = BuyNewServer(0,cpu_cores,memory_size);
             deployed = true;
@@ -2066,9 +2081,7 @@ void SolveProblem()
 
         bool isContinueBuy = (allResouceAfterMigration[0] > add_del_count[0] && allResouceAfterMigration[1] > add_del_count[1]) && (1.1 * (add_del_count[2] + add_del_count[3]) < add_del_count[0] + add_del_count[1]);
 
-
-        // if (!isContinueBuy)
-        if(false)
+        if (!isContinueBuy)
         {
             for (int j = 0; j < request_num; ++j)
             {
@@ -2209,15 +2222,10 @@ void SolveProblem()
             for (auto &add_data : continuous_add_datas)
             {
                 string buy_server_name = AddVm(add_data);
-                // if(buy_server_name!=""){
-                //     revokeBuy(add_data.vm_id);
-                //     buy_server_name = AddVm(add_data);
-                // }
                 bool isSuccess = false;
                 if (last_buy_server_name != "" && buy_server_name != "")
                 {
                     //连续两次购买
-
                     if (last_add_data.deployment_way == 1 && add_data.deployment_way == 1)
                     {
                         int cpu_cores = last_add_data.cpu_cores + add_data.cpu_cores;
@@ -2233,17 +2241,12 @@ void SolveProblem()
                         {
                             int new_cost = suitServer->hardware_cost;
                             int old_cost = server_name2info[last_buy_server_name].hardware_cost + server_name2info[buy_server_name].hardware_cost;
-                            // int new_cost = suitServer->hardware_cost + (total_days_num - now_day) * suitServer->daily_cost;
-                            // int old_cost = server_name2info[last_buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[last_buy_server_name].daily_cost + server_name2info[buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[buy_server_name].daily_cost;
-                            // cout<<new_cost<<"   "<<old_cost<<endl;
                             if (new_cost < 2.0 / 3 * old_cost)
                             {
                                 count_continue_buy++;
                                 revokeBuy(add_data.vm_id);
                                 revokeBuy(last_add_data.vm_id);
 
-                                // last_buy_server_name = AddVm(last_add_data);
-                                // buy_server_name = AddVm(add_data);
                                 BuyAndDeployTwoVM(last_add_data.vm_name, add_data.vm_name, last_add_data.vm_id, add_data.vm_id, suitServer->server_name);
                                 isSuccess = true;
                             }
