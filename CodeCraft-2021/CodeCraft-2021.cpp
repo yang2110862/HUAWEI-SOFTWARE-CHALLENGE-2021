@@ -16,6 +16,9 @@ vector<RequestData> intraday_requests;
 
 vector<int> allResourceOfNReqs;
 
+//保存对手对于某中虚拟机的报价
+unordered_map<string,vector<int>> competitorPrices;
+
 int count_continue_buy = 0;
 
 int count_add_more_del = 0;
@@ -67,7 +70,6 @@ void init()
     from_off_2_start.erase(from_off_2_start.begin(), from_off_2_start.end());
     intraday_requests.erase(intraday_requests.begin(), intraday_requests.end());
     allResourceOfNReqs.erase(allResourceOfNReqs.begin(), allResourceOfNReqs.end());
-    
     count_continue_buy = 0;
 
     count_add_more_del = 0;
@@ -257,6 +259,45 @@ void ParseInput()
     }
 #endif
 }
+
+vector<RequestData>& ParseBidingRes(vector<pair<int,int>>& bidingRes,vector<RequestData>& allReq){
+/**
+ * @description: 处理报价竞争的结果。1、转化为真实的请求信息vector<RequestData>，便于后续部署处理
+ *                                2、保存对手对于某种虚拟机的历史报价信息
+ * @param {*}
+ * @return {*}
+ */
+    int index = 0;
+    unordered_set<int> today_add_today_del_vmid;
+
+    vector<RequestData> res;
+    for(auto& req:allReq){
+        if(req.operation == "add"){
+            int biding_res_flag = bidingRes[index].first;
+            int competitor_price = bidingRes[index].second;
+            if(biding_res_flag == 1){
+                //获得了订单
+                res.emplace_back(req);
+            }
+            //保存对手报价
+            competitorPrices[req.vm_name].emplace_back(competitor_price);
+            //保存当天创建当天删除虚拟机信息
+            if(req.duration == 0 && biding_res_flag == 1) today_add_today_del_vmid.insert(req.vm_id);
+            ++index;
+        }else if(req.operation == "del"){
+            if(today_add_today_del_vmid.find(req.vm_id) == today_add_today_del_vmid.end()){
+                if(vmIDs.find(req.vm_id) != vmIDs.end()){
+                    //是己方虚拟机
+                    res.emplace_back(req);
+                }
+            }else{
+                res.emplace_back(req);
+            }
+        }
+    }
+    return res;
+}
+
 // 筛选出利用率较低的服务器，迁移走其中的虚拟机。
 bool NeedMigration(PurchasedServer *server)
 {
