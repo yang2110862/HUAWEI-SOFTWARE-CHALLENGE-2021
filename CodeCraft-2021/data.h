@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2021-04-04 19:30:38
- * @LastEditTime: 2021-04-13 15:08:50
+ * @LastEditTime: 2021-04-13 17:20:53
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: \planC\CodeCraft-2021\H1.h
@@ -23,8 +23,14 @@
 #include <cfloat>
 using namespace std;
 
-int total_days_num;            //总请求天数
-int foreseen_days_num;          //可预见的天数
+extern int total_days_num;            //总请求天数
+extern int foreseen_days_num;          //可预见的天数
+
+extern unordered_map<string, SoldServer> server_info;
+extern unordered_map<string, SoldVm> VM_info;
+extern vector<SoldServer> sold_servers;
+extern queue<vector<RequestData>> request_datas;
+extern queue<vector<Game_result>> game_result;
 
 class SoldServer {
 public:
@@ -65,6 +71,14 @@ public:
 public:
     int iswin;
     int opponent_offer;    
+};
+
+class PurchasedServer {
+public:
+    PurchasedServer() {}
+    ~PurchasedServer() {}
+private:
+    
 };
 ostream& operator<<(ostream& os, const SoldServer& server);
 ostream& operator<<(ostream& os, const SoldVm& VM);
