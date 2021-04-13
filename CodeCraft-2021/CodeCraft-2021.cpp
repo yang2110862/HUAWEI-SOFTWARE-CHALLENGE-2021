@@ -1122,6 +1122,8 @@ pair< PurchasedServer *, char> SearchSuitPurchasedServer(int deployed_way, int c
      * @param {deployed_way:部署方式)(1:双节点,0:单节点);from_open: 从开机/关机的服务器中搜索 }
      * @return {合适的服务器PurchasedServer* ，没有则返回nullptr}
      */
+    Cmp cmp;
+    Evaluate evaluate; //创建一个评价类的实例
     PurchasedServer *flag_server = 0;
     PurchasedServer *balance_server = 0;
     bool use_Balance = true;
@@ -1216,10 +1218,132 @@ pair< PurchasedServer *, char> SearchSuitPurchasedServer(int deployed_way, int c
             return make_pair(flag_server,'C');
         }
     }else{
+        vector<PurchasedServer *> can_deploy_servers;
         if(from_open){
-            
-        }else{
+            //选出开机的合适的服务器
+            for (auto &purchase_server : purchase_servers)
+            { //先筛选能用的开机服务器
+                if ((purchase_server->A_remain_core_num < cpu_cores || purchase_server->A_remain_memory_size < memory_size) && (purchase_server->B_remain_core_num < cpu_cores || purchase_server->B_remain_memory_size < memory_size) || (vm_nums(purchase_server) == 0))
+                {
+                    continue;
+                }
+                else
+                {
+                    can_deploy_servers.emplace_back(purchase_server);
+                    if (purchase_server->A_remain_core_num >= cpu_cores && purchase_server->A_remain_memory_size >= memory_size)
+                    {
+                        purchase_server->can_deploy_A = true;
+                    }
+                    if (purchase_server->B_remain_core_num >= cpu_cores && purchase_server->B_remain_memory_size >= memory_size)
+                    {
+                        purchase_server->can_deploy_B = true;
+                    }
+                }
+            }
+            double min_remain_rate = DBL_MAX;
+            PurchasedServer *flag_server = 0;
+            char which_node = 'C';
+            for (auto &purchase_server : can_deploy_servers)
+            {
+                bool evaluate_A = evaluate.PurchasedServerA(purchase_server, cpu_cores, memory_size);
+                bool evaluate_B = evaluate.PurchasedServerB(purchase_server, cpu_cores, memory_size);
 
+                if (evaluate_A && evaluate_B)
+                {
+                    double _cpu_remain_rate = 1.0 * (purchase_server->A_remain_core_num - cpu_cores) / purchase_server->total_core_num;
+                    double _memory_remain_rate = 1.0 * (purchase_server->A_remain_memory_size - memory_size) / purchase_server->total_memory_size;
+
+                    if (2 * max(_cpu_remain_rate, _memory_remain_rate) < min_remain_rate)
+                    // if ((_cpu_remain_rate + _memory_remain_rate) < min_remain_rate)
+                    {
+                        // min_remain_rate = _cpu_remain_rate + _memory_remain_rate;
+                        min_remain_rate = 2 * max(_cpu_remain_rate, _memory_remain_rate) ;
+                        flag_server = purchase_server;
+                        which_node = 'A';
+                    }
+
+                    _cpu_remain_rate = 1.0 * (purchase_server->B_remain_core_num - cpu_cores) / purchase_server->total_core_num;
+                    _memory_remain_rate = 1.0 * (purchase_server->B_remain_memory_size - memory_size) / purchase_server->total_memory_size;
+                    if (2 * max(_cpu_remain_rate, _memory_remain_rate) < min_remain_rate)
+                    // if ((_cpu_remain_rate + _memory_remain_rate) < min_remain_rate)
+                    {
+                        // min_remain_rate = _cpu_remain_rate + _memory_remain_rate;
+                        min_remain_rate = 2 * max(_cpu_remain_rate, _memory_remain_rate) ;
+                        flag_server = purchase_server;
+                        which_node = 'B';
+                    }
+                }
+                else if (evaluate_A)
+                {
+                    double _cpu_remain_rate = 1.0 * (purchase_server->A_remain_core_num - cpu_cores) / purchase_server->total_core_num;
+                    double _memory_remain_rate = 1.0 * (purchase_server->A_remain_memory_size - memory_size) / purchase_server->total_memory_size;
+                    if (2 * max(_cpu_remain_rate, _memory_remain_rate) < min_remain_rate)
+                    // if ((_cpu_remain_rate + _memory_remain_rate) < min_remain_rate)
+                    {
+                        // min_remain_rate = _cpu_remain_rate + _memory_remain_rate;
+                        min_remain_rate = 2 * max(_cpu_remain_rate, _memory_remain_rate) ;
+                        flag_server = purchase_server;
+                        which_node = 'A';
+                    }
+                }
+                else if (evaluate_B)
+                {
+                    double _cpu_remain_rate = 1.0 * (purchase_server->B_remain_core_num - cpu_cores) / purchase_server->total_core_num;
+                    double _memory_remain_rate = 1.0 * (purchase_server->B_remain_memory_size - memory_size) / purchase_server->total_memory_size;
+                    if (2 * max(_cpu_remain_rate, _memory_remain_rate) < min_remain_rate)
+                    // if ((_cpu_remain_rate + _memory_remain_rate) < min_remain_rate)
+                    {
+                        // min_remain_rate = _cpu_remain_rate + _memory_remain_rate;
+                        min_remain_rate = 2 * max(_cpu_remain_rate, _memory_remain_rate) ;
+                        flag_server = purchase_server;
+                        which_node = 'B';
+                    }
+                }
+            }
+            if (min_remain_rate != DBL_MAX)
+            {
+                return make_pair(flag_server,which_node);
+            }
+        }else{
+            for (auto &purchase_server : purchase_servers)
+            { //先筛选能用的服务器
+                if ((purchase_server->A_remain_core_num < cpu_cores || purchase_server->A_remain_memory_size < memory_size) && (purchase_server->B_remain_core_num < cpu_cores || purchase_server->B_remain_memory_size < memory_size) || (vm_nums(purchase_server) != 0))
+                {
+                    continue;
+                }
+                else
+                {
+                    can_deploy_servers.emplace_back(purchase_server);
+                    if (purchase_server->A_remain_core_num >= cpu_cores && purchase_server->A_remain_memory_size >= memory_size)
+                    {
+                        purchase_server->can_deploy_A = true;
+                    }
+                    if (purchase_server->B_remain_core_num >= cpu_cores && purchase_server->B_remain_memory_size >= memory_size)
+                    {
+                        purchase_server->can_deploy_B = true;
+                    }
+                }
+            }
+            double min_remain_rate = DBL_MAX;
+            double min_cost = DBL_MAX;
+            PurchasedServer* flag_server = 0;
+            char which_node = 'C';
+            for (auto &purchase_server : can_deploy_servers)
+            {
+                double _cpu_rate = 1.0 * (cpu_cores / purchase_server->total_core_num);
+                double _memory_rate = 1.0 * (memory_size / purchase_server->total_memory_size);
+                double use_rate = (_cpu_rate + _memory_rate) / 2;
+                double cost = purchase_server->daily_cost * use_rate;
+                if (cost < min_cost)
+                {
+                    min_cost = cost;
+                    flag_server = purchase_server;
+                    which_node = 'A';
+                }
+            }
+            if(min_cost!=DBL_MAX){
+                return make_pair(flag_server,which_node);
+            }
         }
     }
     
@@ -1470,7 +1594,7 @@ string AddVm(AddData &add_data)
     vmIDs.insert(add_data.vm_id);
 
     if (deployment_way == 1)
-    { //双节点部署
+    {   //双节点部署
         int cpu_cores = add_data.cpu_cores;
         int memory_size = add_data.memory_size;
 
@@ -1511,99 +1635,14 @@ string AddVm(AddData &add_data)
     { //单节点部署
         int cpu_cores = add_data.cpu_cores;
         int memory_size = add_data.memory_size;
-
-
-
-        vector<PurchasedServer *> can_deploy_servers;
-
-        //选出开机的合适的服务器
-        for (auto &purchase_server : purchase_servers)
-        { //先筛选能用的开机服务器
-            if ((purchase_server->A_remain_core_num < cpu_cores || purchase_server->A_remain_memory_size < memory_size) && (purchase_server->B_remain_core_num < cpu_cores || purchase_server->B_remain_memory_size < memory_size) || (vm_nums(purchase_server) == 0))
-            {
-                continue;
-            }
-            else
-            {
-                can_deploy_servers.emplace_back(purchase_server);
-                if (purchase_server->A_remain_core_num >= cpu_cores && purchase_server->A_remain_memory_size >= memory_size)
-                {
-                    purchase_server->can_deploy_A = true;
-                }
-                if (purchase_server->B_remain_core_num >= cpu_cores && purchase_server->B_remain_memory_size >= memory_size)
-                {
-                    purchase_server->can_deploy_B = true;
-                }
-            }
-        }
-
-        //sort(can_deploy_servers.begin(), can_deploy_servers.end(), cmp.CanDeploySingle);
-        double min_remain_rate = DBL_MAX;
-        PurchasedServer *flag_server;
+        PurchasedServer* flag_server = 0;
         char which_node = 'C';
-        for (auto &purchase_server : can_deploy_servers)
-        {
-            if (deployed)
-            {
-                break;
-            }
-            bool evaluate_A = evaluate.PurchasedServerA(purchase_server, cpu_cores, memory_size);
-            bool evaluate_B = evaluate.PurchasedServerB(purchase_server, cpu_cores, memory_size);
 
-            if (evaluate_A && evaluate_B)
-            {
-                double _cpu_remain_rate = 1.0 * (purchase_server->A_remain_core_num - cpu_cores) / purchase_server->total_core_num;
-                double _memory_remain_rate = 1.0 * (purchase_server->A_remain_memory_size - memory_size) / purchase_server->total_memory_size;
+        pair<PurchasedServer*,char> res = SearchSuitPurchasedServer(0,cpu_cores,memory_size,true);
+        flag_server = res.first;
+        which_node = res.second;
 
-                if (2 * max(_cpu_remain_rate, _memory_remain_rate) < min_remain_rate)
-                // if ((_cpu_remain_rate + _memory_remain_rate) < min_remain_rate)
-                {
-                    // min_remain_rate = _cpu_remain_rate + _memory_remain_rate;
-                    min_remain_rate = 2 * max(_cpu_remain_rate, _memory_remain_rate) ;
-                    flag_server = purchase_server;
-                    which_node = 'A';
-                }
-
-                _cpu_remain_rate = 1.0 * (purchase_server->B_remain_core_num - cpu_cores) / purchase_server->total_core_num;
-                _memory_remain_rate = 1.0 * (purchase_server->B_remain_memory_size - memory_size) / purchase_server->total_memory_size;
-                if (2 * max(_cpu_remain_rate, _memory_remain_rate) < min_remain_rate)
-                // if ((_cpu_remain_rate + _memory_remain_rate) < min_remain_rate)
-                {
-                    // min_remain_rate = _cpu_remain_rate + _memory_remain_rate;
-                    min_remain_rate = 2 * max(_cpu_remain_rate, _memory_remain_rate) ;
-                    flag_server = purchase_server;
-                    which_node = 'B';
-                }
-            }
-            else if (evaluate_A)
-            {
-                double _cpu_remain_rate = 1.0 * (purchase_server->A_remain_core_num - cpu_cores) / purchase_server->total_core_num;
-                double _memory_remain_rate = 1.0 * (purchase_server->A_remain_memory_size - memory_size) / purchase_server->total_memory_size;
-                if (2 * max(_cpu_remain_rate, _memory_remain_rate) < min_remain_rate)
-                // if ((_cpu_remain_rate + _memory_remain_rate) < min_remain_rate)
-                {
-                    // min_remain_rate = _cpu_remain_rate + _memory_remain_rate;
-                    min_remain_rate = 2 * max(_cpu_remain_rate, _memory_remain_rate) ;
-                    flag_server = purchase_server;
-                    which_node = 'A';
-                }
-            }
-            else if (evaluate_B)
-            {
-                double _cpu_remain_rate = 1.0 * (purchase_server->B_remain_core_num - cpu_cores) / purchase_server->total_core_num;
-                double _memory_remain_rate = 1.0 * (purchase_server->B_remain_memory_size - memory_size) / purchase_server->total_memory_size;
-                if (2 * max(_cpu_remain_rate, _memory_remain_rate) < min_remain_rate)
-                // if ((_cpu_remain_rate + _memory_remain_rate) < min_remain_rate)
-                {
-                    // min_remain_rate = _cpu_remain_rate + _memory_remain_rate;
-                    min_remain_rate = 2 * max(_cpu_remain_rate, _memory_remain_rate) ;
-                    flag_server = purchase_server;
-                    which_node = 'B';
-                }
-            }
-        }
-
-        if (min_remain_rate != DBL_MAX)
+        if (flag_server != 0)
         {
             //在开机的服务器中找到了合适的放置位置
             if (flag_server->A_vm_id.size() + flag_server->B_vm_id.size() + flag_server->AB_vm_id.size() == 0)
@@ -1624,51 +1663,11 @@ string AddVm(AddData &add_data)
         else
         {
             //在开机的服务器中未找到，在关机的服务器中找
-            can_deploy_servers.erase(can_deploy_servers.begin(), can_deploy_servers.end());
-            for (auto &purchase_server : purchase_servers)
-            { //先筛选能用的服务器
-                if ((purchase_server->A_remain_core_num < cpu_cores || purchase_server->A_remain_memory_size < memory_size) && (purchase_server->B_remain_core_num < cpu_cores || purchase_server->B_remain_memory_size < memory_size) || (vm_nums(purchase_server) != 0))
-                {
-                    continue;
-                }
-                else
-                {
-                    can_deploy_servers.emplace_back(purchase_server);
-                    if (purchase_server->A_remain_core_num >= cpu_cores && purchase_server->A_remain_memory_size >= memory_size)
-                    {
-                        purchase_server->can_deploy_A = true;
-                    }
-                    if (purchase_server->B_remain_core_num >= cpu_cores && purchase_server->B_remain_memory_size >= memory_size)
-                    {
-                        purchase_server->can_deploy_B = true;
-                    }
-                }
-            }
-            // sort(can_deploy_servers.begin(), can_deploy_servers.end(), cmp.CanDeploySingle);
+            pair<PurchasedServer*,char> res = SearchSuitPurchasedServer(0,cpu_cores,memory_size,false);
+            flag_server = res.first;
+            which_node = res.second;
 
-            min_remain_rate = DBL_MAX;
-            double min_cost = DBL_MAX;
-            flag_server = 0;
-            which_node = 'C';
-            for (auto &purchase_server : can_deploy_servers)
-            {
-                if (deployed)
-                {
-                    break;
-                }
-                double _cpu_rate = 1.0 * (cpu_cores / purchase_server->total_core_num);
-                double _memory_rate = 1.0 * (memory_size / purchase_server->total_memory_size);
-                double use_rate = (_cpu_rate + _memory_rate) / 2;
-                double cost = purchase_server->daily_cost * use_rate;
-                if (cost < min_cost)
-                {
-                    min_cost = cost;
-                    flag_server = purchase_server;
-                    which_node = 'A';
-                }
-            }
-
-            if (min_cost != DBL_MAX)
+            if (flag_server != 0)
             {
                 //代表从关机的服务器中选取的
                 if (flag_server->A_vm_id.size() + flag_server->B_vm_id.size() + flag_server->AB_vm_id.size() == 0)
@@ -2030,7 +2029,6 @@ void SolveProblem()
 
     for (int i = 0; i < total_days_num; ++i)
     {
-        
         now_day = i + 1;
 
 #ifdef PRINTINFO
@@ -2130,8 +2128,6 @@ void SolveProblem()
 
                             if (suitServer != 0)
                             {
-                                // int new_cost = suitServer->hardware_cost+ (total_days_num - now_day) * suitServer->daily_cost;
-                                // int old_cost = server_name2info[last_buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[last_buy_server_name].daily_cost + server_name2info[buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[buy_server_name].daily_cost;
                                 int new_cost = suitServer->hardware_cost + (total_days_num - now_day) * suitServer->daily_cost;
                                 int old_cost = server_name2info[last_buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[last_buy_server_name].daily_cost + server_name2info[buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[buy_server_name].daily_cost;
                                 // cout<<new_cost<<"   "<<old_cost<<endl;
