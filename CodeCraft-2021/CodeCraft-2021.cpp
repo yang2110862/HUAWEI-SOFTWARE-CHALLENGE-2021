@@ -38,7 +38,7 @@ long long total_server_cost = 0;
 long long total_power_cost = 0;
 int total_migration_num = 0;
 
-bool isUsed = false;
+bool isUsed = true;
 
 double hardware_cost_per_day_per_resource = 0;
 double power_cost_per_day_per_resource = 0;
@@ -308,7 +308,6 @@ vector<RequestData> ParseBidingRes(vector<pair<int,int>>& bidingRes,vector<Reque
  */
     int index = 0;
     unordered_set<int> today_add_today_del_vmid;
-
     vector<RequestData> res;
     for(auto& req:allReq){
         if(req.operation == "add"){
@@ -360,7 +359,6 @@ void UpdateHardwareCost(string serverName ,bool isRevoke = false){
         if(total_daily_power_cost == 0) power_cost_per_day_per_resource = 0;
         else power_cost_per_day_per_resource = 1.0 * total_daily_power_cost / total_resource;
     }
-    
 }
 
 double CaculateTotalCost(string vmName,int day){
@@ -783,7 +781,7 @@ void migration2() {
                     { //B迁A。
                         if (migration_infos.size() <= max_migration_num - original_server->B_vm_id.size())
                         {
-                            flag == true;
+                            flag = true;
                             migrate_to(original_server, 'B', best_server[index], 'A');
                             if (migration_infos.size() == max_migration_num)
                                 return;
@@ -793,7 +791,7 @@ void migration2() {
                     { //B迁B。
                         if (migration_infos.size() <= max_migration_num - original_server->B_vm_id.size())
                         {
-                            flag == true;
+                            flag = true;
                             migrate_to(original_server, 'B', best_server[index], 'B');
                             if (migration_infos.size() == max_migration_num)
                                 return;
@@ -825,7 +823,7 @@ void migration2() {
                     { //A迁A。
                         if (migration_infos.size() <= max_migration_num - original_server->A_vm_id.size())
                         {
-                            flag == true;
+                            flag = true;
                             migrate_to(original_server, 'A', best_server[index], 'A');
                             if (migration_infos.size() == max_migration_num)
                                 return;
@@ -835,7 +833,7 @@ void migration2() {
                     { //A迁B。
                         if (migration_infos.size() <= max_migration_num - original_server->A_vm_id.size())
                         {
-                            flag == true;
+                            flag = true;
                             migrate_to(original_server, 'A', best_server[index], 'B');
                             if (migration_infos.size() == max_migration_num)
                                 return;
@@ -1422,7 +1420,7 @@ PurchasedServer *BuyNewServer(int deployment_way, int cpu, int memory)
      * @param {*}
      * @return {刚刚购买的服务器PurchasedServer*}
      */
-    SoldServer *flag_sold_server;
+    SoldServer *flag_sold_server = 0;
     double min_dense_cost = DBL_MAX;
 
     if (deployment_way == 1)
@@ -1885,7 +1883,7 @@ SoldServer *SearchForContinueVM(int deployment_way, int cpu, int memory)
      * @param {*}
      * @return {SoldServer*}
      */
-    SoldServer *flag_sold_server;
+    SoldServer *flag_sold_server = 0;
     double min_dense_cost = DBL_MAX;
     if (deployment_way == 1)
     {
@@ -1980,7 +1978,6 @@ void SolveProblem()
         // if (now_day % 200 == 0)
             cout << now_day << endl;
 #endif
-
         from_off_2_start.erase(from_off_2_start.begin(), from_off_2_start.end());
         intraday_requests = request_datas.front();
         request_datas.pop();
