@@ -16,7 +16,11 @@ vector<RequestData> intraday_requests;
 vector<int> allResourceOfNReqs;
 
 unordered_map<string, vector<int>> my_offers; //保存自己对于某种虚拟机的报价。
-unordered_map<string, vector<int>> rival_offers;//保存对手对于某中虚拟机的报价。
+unordered_map<string, vector<pair<int, int>>> rival_and_user_offers; //保存对手对于某种虚拟机的报价，第一项为对手报价，第二项为用户报价。
+unordered_map<string, pair<double, double>> statistics; //保存对手对于某种虚拟机报价的平均值和方差。（此数据不在调用时计算，而在增加信息时更新。）
+unordered_map<string, int> valid_data_sizes; //保存对手对于某种虚拟机报价数据的有效数据量（即报价不为-1的）。
+unordered_map<string, int> rival_lower_bounds; //保存对手对于某种虚拟机的成本下界。
+
 
 int count_continue_buy = 0;
 
@@ -58,6 +62,7 @@ double r1 = 0.695, r2 = 1 - r1; //CPU和memory剩余率的加权系数
 int max_migration_num = 0;
 vector<MigrationInfo> migration_infos;
 
+
 void init()
 {
     sold_servers.erase(sold_servers.begin(), sold_servers.end());
@@ -85,6 +90,21 @@ void init()
     isDenseBuy = 0;
     max_migration_num = 0;
     migration_infos.erase(migration_infos.begin(),migration_infos.end());
+}
+
+void update_statistics(string vm_name) {
+    pair<int, int> new_offers = rival_and_user_offers[vm_name].back();
+    if (new_offers.first != -1) {
+        int new_data = new_offers.first;
+        pair<double, double>* avg_and_var = &statistics[vm_name];
+        double old_avg = avg_and_var->first, old_var = avg_and_var->second;
+        int valid_data_size = valid_data_sizes[vm_name]++;
+        avg_and_var->first = (old_avg * valid_data_size + new_data) / (valid_data_size + 1);
+        avg_and_var->second = ((old_var + old_avg * old_avg) * valid_data_size + new_data * new_data) / (valid_data_size + 1) - avg_and_var->first * avg_and_var->first;
+    } else {
+        int temp = rival_lower_bounds[vm_name];
+        rival_lower_bounds[vm_name] = temp == 0 ? new_offers.second : min(temp, new_offers.second);
+    }
 }
 
 int FindMaxDel(){
@@ -299,7 +319,9 @@ vector<RequestData> ParseBidingRes(vector<pair<int,int>>& bidingRes,vector<Reque
                 res.emplace_back(req);
             }
             //保存对手报价
-            rival_offers[req.vm_name].emplace_back(competitor_price);
+            rival_and_user_offers[req.vm_name].emplace_back(make_pair(competitor_price, req.user_offer));
+            // 每次记录报价时进行统计量更新。
+            update_statistics(req.vm_name);
             //保存当天创建当天删除虚拟机信息
             if(req.duration == 0 && biding_res_flag == 1) today_add_today_del_vmid.insert(req.vm_id);
             ++index;
@@ -316,8 +338,6 @@ vector<RequestData> ParseBidingRes(vector<pair<int,int>>& bidingRes,vector<Reque
     }
     return res;
 }
-
-
 double total_hardware_cost_per_day = 0;
 long long total_daily_power_cost = 0;
 int total_left_day_nums = 0;
@@ -1927,9 +1947,16 @@ int GiveMyOffers(vector<RequestData>& intraday_requests) {
     int num = 0;
     for (auto& request : intraday_requests) {
         if (request.operation == "add") {
-            int my_offer = request.user_offer - 1; //定价策略需要修改。
-            double my_Cost = CaculateTotalCost(request.vm_name,request.duration);
+            // int my_offer = request.user_offer - 1; //定价策略需要修改。
+            int my_offer;
+            int my_Cost = CaculateTotalCost(request.vm_name,request.duration);
+            if(my_Cost < request.user_offer){
+                my_offer = (my_Cost + request.user_offer) / 2;
+            }else{
+                my_offer = -1;
+            }
 
+            // cout<< "Cost:"<<my_Cost<<endl;
             cout << my_offer << endl;
             my_offers[request.vm_name].emplace_back(my_offer);
             num++;
