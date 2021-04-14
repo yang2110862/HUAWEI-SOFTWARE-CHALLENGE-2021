@@ -19,7 +19,7 @@ using namespace std;
 // #define TEST_PARSEINPUT
 #define REDIRECT
 #define PRINTINFO
-#define MULTIPROCESS
+// #define MULTIPROCESS
 
 struct SoldServer {
     string server_name;
@@ -92,110 +92,18 @@ struct MigrationInfo {
 };
 
 class Evaluate {
-    private:
-    const double threshold1 = 4;
-
-    const double threshold_abs1 = 10;
-    const double threshold_abs2 = 3;
-    bool check1(double ratio_a, double ratio_b) {
-        if (ratio_a >= 1) {
-            if (fabs(ratio_a - ratio_b) > threshold_abs1) {
-                return false;
-            }
-        } else {
-            if (fabs(1 / ratio_a - 1 / ratio_b) > threshold_abs1) {
-                return false;
-            }
-        }
-        return true;
-    }
-    bool check2(double ratio_a, double ratio_b) {
-        if (ratio_a >= 1) {
-            if (fabs(ratio_a - ratio_b) > threshold_abs1) {
-                return false;
-            }
-        } else {
-            if (fabs(1 / ratio_a - 1 / ratio_b) > threshold_abs1) {
-                return false;
-            }
-        }
-        return true;
-    }
 public:
-    bool StrongPurchasedServerAB(PurchasedServer* purchased_server, int cpu, int memory) {  //评价要不要插到双节点
-        if (purchased_server->AB_vm_id.size() == 0) {
-            return false;
-        }
-        return true;
-    }
-    bool WeakPurchasedServerAB(PurchasedServer* purchased_server, int cpu, int memory) {  //评价要不要插到双节点
-        
-        return true;
-    }
     bool PurchasedServerA(PurchasedServer* purchased_server, int cpu, int memory) {  //评价要不要插到A节点
         if (purchased_server->A_remain_cpu >= cpu && purchased_server->A_remain_memory >= memory) {
-            /*double ratio = 1.0 * purchased_server->A_remain_cpu / purchased_server->A_remain_memory;
-            if (purchased_server)
-            if (ratio > 1 && ratio < 10) {
-                if (1.0 * (purchased_server->A_remain_cpu - cpu) / (purchased_server->A_remain_memory - memory) > 20) {
-                    return false;
-                }
-                if (1.0 * (purchased_server->A_remain_cpu - cpu) / (purchased_server->A_remain_memory - memory) < 1 / 20) {
-                    return false;
-                }
-            }
-            if (ratio <= 1 && 1.0 / ratio < 10) {
-                if (1.0 / (purchased_server->A_remain_cpu - cpu) * (purchased_server->A_remain_memory - memory) > 20) {
-                    return false;
-                }
-                if (1.0 * (purchased_server->A_remain_cpu - cpu) / (purchased_server->A_remain_memory - memory) < 1 /20) {
-                    return false;
-                }
-            }*/
             return true;
         }
         return false;
     }
     bool PurchasedServerB(PurchasedServer* purchased_server, int cpu, int memory) {  //评价要不要插到B节点
         if (purchased_server->B_remain_cpu >= cpu && purchased_server->B_remain_memory >= memory) {
-            /*double ratio = 1.0 * purchased_server->B_remain_cpu / purchased_server->B_remain_memory;
-            if (ratio > 1 && ratio < 10) {
-                if (1.0 * (purchased_server->A_remain_cpu - cpu) / (purchased_server->A_remain_memory - memory) > 20) {
-                    return false;
-                }
-            }
-            if (ratio <= 1 && 1.0 / ratio < 10) {
-                if (1.0 / (purchased_server->A_remain_cpu - cpu) * (purchased_server->A_remain_memory - memory) > 20) {
-                    return false;
-                }
-            }*/
             return true;
         }
         return false;
-    }
-public:
-    static bool CanMigrateTo(VmIdInfo *vm_info, PurchasedServer *original_server, PurchasedServer *target_server, char target_node) {
-        //if (target_server->A_vm_id.size() + target_server->B_vm_id.size() + target_server->AB_vm_id.size() <= 2) return false;
-        /*if (original_server == target_server) {
-            if (vm_id2info[vm_id].node == target_node) return false;
-            
-        }*/
-        int cpu = vm_info->cpu, memory = vm_info->memory;
-        int A_remain_cpu = target_server->A_remain_cpu, B_remain_cpu = target_server->B_remain_cpu;
-        int A_remain_memory = target_server->A_remain_memory, B_remain_memory = target_server->B_remain_memory;
-        bool fit_node_A = cpu <= A_remain_cpu && memory <= A_remain_memory;
-        bool fit_node_B = cpu <= B_remain_cpu && memory <= B_remain_memory;
-        if (target_node == 'C') {
-            return fit_node_A && fit_node_B;
-        } else if (target_node == 'A') {
-            if (!fit_node_A) return false;
-            else if (!fit_node_B) return true;
-            else return A_remain_cpu + A_remain_memory <= B_remain_cpu + B_remain_memory;
-        } else {
-            if (!fit_node_B) return false;
-            else if (!fit_node_A) return true;
-            else return A_remain_cpu + A_remain_memory >= B_remain_cpu + B_remain_memory;
-        }
     }
 };
 class Cmp {
@@ -203,24 +111,8 @@ public:
     static bool SoldServers (SoldServer& a, SoldServer& b) {
         return a.hardware_cost < b.hardware_cost;
     }
-    /*static bool SoldServers (SoldServer& a, SoldServer& b) {
-        double x = a.hardware_cost
-        return a.hardware_cost < b.hardware_cost;
-    }*/
     static bool ContinuousADD (AddData& a, AddData& b) {
-        /*if (a.deployment_way != b.deployment_way) {
-            return a.deployment_way > b.deployment_way;
-        } else {
-            return (a.cpu + a.memory) > (b.cpu + b.memory);
-        }*/
-        // if ((a.cpu + a.memory) * (a.deployment_way==1?1 : 1) > (b.cpu + b.memory) * (b.deployment_way == 1?1:  1)) return true;
-        // else if((a.cpu + a.memory) * (a.deployment_way==1?1 : 1)  ==  (b.cpu + b.memory) * (b.deployment_way == 1?1:  1)){
-        //     return fabs(log(1.0 * a.cpu / a.memory)) < fabs(log(1.0 * b.cpu / b.memory));
-        // }else{
-        //     return false;
-        // }
         return (a.cpu + a.memory) * (a.deployment_way==1?1 : 1) > (b.cpu + b.memory) * (b.deployment_way == 1?1:  1);
-        // return (a.cpu + a.memory) * (a.deployment_way + 1) > (b.cpu + b.memory) * (b.deployment_way + 1);
     }
 
     static bool CanDeployDouble (PurchasedServer* a, PurchasedServer* b) {
@@ -280,14 +172,14 @@ void Statistics::compute_statistics_of_server(vector<SoldServer>& sold_servers) 
     }
     server_average_cpu = total_server_cpu / len;
     server_average_memory = total_server_memory / len;
-    sort(sold_servers.begin(), sold_servers.end(),                              
+    sort(sold_servers.begin(), sold_servers.end(),
         [](SoldServer& a, SoldServer&b){ return a.cpu < b.cpu;});  //可以不排序改成找第k大(后面有效果再优化)
     server_max_cpu = sold_servers[len - 1].cpu;
     server_min_cpu = sold_servers[0].cpu;
     server_middle_cpu = len & 1 == 1 ? sold_servers[len >> 1].cpu : 1.0 * (sold_servers[len >> 1].cpu + sold_servers[(len >> 1) - 1].cpu ) / 2;
 
-    sort(sold_servers.begin(), sold_servers.end(),                              
-        [](SoldServer& a, SoldServer&b){ return a.memory < b.memory;});  
+    sort(sold_servers.begin(), sold_servers.end(),
+        [](SoldServer& a, SoldServer&b){ return a.memory < b.memory;});
     server_max_memory = sold_servers[len - 1].memory;
     server_min_memory = sold_servers[0].memory;
     server_middle_memory = len & 1 == 1 ? sold_servers[len >> 1].memory : 1.0 * (sold_servers[len >> 1].memory + sold_servers[(len >> 1) - 1].memory ) / 2;
@@ -312,15 +204,15 @@ void Statistics::compute_statistics_of_VM(vector<SoldVm>& sold_VMs) {
     }
     VM_average_cpu = total_VM_cpu / node_num;
     VM_average_memory = total_VM_memory / node_num;
-    sort(sold_VMs.begin(), sold_VMs.end(),                              
+    sort(sold_VMs.begin(), sold_VMs.end(),
         [](SoldVm& a, SoldVm&b){ return a.cpu < b.cpu;});  //可以不排序改成找第k大(后面有效果再优化)
     VM_max_cpu = sold_VMs[len - 1].cpu;
     VM_min_cpu = sold_VMs[0].cpu;
     VM_middle_cpu = len & 1 == 1 ? sold_VMs[len >> 1].cpu : 1.0 * (sold_VMs[len >> 1].cpu + sold_VMs[(len >> 1) - 1].cpu ) / 2;
     kth_small_VM_cpu = k <= len ? sold_VMs[k - 1].cpu : sold_VMs[len - 1].cpu;
 
-    sort(sold_VMs.begin(), sold_VMs.end(),                              
-        [](SoldVm& a, SoldVm&b){ return a.memory < b.memory;});  
+    sort(sold_VMs.begin(), sold_VMs.end(),
+        [](SoldVm& a, SoldVm&b){ return a.memory < b.memory;});
     VM_max_memory = sold_VMs[len - 1].memory;
     VM_min_memory = sold_VMs[0].memory;
     VM_middle_memory = len & 1 == 1 ? sold_VMs[len >> 1].memory : 1.0 * (sold_VMs[len >> 1].memory + sold_VMs[(len >> 1) - 1].memory ) / 2;
@@ -330,8 +222,8 @@ void Statistics::del_bad_server(vector<SoldServer>& sold_servers) {       //去�
     vector<SoldServer> new_sold_servers;
     int len = sold_servers.size();
     bool flag;  //是否要删除
-    for (int i = 0; i < len; ++i) {  
-        flag = false;         
+    for (int i = 0; i < len; ++i) {
+        flag = false;
         for (int j = 0; j < len; ++j) {   //能否找到一个可以代替sold_servers[i] 的服务器
             if (j == i) continue;     //跳过自身
             if (sold_servers[j].cpu < VM_max_cpu || sold_servers[j].memory < VM_max_memory) continue;      //要是不能容下所有可能的虚拟机，替换个毛线
@@ -419,7 +311,7 @@ void Statistics::gradient_descent(vector<vector<double>>& var_x, vector<double>&
         for (int i = 0; i < row; ++i) {   //dest1 -= var_y
             dest1[i] -= var_y[i];
         }
-        vector<double> dest2(3, 0);            
+        vector<double> dest2(3, 0);
         for (int i = 0; i < 3; ++i) {             //dest2 = X.T @ dest1 * alpha / len(X)
             for (int j = 0; j < row; ++j) {
                 dest2[i] += var_x_T[i][j] * dest1[j];
@@ -433,10 +325,10 @@ void Statistics::gradient_descent(vector<vector<double>>& var_x, vector<double>&
 }
 vector<double> Statistics::linear_regression(vector<SoldServer>& sold_servers) {
     const int servers_num = sold_servers.size();
-    vector<double> coeff(3, 1);       
+    vector<double> coeff(3, 1);
     vector<vector<double>> var_x(servers_num, vector<double>(3, 0));
     vector<double> var_hardware(servers_num, 0);
-    double alpha = 0.0000001;  //学习率；
+    double alpha = 0.00000001;  //学习率；
     int iters = 10000;   //迭代次数
     for (int i = 0; i < servers_num; ++i) {
         var_x[i][0] = sold_servers[i].cpu;

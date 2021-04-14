@@ -2,7 +2,7 @@
 
 vector<SoldServer> sold_servers;
 unordered_map<string, SoldVm> vm_name2info;
-unordered_map<string, SoldServer> Vm_info;
+unordered_map<string, SoldServer> server_name2info;
 unordered_map<int, VmIdInfo> vm_id2info;
 unordered_set<int> vmIDs;
 
@@ -13,11 +13,10 @@ unordered_map<string, vector<PurchasedServer *>> purchase_infos;
 unordered_set<int> from_off_2_start;
 
 vector<RequestData> intraday_requests;
-
 vector<int> allResourceOfNReqs;
 
-//保存对手对于某中虚拟机的报价
-unordered_map<string,vector<int>> competitorPrices;
+unordered_map<string, vector<int>> my_offers; //保存自己对于某种虚拟机的报价。
+unordered_map<string, vector<int>> rival_offers;//保存对手对于某中虚拟机的报价。
 
 int count_continue_buy = 0;
 
@@ -36,6 +35,9 @@ long long total_power_cost = 0;
 int total_migration_num = 0;
 
 bool isUsed = false;
+
+double hardware_cost_per_day_per_resource = 0;
+double power_cost_per_day_per_resource = 0;
 
 #ifdef PRINTINFO
 clock_t _start, _end;
@@ -60,7 +62,7 @@ void init()
 {
     sold_servers.erase(sold_servers.begin(), sold_servers.end());
     vm_name2info.erase(vm_name2info.begin(), vm_name2info.end());
-    Vm_info.erase(Vm_info.begin(), Vm_info.end());
+    server_name2info.erase(server_name2info.begin(), server_name2info.end());
     vm_id2info.erase(vm_id2info.begin(), vm_id2info.end());
     vmIDs.erase(vmIDs.begin(), vmIDs.end());
     while (!request_datas.empty())
@@ -156,7 +158,7 @@ void ParseServerInfo()
         sold_server.memory = stoi(memory.substr(0, memory.size() - 1)) / 2;
         sold_server.hardware_cost = stoi(hardware_cost.substr(0, hardware_cost.size() - 1));
         sold_server.daily_cost = stoi(daily_cost.substr(0, daily_cost.size() - 1));
-        Vm_info[sold_server.server_name] = sold_server;
+        server_name2info[sold_server.server_name] = sold_server;
         sold_servers.emplace_back(sold_server); //可优化，不需要sold_server
     }
 }
@@ -186,7 +188,7 @@ void ParseVmInfo()
 void ParseRequest(int days_num)
 {
     int operation_num;
-    string operation, vm_name, vm_id;
+    string operation, vm_name, vm_id, duration, user_offer;
     for (int i = 0; i < days_num; ++i)
     {
         cin >> operation_num;
@@ -200,9 +202,11 @@ void ParseRequest(int days_num)
             {
                 RequestData data;
                 data.operation = "add";
-                cin >> vm_name >> vm_id;
+                cin >> vm_name >> vm_id >> duration >> user_offer;
                 data.vm_name = vm_name.substr(0, vm_name.size() - 1);
                 data.vm_id = stoi(vm_id.substr(0, vm_id.size() - 1));
+                data.duration = stoi(duration.substr(0, duration.size() - 1));
+                data.user_offer = stoi(user_offer.substr(0, user_offer.size() - 1));
                 request_data.emplace_back(data);
             }
             else if (operation == "del")
@@ -216,6 +220,21 @@ void ParseRequest(int days_num)
         }
         request_datas.emplace(request_data);
     }
+}
+
+/**
+ * @brief 读取与对手的竞争信息。
+ * @param {int} num 当天add请求的数量。
+ * @return {*} pair数组（是否得到虚拟机，对手报价）。
+ */
+vector<pair<int, int>> ParseCompeteInfo(int num) {
+    vector<pair<int, int>> compete_infos;
+    string have_got, rival_offer;
+    for (int i = 0; i < num; ++i) {
+        cin >> have_got >> rival_offer;
+        compete_infos.emplace_back(make_pair(stoi(have_got.substr(1, 1)), stoi(rival_offer.substr(0, rival_offer.size() - 1))));
+    }
+    return compete_infos;
 }
 
 void ParseInput()
@@ -260,7 +279,7 @@ void ParseInput()
 #endif
 }
 
-vector<RequestData>& ParseBidingRes(vector<pair<int,int>>& bidingRes,vector<RequestData>& allReq){
+vector<RequestData> ParseBidingRes(vector<pair<int,int>>& bidingRes,vector<RequestData>& allReq){
 /**
  * @description: 处理报价竞争的结果。1、转化为真实的请求信息vector<RequestData>，便于后续部署处理
  *                                2、保存对手对于某种虚拟机的历史报价信息
@@ -280,7 +299,7 @@ vector<RequestData>& ParseBidingRes(vector<pair<int,int>>& bidingRes,vector<Requ
                 res.emplace_back(req);
             }
             //保存对手报价
-            competitorPrices[req.vm_name].emplace_back(competitor_price);
+            rival_offers[req.vm_name].emplace_back(competitor_price);
             //保存当天创建当天删除虚拟机信息
             if(req.duration == 0 && biding_res_flag == 1) today_add_today_del_vmid.insert(req.vm_id);
             ++index;
@@ -297,6 +316,40 @@ vector<RequestData>& ParseBidingRes(vector<pair<int,int>>& bidingRes,vector<Requ
     }
     return res;
 }
+
+
+double total_hardware_cost_per_day = 0;
+long long total_daily_power_cost = 0;
+int total_left_day_nums = 0;
+double total_resource = 0;
+void UpdateHardwareCost(string serverName ,bool isRevoke = false){
+    if(!isRevoke){
+        total_hardware_cost_per_day += 1.0 * (server_name2info[serverName].hardware_cost) / (total_days_num - now_day);
+        total_daily_power_cost += server_name2info[serverName].daily_cost;
+        total_resource  += 1.0 * 2 * ( server_name2info[serverName].cpu) + 1.0 * 2 * ( server_name2info[serverName].memory);
+        if(total_hardware_cost_per_day == 0) hardware_cost_per_day_per_resource = 0;
+        else hardware_cost_per_day_per_resource = 1.0 * total_hardware_cost_per_day / (total_resource);
+        if(total_daily_power_cost == 0) power_cost_per_day_per_resource = 0;
+        else power_cost_per_day_per_resource = 1.0 * total_daily_power_cost / total_resource;
+    }else{
+        total_hardware_cost_per_day -= 1.0 * (server_name2info[serverName].hardware_cost) / (total_days_num - now_day);
+        total_daily_power_cost -= server_name2info[serverName].daily_cost;
+        total_resource  -= 1.0 * 2 * ( server_name2info[serverName].cpu) + 1.0 * 2 * ( server_name2info[serverName].memory);
+        if(total_hardware_cost_per_day == 0) hardware_cost_per_day_per_resource = 0;
+        else hardware_cost_per_day_per_resource = 1.0 * total_hardware_cost_per_day / (total_resource);
+        if(total_daily_power_cost == 0) power_cost_per_day_per_resource = 0;
+        else power_cost_per_day_per_resource = 1.0 * total_daily_power_cost / total_resource;
+    }
+    
+}
+
+double CaculateTotalCost(string vmName,int day){
+    int deployedment_way = vm_name2info[vmName].deployment_way;
+    int cpu = vm_name2info[vmName].cpu;
+    int memory = vm_name2info[vmName].memory;
+    return (power_cost_per_day_per_resource+hardware_cost_per_day_per_resource) * day * (cpu + memory) *(deployedment_way +1) ;
+}
+
 
 // 筛选出利用率较低的服务器，迁移走其中的虚拟机。
 bool NeedMigration(PurchasedServer *server)
@@ -509,6 +562,10 @@ int NumOfOffServer()
     return cnt;
 }
 
+// 迁移当天要删除的虚拟机，集中起来。
+void migration_deleting_vms() {
+    
+}
 // 第一步迁移。
 void migration1(double para) {
     vector<VmIdInfo *> migrating_vms;
@@ -903,6 +960,7 @@ void migration3(double para) {
                         return;
                     }
                 }
+                    
             }
         }
     }
@@ -1036,7 +1094,7 @@ pair< PurchasedServer *, char> SearchSuitPurchasedServer(int deployed_way, int c
                     double _cpu_rate = 1.0 * cpu / purchase_server->A_remain_cpu;
                     double _memory_rate = 1.0 * (memory) / purchase_server->A_remain_memory;
                     double use_rate = 1.0 * (_cpu_rate + _memory_rate) / 2;
-                    dense_cost = 1.0 * (Vm_info[purchase_server->server_name].daily_cost) * use_rate;
+                    dense_cost = 1.0 * (server_name2info[purchase_server->server_name].daily_cost) * use_rate;
                     
                     if (dense_cost < min_dense_cost)
                     {
@@ -1248,20 +1306,21 @@ void BuyAndDeployTwoVM(string vm_1_name, string vm_2_name, int vmID_1, int vmID_
  * @param {deployedway : 1 -- 前后两台服务器均为双节点部署}
  * @return {*}
  */
-    total_server_cost += Vm_info[serverName].hardware_cost;
+    total_server_cost += server_name2info[serverName].hardware_cost;
 
     // 购买服务器
     PurchasedServer *purchase_server = new PurchasedServer;
-    purchase_server->total_cpu = Vm_info[serverName].cpu;
-    purchase_server->total_memory = Vm_info[serverName].memory;
-    purchase_server->A_remain_cpu = Vm_info[serverName].cpu;
-    purchase_server->A_remain_memory = Vm_info[serverName].memory;
-    purchase_server->B_remain_cpu = Vm_info[serverName].cpu;
-    purchase_server->daily_cost = Vm_info[serverName].daily_cost;
-    purchase_server->B_remain_memory = Vm_info[serverName].memory;
-    purchase_server->server_name = Vm_info[serverName].server_name;
+    purchase_server->total_cpu = server_name2info[serverName].cpu;
+    purchase_server->total_memory = server_name2info[serverName].memory;
+    purchase_server->A_remain_cpu = server_name2info[serverName].cpu;
+    purchase_server->A_remain_memory = server_name2info[serverName].memory;
+    purchase_server->B_remain_cpu = server_name2info[serverName].cpu;
+    purchase_server->daily_cost = server_name2info[serverName].daily_cost;
+    purchase_server->B_remain_memory = server_name2info[serverName].memory;
+    purchase_server->server_name = server_name2info[serverName].server_name;
     purchase_servers.emplace_back(purchase_server);
     purchase_infos[serverName].emplace_back(purchase_server);
+    UpdateHardwareCost(purchase_server->server_name);
 
     if(vm_name2info[vm_1_name].deployment_way == 1 && vm_name2info[vm_2_name].deployment_way == 1){
         //前后两台虚拟机均为双节点部署的虚拟机
@@ -1412,6 +1471,7 @@ PurchasedServer *BuyNewServer(int deployment_way, int cpu, int memory)
     purchase_server->server_name = flag_sold_server->server_name;
     purchase_servers.emplace_back(purchase_server);
     purchase_infos[flag_sold_server->server_name].emplace_back(purchase_server);
+    UpdateHardwareCost(purchase_server->server_name);
     return purchase_server;
 }
 
@@ -1607,14 +1667,14 @@ void Compute_Power_Cost()
         if (vm_nums(server) != 0)
         {
             //当天结束时候有虚拟机的服务器
-            total_power_cost += Vm_info[server->server_name].daily_cost;
+            total_power_cost += server_name2info[server->server_name].daily_cost;
         }
         else
         {
             //当天结束时关机，但是当天开过机的服务器，算电费
             // if (from_off_2_start.find(server->server_id) != from_off_2_start.end())
             // {
-            //     total_power_cost += Vm_info[server->server_name].daily_cost;
+            //     total_power_cost += server_name2info[server->server_name].daily_cost;
             // }
         }
     }
@@ -1634,8 +1694,8 @@ vector<int> GetAllResourceOfOwnServers(bool isRemained = false)
         for (auto &purchase_server : purchase_servers)
         {
             string _serverName = purchase_server->server_name;
-            _total_cpu += Vm_info[_serverName].cpu * 2;
-            _total_memory += Vm_info[_serverName].memory * 2;
+            _total_cpu += server_name2info[_serverName].cpu * 2;
+            _total_memory += server_name2info[_serverName].memory * 2;
         }
     }
     else
@@ -1845,8 +1905,9 @@ void revokeBuy(int vmID)
      * @return {*}
      */
     string server_name = vm_id2info[vmID].purchase_server->server_name;
-    total_server_cost -= Vm_info[server_name].hardware_cost;
+    total_server_cost -= server_name2info[server_name].hardware_cost;
 
+    UpdateHardwareCost(server_name,true);
     purchase_servers.erase(purchase_servers.end() - 1, purchase_servers.end());
     purchase_infos[server_name].erase(purchase_infos[server_name].end() - 1, purchase_infos[server_name].end());
     if (purchase_infos[server_name].size() == 0)
@@ -1857,6 +1918,26 @@ void revokeBuy(int vmID)
     vmIDs.erase(vmID);
 }
 
+/**
+ * @brief 输出自己的报价，返回add请求数量。
+ * @param {vector<RequestData>} intraday_requests 当天所有的请求数据。
+ * @return {int} add的请求数量，用于下一步读取竞争信息。
+ */
+int GiveMyOffers(vector<RequestData>& intraday_requests) {
+    int num = 0;
+    for (auto& request : intraday_requests) {
+        if (request.operation == "add") {
+            int my_offer = request.user_offer - 1; //定价策略需要修改。
+            double my_Cost = CaculateTotalCost(request.vm_name,request.duration);
+
+            cout << my_offer << endl;
+            my_offers[request.vm_name].emplace_back(my_offer);
+            num++;
+        }
+    }
+    return num;
+}
+
 void SolveProblem()
 {
     Cmp cmp;
@@ -1864,26 +1945,30 @@ void SolveProblem()
     // sort(sold_servers.begin(), sold_servers.end(), [](SoldServer& server1,SoldServer& server2){
     //         return server1.hardware_cost+(total_days_num - now_day) * server1.daily_cost < server2.hardware_cost+(total_days_num - now_day) * server2.daily_cost;
     //     });
-
     for (int i = 0; i < total_days_num; ++i)
     {
         now_day = i + 1;
 
 #ifdef PRINTINFO
-        if (now_day % 200 == 0)
+        // if (now_day % 200 == 0)
             cout << now_day << endl;
 #endif
-        from_off_2_start.erase(from_off_2_start.begin(), from_off_2_start.end());
 
+        from_off_2_start.erase(from_off_2_start.begin(), from_off_2_start.end());
+        intraday_requests = request_datas.front();
+        request_datas.pop();
+        int add_nums = GiveMyOffers(intraday_requests);
+        vector<pair<int, int>> compete_infos = ParseCompeteInfo(add_nums);
+        intraday_requests = ParseBidingRes(compete_infos, intraday_requests);
+        // vector<MigrationInfo> migration_infos;
         vector<MigrationInfo> migration_infos = Migration();
-        
         total_migration_num += migration_infos.size();
         //获取迁移之后的系统可以提供的总资源
         vector<int> allResouceAfterMigration = GetAllResourceOfOwnServers(true);
 
-        intraday_requests = request_datas.front();
-
-        request_datas.pop();
+        //获取未来N条请求所需要的总资源
+        // allResourceOfNReqs = GetAllResourceOfFutureNDays(300);
+        // cout<<allResourceOfNReqs[0] << "  "<<allResourceOfNReqs[1]<<endl;
 
         int request_num = intraday_requests.size();
         vector<int> vm_ids;
@@ -1894,10 +1979,8 @@ void SolveProblem()
                 vm_ids.emplace_back(intraday_requests[j].vm_id);
             }
         }
-
         //获取当天请求所需要的峰值时刻的cpu和memory
         vector<long long> max_resource_of_today_reqs = GetMaxResourceOfToday(intraday_requests);
-
         double _rate = 1.2;
         if (allResouceAfterMigration[0] * _rate >= max_resource_of_today_reqs[0] && allResouceAfterMigration[1] * _rate >= max_resource_of_today_reqs[1])
         {
@@ -1909,7 +1992,6 @@ void SolveProblem()
         }
 
         vector<int> add_del_count = print_req_num(intraday_requests);
-
         bool isContinueBuy = (allResouceAfterMigration[0] > add_del_count[0] && allResouceAfterMigration[1] > add_del_count[1]) && (1.1 * (add_del_count[2] + add_del_count[3]) < add_del_count[0] + add_del_count[1]);
 
         if (!isContinueBuy)
@@ -1962,7 +2044,7 @@ void SolveProblem()
                             if (suitServer != 0)
                             {
                                 int new_cost = suitServer->hardware_cost + (total_days_num - now_day) * suitServer->daily_cost;
-                                int old_cost = Vm_info[last_buy_server_name].hardware_cost + (total_days_num - now_day) * Vm_info[last_buy_server_name].daily_cost + Vm_info[buy_server_name].hardware_cost + (total_days_num - now_day) * Vm_info[buy_server_name].daily_cost;
+                                int old_cost = server_name2info[last_buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[last_buy_server_name].daily_cost + server_name2info[buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[buy_server_name].daily_cost;
                                 // cout<<new_cost<<"   "<<old_cost<<endl;
                                 int num1 = vm_id2info.size();
                                 if (new_cost < old_cost)
@@ -1970,7 +2052,10 @@ void SolveProblem()
                                     count_continue_buy++;
                                     revokeBuy(add_data.vm_id);
                                     revokeBuy(last_add_data.vm_id);
+                                    
 
+                                    // last_buy_server_name = AddVm(last_add_data);
+                                    // buy_server_name = AddVm(add_data);
                                     BuyAndDeployTwoVM(last_add_data.vm_name, add_data.vm_name, last_add_data.vm_id, add_data.vm_id, suitServer->server_name);
                                     isSuccess = true;
                                 }
@@ -1985,7 +2070,7 @@ void SolveProblem()
                             if (suitServer != 0)
                             {
                                 int new_cost = suitServer->hardware_cost + (total_days_num - now_day) * suitServer->daily_cost;
-                                int old_cost = Vm_info[last_buy_server_name].hardware_cost + (total_days_num - now_day) * Vm_info[last_buy_server_name].daily_cost + Vm_info[buy_server_name].hardware_cost + (total_days_num - now_day) * Vm_info[buy_server_name].daily_cost;
+                                int old_cost = server_name2info[last_buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[last_buy_server_name].daily_cost + server_name2info[buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[buy_server_name].daily_cost;
                                 if (new_cost <  old_cost)
                                 {
                                     count_continue_buy++;
@@ -2004,6 +2089,7 @@ void SolveProblem()
                     }
                     else
                     {
+
                         last_buy_server_name = buy_server_name;
                         last_add_data = add_data;
                     }
@@ -2016,11 +2102,13 @@ void SolveProblem()
                 {
                     int vm_id = intraday_requests[j].vm_id;
                     DeleteVm(vm_id);
+                    // vm_id2info.erase(vm_id);
                 }
             }
         }
         else
         {
+
             //收集所有的add操作
             vector<AddData> continuous_add_datas;
             for (int j = 0; j < request_num; ++j)
@@ -2065,7 +2153,7 @@ void SolveProblem()
                         if (suitServer != 0)
                         {
                             int new_cost = suitServer->hardware_cost;
-                            int old_cost = Vm_info[last_buy_server_name].hardware_cost + Vm_info[buy_server_name].hardware_cost;
+                            int old_cost = server_name2info[last_buy_server_name].hardware_cost + server_name2info[buy_server_name].hardware_cost;
                             if (new_cost < 2.0 / 3 * old_cost)
                             {
                                 count_continue_buy++;
@@ -2086,7 +2174,7 @@ void SolveProblem()
                         if (suitServer != 0)
                         {
                             int new_cost = suitServer->hardware_cost + (total_days_num - now_day) * suitServer->daily_cost;
-                            int old_cost = Vm_info[last_buy_server_name].hardware_cost + (total_days_num - now_day) * Vm_info[last_buy_server_name].daily_cost + Vm_info[buy_server_name].hardware_cost + (total_days_num - now_day) * Vm_info[buy_server_name].daily_cost;
+                            int old_cost = server_name2info[last_buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[last_buy_server_name].daily_cost + server_name2info[buy_server_name].hardware_cost + (total_days_num - now_day) * server_name2info[buy_server_name].daily_cost;
                             if (new_cost < old_cost)
                             {
                                 count_continue_buy++;
@@ -2117,7 +2205,10 @@ void SolveProblem()
                 {
                     int vm_id = intraday_requests[j].vm_id;
                     DeleteVm(vm_id);
-
+                    if (vm_id2info.count(vm_id) != 0)
+                    {
+                        // vm_id2info.erase(vm_id);
+                    }
                 }
             }
         }
@@ -2164,8 +2255,8 @@ int main(int argc, char *argv[])
     // Statistics sta;
     // vector<double> ans;
 #ifdef REDIRECT
-    // freopen("training-1.txt", "r", stdin);
-    freopen("/Users/wangtongling/Desktop/training-data/training-3.txt", "r", stdin);
+    // freopen("test.txt", "r", stdin);
+    freopen("/Users/wangtongling/Desktop/training-data/test.txt", "r", stdin);
     // freopen("out1.txt", "w", stdout);
 #endif
 #ifdef PRINTINFO
@@ -2188,8 +2279,8 @@ int main(int argc, char *argv[])
 #ifdef MULTIPROCESS
     init();
 #ifdef REDIRECT
-    // freopen("training-1.txt", "r", stdin);
-    freopen("/Users/wangtongling/Desktop/training-data/training-4.txt", "r", stdin);
+    freopen("training-2.txt", "r", stdin);
+    // freopen("/Users/wangtongling/Desktop/training-data/training-4.txt", "r", stdin);
     // freopen("out1.txt", "w", stdout);
 #endif
 #ifdef PRINTINFO
@@ -2211,8 +2302,8 @@ int main(int argc, char *argv[])
     init();
 
 #ifdef REDIRECT
-    // freopen("training-1.txt", "r", stdin);
-    freopen("/Users/wangtongling/Desktop/training-data/training-5.txt", "r", stdin);
+    freopen("training-3.txt", "r", stdin);
+    // freopen("/Users/wangtongling/Desktop/training-data/training-5.txt", "r", stdin);
     // freopen("out1.txt", "w", stdout);
 #endif
 #ifdef PRINTINFO
@@ -2234,8 +2325,8 @@ int main(int argc, char *argv[])
     init();
 
 #ifdef REDIRECT
-    // freopen("training-1.txt", "r", stdin);
-    freopen("/Users/wangtongling/Desktop/training-data/training-6.txt", "r", stdin);
+    freopen("training-4.txt", "r", stdin);
+    // freopen("/Users/wangtongling/Desktop/training-data/training-6.txt", "r", stdin);
     // freopen("out1.txt", "w", stdout);
 #endif
 #ifdef PRINTINFO
