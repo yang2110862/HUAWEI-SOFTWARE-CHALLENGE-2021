@@ -27,3 +27,4 @@ CodeCraft-2021.zip
 *.zip
 build/CMakeFiles/Progress/1
 CodeCraft-2021/CodeCraft-2021
+*.py
