@@ -730,7 +730,7 @@ vector<MigrationInfo> Migration()
         }
         for (auto original_server : merging_servers)
         {
-            if (migration_infos.size() > max_migration_num - original_server->A_vm_id.size() && migration_infos.size() > max_migration_num - original_server->B_vm_id.size())
+            if (migration_infos.size() + original_server->A_vm_id.size() > max_migration_num && migration_infos.size() + original_server->B_vm_id.size() > max_migration_num)
                 continue;
             double rate1a = remain_rate(original_server, 'A'), rate1b = remain_rate(original_server, 'B');
             if ((rate1a < _near_full_threshold && rate1b > 1 - _near_full_threshold) || (rate1b < _near_full_threshold && rate1a > 1 - _near_full_threshold))
@@ -797,30 +797,25 @@ vector<MigrationInfo> Migration()
                                 return migration_infos;
                         }
                         // 如果能，顺带迁B。
-                        bool flag = false; //是否两个结点都能迁，是那么双节点虚拟机也能迁走。
-                        // int sum_cpu_b = original_server->total_cpu - original_server->B_remain_cpu;
-                        // int sum_memory_b = original_server->total_memory - original_server->B_remain_memory;
                         if (best_server[index]->A_remain_cpu >= sum_cpu[1] && best_server[index]->A_remain_memory >= sum_memory[1] && which_node[index] == 'B')
                         { //B迁A。
                             if (migration_infos.size() + original_server->B_vm_id.size() <= max_migration_num)
                             {
-                                flag = true;
                                 migrate_to(original_server, 'B', best_server[index], 'A', migration_infos);
                                 if (migration_infos.size() == max_migration_num)
                                     return migration_infos;
                             }
                         }
-                        else if (best_server[index]->B_remain_cpu >= sum_cpu[1] && best_server[index]->B_remain_memory >= sum_memory[1] && which_node[index] == 'A')
+                        if (best_server[index]->B_remain_cpu >= sum_cpu[1] && best_server[index]->B_remain_memory >= sum_memory[1] && which_node[index] == 'A')
                         { //B迁B。
                             if (migration_infos.size() + original_server->B_vm_id.size() <= max_migration_num)
                             {
-                                flag = true;
                                 migrate_to(original_server, 'B', best_server[index], 'B', migration_infos);
                                 if (migration_infos.size() == max_migration_num)
                                     return migration_infos;
                             }
                         }
-                        if (flag)
+                        if (best_server[index]->A_remain_cpu >= sum_cpu[2] && best_server[index]->A_remain_memory >= sum_memory[2] && best_server[index]->B_remain_cpu >= sum_cpu[2] && best_server[index]->B_remain_memory >= sum_memory[2])
                         { //双节点虚拟机迁移。
                             if (migration_infos.size() + original_server->AB_vm_id.size() <= max_migration_num)
                             {
@@ -839,30 +834,25 @@ vector<MigrationInfo> Migration()
                                 return migration_infos;
                         }
                         // 如果能，顺带迁A。
-                        bool flag = false; //是否两个结点都能迁，是那么双节点虚拟机也能迁走。
-                        // int sum_cpu_a = original_server->total_cpu - original_server->A_remain_cpu;
-                        // int sum_memory_a = original_server->total_memory - original_server->A_remain_memory;
                         if (best_server[index]->A_remain_cpu >= sum_cpu[0] && best_server[index]->A_remain_memory >= sum_memory[0] && which_node[index] == 'B')
                         { //A迁A。
                             if (migration_infos.size() + original_server->A_vm_id.size() <= max_migration_num)
                             {
-                                flag = true;
                                 migrate_to(original_server, 'A', best_server[index], 'A', migration_infos);
                                 if (migration_infos.size() == max_migration_num)
                                     return migration_infos;
                             }
                         }
-                        else if (best_server[index]->B_remain_cpu >= sum_cpu[0] && best_server[index]->B_remain_memory >= sum_memory[0] && which_node[index] == 'A')
+                        if (best_server[index]->B_remain_cpu >= sum_cpu[0] && best_server[index]->B_remain_memory >= sum_memory[0] && which_node[index] == 'A')
                         { //A迁B。
                             if (migration_infos.size() + original_server->A_vm_id.size() <= max_migration_num)
                             {
-                                flag = true;
                                 migrate_to(original_server, 'A', best_server[index], 'B', migration_infos);
                                 if (migration_infos.size() == max_migration_num)
                                     return migration_infos;
                             }
                         }
-                        if (flag)
+                        if (best_server[index]->A_remain_cpu >= sum_cpu[2] && best_server[index]->A_remain_memory >= sum_memory[2] && best_server[index]->B_remain_cpu >= sum_cpu[2] && best_server[index]->B_remain_memory >= sum_memory[2])
                         { //双节点虚拟机迁移。
                             if (migration_infos.size() + original_server->AB_vm_id.size() <= max_migration_num)
                             {
@@ -972,6 +962,7 @@ vector<MigrationInfo> Migration()
         });
         for (auto original_server : original_servers)
         {
+            if (migration_infos.size() + vm_nums(original_server) > max_migration_num) continue;
             for (auto target_server : target_servers)
             {
                 if (target_server != original_server && (vm_nums(target_server) == 0 ? target_server->daily_cost : 0) <= 0.9 * original_server->daily_cost && migration_infos.size() + vm_nums(original_server) <= max_migration_num && target_server->A_remain_cpu >= original_server->total_cpu - original_server->A_remain_cpu && target_server->A_remain_memory >= original_server->total_memory - original_server->A_remain_memory && target_server->B_remain_cpu >= original_server->total_cpu - original_server->B_remain_cpu && target_server->B_remain_memory >= original_server->total_memory - original_server->B_remain_memory)
@@ -1191,6 +1182,7 @@ vector<MigrationInfo> Migration()
         });
         for (auto original_server : original_servers)
         {
+            if (migration_infos.size() + vm_nums(original_server) > max_migration_num) continue;
             for (auto target_server : target_servers)
             {
                 if (target_server != original_server && (vm_nums(target_server) == 0 ? target_server->daily_cost : 0) <= 1.0 * original_server->daily_cost && migration_infos.size() + vm_nums(original_server) <= max_migration_num && target_server->A_remain_cpu >= original_server->total_cpu - original_server->A_remain_cpu && target_server->A_remain_memory >= original_server->total_memory - original_server->A_remain_memory && target_server->B_remain_cpu >= original_server->total_cpu - original_server->B_remain_cpu && target_server->B_remain_memory >= original_server->total_memory - original_server->B_remain_memory)
