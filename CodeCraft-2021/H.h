@@ -23,15 +23,15 @@ using namespace std;
 
 struct SoldServer {
     string server_name;
-    int cpu_cores;
-    int memory_size;
+    int cpu;
+    int memory;
     int hardware_cost;
     int daily_cost;
 };
 struct SoldVm {
     //string VM_name;
-    int cpu_cores;
-    int memory_size;
+    int cpu;
+    int memory;
     int deployment_way;
 };
 struct RequestData {
@@ -44,13 +44,13 @@ struct RequestData {
 struct PurchasedServer {
     string server_name;
     int server_id = -1;
-    int total_core_num;
-    int total_memory_size;
+    int total_cpu;
+    int total_memory;
     int daily_cost;
-    int A_remain_core_num;
-    int A_remain_memory_size;
-    int B_remain_core_num;
-    int B_remain_memory_size;
+    int A_remain_cpu;
+    int A_remain_memory;
+    int B_remain_cpu;
+    int B_remain_memory;
     bool can_deploy_A = false;
     bool can_deploy_B = false;
     unordered_set<int> A_vm_id;
@@ -62,16 +62,17 @@ struct VmIdInfo {
     char node;  //A 代表A节点  B代表B节点  C代表C节点
     int vm_id;
     string vm_name;
-    int cpu_cores;
-    int memory_size;
+    int cpu;
+    int memory;
+    int delete_day;
 };
 struct AddData {
     AddData() = default;
     AddData(int _deployment_way, int _cpu_cores, int _memory_size, int _vm_id, string _vm_name) :
-            deployment_way(_deployment_way), cpu_cores(_cpu_cores), memory_size(_memory_size), vm_id(_vm_id), vm_name(_vm_name) {}
+            deployment_way(_deployment_way), cpu(_cpu_cores), memory(_memory_size), vm_id(_vm_id), vm_name(_vm_name) {}
     int deployment_way;
-    int cpu_cores;
-    int memory_size;
+    int cpu;
+    int memory;
     int vm_id;
     string vm_name;
 };
@@ -121,33 +122,33 @@ class Evaluate {
         return true;
     }
 public:
-    bool StrongPurchasedServerAB(PurchasedServer* purchased_server, int cpu_cores, int memory_size) {  //评价要不要插到双节点
+    bool StrongPurchasedServerAB(PurchasedServer* purchased_server, int cpu, int memory) {  //评价要不要插到双节点
         if (purchased_server->AB_vm_id.size() == 0) {
             return false;
         }
         return true;
     }
-    bool WeakPurchasedServerAB(PurchasedServer* purchased_server, int cpu_cores, int memory_size) {  //评价要不要插到双节点
+    bool WeakPurchasedServerAB(PurchasedServer* purchased_server, int cpu, int memory) {  //评价要不要插到双节点
         
         return true;
     }
-    bool PurchasedServerA(PurchasedServer* purchased_server, int cpu_cores, int memory_size) {  //评价要不要插到A节点
-        if (purchased_server->A_remain_core_num >= cpu_cores && purchased_server->A_remain_memory_size >= memory_size) {
-            /*double ratio = 1.0 * purchased_server->A_remain_core_num / purchased_server->A_remain_memory_size;
+    bool PurchasedServerA(PurchasedServer* purchased_server, int cpu, int memory) {  //评价要不要插到A节点
+        if (purchased_server->A_remain_cpu >= cpu && purchased_server->A_remain_memory >= memory) {
+            /*double ratio = 1.0 * purchased_server->A_remain_cpu / purchased_server->A_remain_memory;
             if (purchased_server)
             if (ratio > 1 && ratio < 10) {
-                if (1.0 * (purchased_server->A_remain_core_num - cpu_cores) / (purchased_server->A_remain_memory_size - memory_size) > 20) {
+                if (1.0 * (purchased_server->A_remain_cpu - cpu) / (purchased_server->A_remain_memory - memory) > 20) {
                     return false;
                 }
-                if (1.0 * (purchased_server->A_remain_core_num - cpu_cores) / (purchased_server->A_remain_memory_size - memory_size) < 1 / 20) {
+                if (1.0 * (purchased_server->A_remain_cpu - cpu) / (purchased_server->A_remain_memory - memory) < 1 / 20) {
                     return false;
                 }
             }
             if (ratio <= 1 && 1.0 / ratio < 10) {
-                if (1.0 / (purchased_server->A_remain_core_num - cpu_cores) * (purchased_server->A_remain_memory_size - memory_size) > 20) {
+                if (1.0 / (purchased_server->A_remain_cpu - cpu) * (purchased_server->A_remain_memory - memory) > 20) {
                     return false;
                 }
-                if (1.0 * (purchased_server->A_remain_core_num - cpu_cores) / (purchased_server->A_remain_memory_size - memory_size) < 1 /20) {
+                if (1.0 * (purchased_server->A_remain_cpu - cpu) / (purchased_server->A_remain_memory - memory) < 1 /20) {
                     return false;
                 }
             }*/
@@ -155,16 +156,16 @@ public:
         }
         return false;
     }
-    bool PurchasedServerB(PurchasedServer* purchased_server, int cpu_cores, int memory_size) {  //评价要不要插到B节点
-        if (purchased_server->B_remain_core_num >= cpu_cores && purchased_server->B_remain_memory_size >= memory_size) {
-            /*double ratio = 1.0 * purchased_server->B_remain_core_num / purchased_server->B_remain_memory_size;
+    bool PurchasedServerB(PurchasedServer* purchased_server, int cpu, int memory) {  //评价要不要插到B节点
+        if (purchased_server->B_remain_cpu >= cpu && purchased_server->B_remain_memory >= memory) {
+            /*double ratio = 1.0 * purchased_server->B_remain_cpu / purchased_server->B_remain_memory;
             if (ratio > 1 && ratio < 10) {
-                if (1.0 * (purchased_server->A_remain_core_num - cpu_cores) / (purchased_server->A_remain_memory_size - memory_size) > 20) {
+                if (1.0 * (purchased_server->A_remain_cpu - cpu) / (purchased_server->A_remain_memory - memory) > 20) {
                     return false;
                 }
             }
             if (ratio <= 1 && 1.0 / ratio < 10) {
-                if (1.0 / (purchased_server->A_remain_core_num - cpu_cores) * (purchased_server->A_remain_memory_size - memory_size) > 20) {
+                if (1.0 / (purchased_server->A_remain_cpu - cpu) * (purchased_server->A_remain_memory - memory) > 20) {
                     return false;
                 }
             }*/
@@ -179,21 +180,21 @@ public:
             if (vm_id2info[vm_id].node == target_node) return false;
             
         }*/
-        int cpu_cores = vm_info->cpu_cores, memory_size = vm_info->memory_size;
-        int A_remain_core_num = target_server->A_remain_core_num, B_remain_core_num = target_server->B_remain_core_num;
-        int A_remain_memory_size = target_server->A_remain_memory_size, B_remain_memory_size = target_server->B_remain_memory_size;
-        bool fit_node_A = cpu_cores <= A_remain_core_num && memory_size <= A_remain_memory_size;
-        bool fit_node_B = cpu_cores <= B_remain_core_num && memory_size <= B_remain_memory_size;
+        int cpu = vm_info->cpu, memory = vm_info->memory;
+        int A_remain_cpu = target_server->A_remain_cpu, B_remain_cpu = target_server->B_remain_cpu;
+        int A_remain_memory = target_server->A_remain_memory, B_remain_memory = target_server->B_remain_memory;
+        bool fit_node_A = cpu <= A_remain_cpu && memory <= A_remain_memory;
+        bool fit_node_B = cpu <= B_remain_cpu && memory <= B_remain_memory;
         if (target_node == 'C') {
             return fit_node_A && fit_node_B;
         } else if (target_node == 'A') {
             if (!fit_node_A) return false;
             else if (!fit_node_B) return true;
-            else return A_remain_core_num + A_remain_memory_size <= B_remain_core_num + B_remain_memory_size;
+            else return A_remain_cpu + A_remain_memory <= B_remain_cpu + B_remain_memory;
         } else {
             if (!fit_node_B) return false;
             else if (!fit_node_A) return true;
-            else return A_remain_core_num + A_remain_memory_size >= B_remain_core_num + B_remain_memory_size;
+            else return A_remain_cpu + A_remain_memory >= B_remain_cpu + B_remain_memory;
         }
     }
 };
@@ -210,26 +211,26 @@ public:
         /*if (a.deployment_way != b.deployment_way) {
             return a.deployment_way > b.deployment_way;
         } else {
-            return (a.cpu_cores + a.memory_size) > (b.cpu_cores + b.memory_size);
+            return (a.cpu + a.memory) > (b.cpu + b.memory);
         }*/
-        // if ((a.cpu_cores + a.memory_size) * (a.deployment_way==1?1 : 1) > (b.cpu_cores + b.memory_size) * (b.deployment_way == 1?1:  1)) return true;
-        // else if((a.cpu_cores + a.memory_size) * (a.deployment_way==1?1 : 1)  ==  (b.cpu_cores + b.memory_size) * (b.deployment_way == 1?1:  1)){
-        //     return fabs(log(1.0 * a.cpu_cores / a.memory_size)) < fabs(log(1.0 * b.cpu_cores / b.memory_size));
+        // if ((a.cpu + a.memory) * (a.deployment_way==1?1 : 1) > (b.cpu + b.memory) * (b.deployment_way == 1?1:  1)) return true;
+        // else if((a.cpu + a.memory) * (a.deployment_way==1?1 : 1)  ==  (b.cpu + b.memory) * (b.deployment_way == 1?1:  1)){
+        //     return fabs(log(1.0 * a.cpu / a.memory)) < fabs(log(1.0 * b.cpu / b.memory));
         // }else{
         //     return false;
         // }
-        return (a.cpu_cores + a.memory_size) * (a.deployment_way==1?1 : 1) > (b.cpu_cores + b.memory_size) * (b.deployment_way == 1?1:  1);
-        // return (a.cpu_cores + a.memory_size) * (a.deployment_way + 1) > (b.cpu_cores + b.memory_size) * (b.deployment_way + 1);
+        return (a.cpu + a.memory) * (a.deployment_way==1?1 : 1) > (b.cpu + b.memory) * (b.deployment_way == 1?1:  1);
+        // return (a.cpu + a.memory) * (a.deployment_way + 1) > (b.cpu + b.memory) * (b.deployment_way + 1);
     }
 
     static bool CanDeployDouble (PurchasedServer* a, PurchasedServer* b) {
-        double surplus_ratio_a = (a->A_remain_core_num + a->A_remain_memory_size + a->B_remain_core_num + a->B_remain_memory_size) * 1.0 / (a->total_core_num + a->total_memory_size) * 2;
-        double surplus_ratio_b = (b->A_remain_core_num + b->A_remain_memory_size + b->B_remain_core_num + b->B_remain_memory_size) * 1.0 / (b->total_core_num + b->total_memory_size) * 2;
+        double surplus_ratio_a = (a->A_remain_cpu + a->A_remain_memory + a->B_remain_cpu + a->B_remain_memory) * 1.0 / (a->total_cpu + a->total_memory) * 2;
+        double surplus_ratio_b = (b->A_remain_cpu + b->A_remain_memory + b->B_remain_cpu + b->B_remain_memory) * 1.0 / (b->total_cpu + b->total_memory) * 2;
         return surplus_ratio_a < surplus_ratio_b;
     }
     static bool CanDeploySingle (PurchasedServer* a, PurchasedServer* b) {
-        double surplus_ratio_a = (a->A_remain_core_num + a->A_remain_memory_size + a->B_remain_core_num + a->B_remain_memory_size) * 1.0 / (a->total_core_num + a->total_memory_size) * 2;
-        double surplus_ratio_b = (b->A_remain_core_num + b->A_remain_memory_size + b->B_remain_core_num + b->B_remain_memory_size) * 1.0 / (b->total_core_num + b->total_memory_size) * 2;
+        double surplus_ratio_a = (a->A_remain_cpu + a->A_remain_memory + a->B_remain_cpu + a->B_remain_memory) * 1.0 / (a->total_cpu + a->total_memory) * 2;
+        double surplus_ratio_b = (b->A_remain_cpu + b->A_remain_memory + b->B_remain_cpu + b->B_remain_memory) * 1.0 / (b->total_cpu + b->total_memory) * 2;
         return surplus_ratio_a < surplus_ratio_b;
     }
 };
@@ -274,22 +275,22 @@ void Statistics::compute_statistics_of_server(vector<SoldServer>& sold_servers) 
     double total_server_cpu = 0;
     double total_server_memory = 0;
     for (auto& sold_server : sold_servers) {
-        total_server_cpu += sold_server.cpu_cores;
-        total_server_memory += sold_server.memory_size;
+        total_server_cpu += sold_server.cpu;
+        total_server_memory += sold_server.memory;
     }
     server_average_cpu = total_server_cpu / len;
     server_average_memory = total_server_memory / len;
     sort(sold_servers.begin(), sold_servers.end(),                              
-        [](SoldServer& a, SoldServer&b){ return a.cpu_cores < b.cpu_cores;});  //可以不排序改成找第k大(后面有效果再优化)
-    server_max_cpu = sold_servers[len - 1].cpu_cores;
-    server_min_cpu = sold_servers[0].cpu_cores;
-    server_middle_cpu = len & 1 == 1 ? sold_servers[len >> 1].cpu_cores : 1.0 * (sold_servers[len >> 1].cpu_cores + sold_servers[(len >> 1) - 1].cpu_cores ) / 2;
+        [](SoldServer& a, SoldServer&b){ return a.cpu < b.cpu;});  //可以不排序改成找第k大(后面有效果再优化)
+    server_max_cpu = sold_servers[len - 1].cpu;
+    server_min_cpu = sold_servers[0].cpu;
+    server_middle_cpu = len & 1 == 1 ? sold_servers[len >> 1].cpu : 1.0 * (sold_servers[len >> 1].cpu + sold_servers[(len >> 1) - 1].cpu ) / 2;
 
     sort(sold_servers.begin(), sold_servers.end(),                              
-        [](SoldServer& a, SoldServer&b){ return a.memory_size < b.memory_size;});  
-    server_max_memory = sold_servers[len - 1].memory_size;
-    server_min_memory = sold_servers[0].memory_size;
-    server_middle_memory = len & 1 == 1 ? sold_servers[len >> 1].memory_size : 1.0 * (sold_servers[len >> 1].memory_size + sold_servers[(len >> 1) - 1].memory_size ) / 2;
+        [](SoldServer& a, SoldServer&b){ return a.memory < b.memory;});  
+    server_max_memory = sold_servers[len - 1].memory;
+    server_min_memory = sold_servers[0].memory;
+    server_middle_memory = len & 1 == 1 ? sold_servers[len >> 1].memory : 1.0 * (sold_servers[len >> 1].memory + sold_servers[(len >> 1) - 1].memory ) / 2;
 }
 void Statistics::compute_statistics_of_VM(vector<SoldVm>& sold_VMs) {
     int len = sold_VMs.size();
@@ -302,28 +303,28 @@ void Statistics::compute_statistics_of_VM(vector<SoldVm>& sold_VMs) {
     double total_VM_memory = 0;
     for (auto& sold_VM : sold_VMs) {
         if (sold_VM.deployment_way == 1) {
-            total_VM_cpu += sold_VM.cpu_cores * 2;
-            total_VM_memory += sold_VM.memory_size * 2;
+            total_VM_cpu += sold_VM.cpu * 2;
+            total_VM_memory += sold_VM.memory * 2;
         } else {
-            total_VM_cpu += sold_VM.cpu_cores;
-            total_VM_memory += sold_VM.memory_size;
+            total_VM_cpu += sold_VM.cpu;
+            total_VM_memory += sold_VM.memory;
         }
     }
     VM_average_cpu = total_VM_cpu / node_num;
     VM_average_memory = total_VM_memory / node_num;
     sort(sold_VMs.begin(), sold_VMs.end(),                              
-        [](SoldVm& a, SoldVm&b){ return a.cpu_cores < b.cpu_cores;});  //可以不排序改成找第k大(后面有效果再优化)
-    VM_max_cpu = sold_VMs[len - 1].cpu_cores;
-    VM_min_cpu = sold_VMs[0].cpu_cores;
-    VM_middle_cpu = len & 1 == 1 ? sold_VMs[len >> 1].cpu_cores : 1.0 * (sold_VMs[len >> 1].cpu_cores + sold_VMs[(len >> 1) - 1].cpu_cores ) / 2;
-    kth_small_VM_cpu = k <= len ? sold_VMs[k - 1].cpu_cores : sold_VMs[len - 1].cpu_cores;
+        [](SoldVm& a, SoldVm&b){ return a.cpu < b.cpu;});  //可以不排序改成找第k大(后面有效果再优化)
+    VM_max_cpu = sold_VMs[len - 1].cpu;
+    VM_min_cpu = sold_VMs[0].cpu;
+    VM_middle_cpu = len & 1 == 1 ? sold_VMs[len >> 1].cpu : 1.0 * (sold_VMs[len >> 1].cpu + sold_VMs[(len >> 1) - 1].cpu ) / 2;
+    kth_small_VM_cpu = k <= len ? sold_VMs[k - 1].cpu : sold_VMs[len - 1].cpu;
 
     sort(sold_VMs.begin(), sold_VMs.end(),                              
-        [](SoldVm& a, SoldVm&b){ return a.memory_size < b.memory_size;});  
-    VM_max_memory = sold_VMs[len - 1].memory_size;
-    VM_min_memory = sold_VMs[0].memory_size;
-    VM_middle_memory = len & 1 == 1 ? sold_VMs[len >> 1].memory_size : 1.0 * (sold_VMs[len >> 1].memory_size + sold_VMs[(len >> 1) - 1].memory_size ) / 2;
-    kth_small_VM_memory = k <= len ? sold_VMs[k - 1].memory_size : sold_VMs[len - 1].memory_size;
+        [](SoldVm& a, SoldVm&b){ return a.memory < b.memory;});  
+    VM_max_memory = sold_VMs[len - 1].memory;
+    VM_min_memory = sold_VMs[0].memory;
+    VM_middle_memory = len & 1 == 1 ? sold_VMs[len >> 1].memory : 1.0 * (sold_VMs[len >> 1].memory + sold_VMs[(len >> 1) - 1].memory ) / 2;
+    kth_small_VM_memory = k <= len ? sold_VMs[k - 1].memory : sold_VMs[len - 1].memory;
 }
 void Statistics::del_bad_server(vector<SoldServer>& sold_servers) {       //去掉特别劣势的服务器
     vector<SoldServer> new_sold_servers;
@@ -333,39 +334,39 @@ void Statistics::del_bad_server(vector<SoldServer>& sold_servers) {       //去�
         flag = false;         
         for (int j = 0; j < len; ++j) {   //能否找到一个可以代替sold_servers[i] 的服务器
             if (j == i) continue;     //跳过自身
-            if (sold_servers[j].cpu_cores < VM_max_cpu || sold_servers[j].memory_size < VM_max_memory) continue;      //要是不能容下所有可能的虚拟机，替换个毛线
+            if (sold_servers[j].cpu < VM_max_cpu || sold_servers[j].memory < VM_max_memory) continue;      //要是不能容下所有可能的虚拟机，替换个毛线
             if (sold_servers[j].hardware_cost <= sold_servers[i].hardware_cost) {           //硬件成本低
                 if (sold_servers[j].daily_cost <= sold_servers[i].daily_cost) {      //电费也更低
-                    if (sold_servers[j].cpu_cores >= sold_servers[i].cpu_cores && sold_servers[j].memory_size >= sold_servers[i].memory_size) {   //cpu,memory都更好
+                    if (sold_servers[j].cpu >= sold_servers[i].cpu && sold_servers[j].memory >= sold_servers[i].memory) {   //cpu,memory都更好
                         flag = true;
-                        cout << "删除服务器：" << sold_servers[i].server_name << ", cpu : " << sold_servers[i].cpu_cores << ", memory : " << sold_servers[i].memory_size
+                        cout << "删除服务器：" << sold_servers[i].server_name << ", cpu : " << sold_servers[i].cpu << ", memory : " << sold_servers[i].memory
                             << " 硬件成本 : " << sold_servers[i].hardware_cost << " 电费 ： " << sold_servers[i].daily_cost << endl;
                         cout << "该服务器的上位替代服务器" << endl;
-                        cout << "服务器：" << sold_servers[j].server_name << ", cpu : " << sold_servers[j].cpu_cores << ", memory : " << sold_servers[j].memory_size
+                        cout << "服务器：" << sold_servers[j].server_name << ", cpu : " << sold_servers[j].cpu << ", memory : " << sold_servers[j].memory
                             << " 硬件成本 : " << sold_servers[j].hardware_cost << " 电费 ： " << sold_servers[j].daily_cost << endl;
                         cout << endl;
                         break;
                     }
-                    if ((sold_servers[j].cpu_cores + sold_servers[j].memory_size) >= sold_servers[i].cpu_cores + sold_servers[i].memory_size) {  //cpu + memory总量更高
-                        if (sold_servers[j].cpu_cores < sold_servers[i].cpu_cores) {
-                            if (sold_servers[i].cpu_cores - sold_servers[j].cpu_cores < sold_servers[j].cpu_cores / 5) {
+                    if ((sold_servers[j].cpu + sold_servers[j].memory) >= sold_servers[i].cpu + sold_servers[i].memory) {  //cpu + memory总量更高
+                        if (sold_servers[j].cpu < sold_servers[i].cpu) {
+                            if (sold_servers[i].cpu - sold_servers[j].cpu < sold_servers[j].cpu / 5) {
                                 flag = true;
-                                cout << "删除服务器：" << sold_servers[i].server_name << ", cpu : " << sold_servers[i].cpu_cores << ", memory : " << sold_servers[i].memory_size
+                                cout << "删除服务器：" << sold_servers[i].server_name << ", cpu : " << sold_servers[i].cpu << ", memory : " << sold_servers[i].memory
                                     << " 硬件成本 : " << sold_servers[i].hardware_cost << " 电费 ： " << sold_servers[i].daily_cost << endl;
                                 cout << "该服务器的上位替代服务器" << endl;
-                                cout << "服务器：" << sold_servers[j].server_name << ", cpu : " << sold_servers[j].cpu_cores << ", memory : " << sold_servers[j].memory_size
+                                cout << "服务器：" << sold_servers[j].server_name << ", cpu : " << sold_servers[j].cpu << ", memory : " << sold_servers[j].memory
                                     << " 硬件成本 : " << sold_servers[j].hardware_cost << " 电费 ： " << sold_servers[j].daily_cost << endl;
                                 cout << endl;
                                 break;
                             }
                         }
-                        if (sold_servers[j].memory_size < sold_servers[i].memory_size) {
-                            if (sold_servers[i].memory_size - sold_servers[j].memory_size < sold_servers[j].memory_size / 5) {
+                        if (sold_servers[j].memory < sold_servers[i].memory) {
+                            if (sold_servers[i].memory - sold_servers[j].memory < sold_servers[j].memory / 5) {
                                 flag = true;
-                                cout << "删除服务器：" << sold_servers[i].server_name << ", cpu : " << sold_servers[i].cpu_cores << ", memory : " << sold_servers[i].memory_size
+                                cout << "删除服务器：" << sold_servers[i].server_name << ", cpu : " << sold_servers[i].cpu << ", memory : " << sold_servers[i].memory
                                     << " 硬件成本 : " << sold_servers[i].hardware_cost << " 电费 ： " << sold_servers[i].daily_cost << endl;
                                 cout << "该服务器的上位替代服务器" << endl;
-                                cout << "服务器：" << sold_servers[j].server_name << ", cpu : " << sold_servers[j].cpu_cores << ", memory : " << sold_servers[j].memory_size
+                                cout << "服务器：" << sold_servers[j].server_name << ", cpu : " << sold_servers[j].cpu << ", memory : " << sold_servers[j].memory
                                     << " 硬件成本 : " << sold_servers[j].hardware_cost << " 电费 ： " << sold_servers[j].daily_cost << endl;
                                 cout << endl;
                                 break;
@@ -438,8 +439,8 @@ vector<double> Statistics::linear_regression(vector<SoldServer>& sold_servers) {
     double alpha = 0.00000001;  //学习率；
     int iters = 10000;   //迭代次数
     for (int i = 0; i < servers_num; ++i) {
-        var_x[i][0] = sold_servers[i].cpu_cores;
-        var_x[i][1] = sold_servers[i].memory_size;
+        var_x[i][0] = sold_servers[i].cpu;
+        var_x[i][1] = sold_servers[i].memory;
         var_x[i][2] = 1;
         var_hardware[i] = sold_servers[i].hardware_cost;
     }
