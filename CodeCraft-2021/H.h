@@ -1,13 +1,3 @@
-/*
- * @Author: your name
- * @Date: 2021-04-04 19:30:38
- * @LastEditTime: 2021-04-14 22:06:40
- * @LastEditors: Please set LastEditors
- * @Description: In User Settings Edit
- * @FilePath: \planC\CodeCraft-2021\H1.h
- */
-#ifndef data_H
-#define data_H
 #include <iostream>
 #include <algorithm>
 #include <string>
@@ -19,55 +9,39 @@
 #include <ctime>
 #include <fstream>
 #include <cmath>
+#include<set>
 #include <climits>
 #include <cfloat>
+// #include <omp.h>
+
 using namespace std;
 
-extern int total_days_num;            //总请求天数
-extern int foreseen_days_num;          //可预见的天数
+// #define TEST_PARSEINPUT
+// #define REDIRECT
+// #define PRINTINFO
+// #define MULTIPROCESS
 
-extern unordered_map<string, SoldServer> server_info;
-extern unordered_map<string, SoldVm> VM_info;
-extern vector<SoldServer> sold_servers;
-extern queue<vector<RequestData>> request_datas;
-
-class SoldServer {
-public:
-    SoldServer() {}
-    ~SoldServer() {}
-public:
+struct SoldServer {
     string server_name;
     int cpu;
     int memory;
     int hardware_cost;
     int daily_cost;
 };
-class SoldVm {
-public:
-    SoldVm() {}
-    ~SoldVm() {}
-public:
-    string vm_name;
+struct SoldVm {
+    //string VM_name;
     int cpu;
     int memory;
     int deployment_way;
 };
-class RequestData {
-public:
-    RequestData() {}
-    ~RequestData() {}
-public:
+struct RequestData {
     string operation;
     string vm_name;
     int vm_id;
     int duration;
-    int user_price;
+    int user_offer;
 };
-class PurchasedServer {
-public:
-    PurchasedServer() {}
-    ~PurchasedServer() {}
-public:
+struct PurchasedServer {
     string server_name;
     int server_id = -1;
     int total_cpu;
@@ -83,152 +57,183 @@ public:
     unordered_set<int> B_vm_id;
     unordered_set<int> AB_vm_id;
 };
-class MigrationInfo {
-public:
-    MigrationInfo() {}
-    ~MigrationInfo() {}
-public:
-    int vm_id;
-    PurchasedServer* server;
-    char node;
-};
-class VmIdfo {
-public:
-    VmIdfo() {}
-    ~VmIdfo() {}
-public:
+struct VmIdInfo {
     PurchasedServer* purchase_server;
-    char node;
+    char node;  //A 代表A节点  B代表B节点  C代表C节点
     int vm_id;
     string vm_name;
     int cpu;
     int memory;
     int delete_day;
 };
-ostream& operator<<(ostream& os, const SoldServer& server);
-ostream& operator<<(ostream& os, const SoldVm& VM);
-ostream& operator<<(ostream& os, const RequestData& request_data);
-
-class Parse {
-public:
-    Parse() {}
-    ~Parse() {}
-public:
-    void parse_input(unordered_map<string, SoldServer>&, unordered_map<string, SoldVm>&, queue<vector<RequestData>>&);
-    void print(unordered_map<string, SoldServer>&, unordered_map<string, SoldVm>&, queue<vector<RequestData>>);
-    queue<vector<RequestData>> request_datas;
-private:
-    void parse_server_info(unordered_map<string, SoldServer>&);
-    void parse_vm_info(unordered_map<string, SoldVm>&);
-    void parse_request(queue<vector<RequestData>>&, int);
+struct AddData {
+    AddData() = default;
+    AddData(int _deployment_way, int _cpu_cores, int _memory_size, int _vm_id, string _vm_name) :
+            deployment_way(_deployment_way), cpu(_cpu_cores), memory(_memory_size), vm_id(_vm_id), vm_name(_vm_name) {}
+    int deployment_way;
+    int cpu;
+    int memory;
+    int vm_id;
+    string vm_name;
 };
-void Parse::parse_input(unordered_map<string, SoldServer>& server_info, unordered_map<string, SoldVm>& VM_info, queue<vector<RequestData>>& request_datas) {
-    parse_server_info(server_info);
-    parse_vm_info(VM_info);
-    cin >> total_days_num >> foreseen_days_num;
-    parse_request(request_datas, foreseen_days_num);
-}
-void Parse::parse_server_info(unordered_map<string, SoldServer>& server_info) {
-    int server_num;
-    cin >> server_num;
-    string server_name, cpu, memory, hardware_cost, daily_cost;
-    for (int i = 0; i < server_num; ++i) {
-        SoldServer sold_server;
-        cin >> server_name >> cpu >> memory >> hardware_cost >> daily_cost;
-        sold_server.server_name = server_name.substr(1, server_name.size() - 2);
-        sold_server.cpu = stoi(cpu.substr(0, cpu.size() - 1)) / 2;
-        sold_server.memory = stoi(memory.substr(0, memory.size() - 1)) / 2;
-        sold_server.hardware_cost = stoi(hardware_cost.substr(0, hardware_cost.size() - 1));
-        sold_server.daily_cost = stoi(daily_cost.substr(0, daily_cost.size() - 1));
-        sold_servers.emplace_back(sold_server); 
-        server_info[sold_server.server_name] = sold_server;
-    }
-}
-void Parse::parse_vm_info(unordered_map<string, SoldVm>& VM_info) {
-    int vm_num;
-    cin >> vm_num;
-    string vm_name, cpu, memory, deployment_way;
-    for (int i = 0; i < vm_num; ++i) {
-        SoldVm sold_vm;
-        cin >> vm_name >> cpu >> memory >> deployment_way;
-        sold_vm.vm_name = vm_name.substr(1, vm_name.size() - 2);
-        sold_vm.cpu = stoi(cpu.substr(0, cpu.size() - 1));
-        sold_vm.memory = stoi(memory.substr(0, memory.size() - 1));
-        sold_vm.deployment_way = stoi(deployment_way.substr(0, deployment_way.size() - 1));
-        if (sold_vm.deployment_way == 1) {
-            sold_vm.cpu /= 2;
-            sold_vm.memory /= 2;
-        }
-        VM_info[sold_vm.vm_name] = sold_vm;
-    }    
-}
-void Parse::parse_request(queue<vector<RequestData>>& request_datas, int days_num) {
-    int operation_num;
-    string operation, vm_name, vm_id, vm_duration, vm_offer;
-    for (int i = 0; i < days_num; ++i) {
-        cin >> operation_num;
-        vector<RequestData> request_data;
-        for (int j = 0; j < operation_num; ++j) {
-            cin >> operation;
-            operation = operation.substr(1, operation.size() - 2);
-            if (operation == "add") {
-                RequestData data;
-                data.operation = "add";
-                cin >> vm_name >> vm_id >> vm_duration >> vm_offer;
-                data.vm_name = vm_name.substr(0, vm_name.size() - 1);
-                data.vm_id = stoi(vm_id.substr(0, vm_id.size() - 1));
-                data.duration = stoi(vm_duration.substr(0, vm_duration.size() - 1));
-                data.user_price = stoi(vm_offer.substr(0, vm_offer.size() - 1));
-                
-                request_data.emplace_back(data);
-            } else if (operation == "del") {
-                RequestData data;
-                data.operation = "del";
-                cin >> vm_id;
-                data.vm_id = stoi(vm_id.substr(0, vm_id.size() - 1));
-                request_data.emplace_back(data);
+struct DelData {
+    DelData() = default;
+    DelData(int _vm_id) :
+            vm_id(_vm_id) {}
+    int vm_id;
+};
+
+struct MigrationInfo {
+    int vm_id;
+    PurchasedServer *server;
+    char node;
+    MigrationInfo() {}
+    MigrationInfo(int _vm_id, PurchasedServer *_server, char _node) : vm_id(_vm_id), server(_server), node(_node) {}
+};
+
+class Evaluate {
+    private:
+    const double threshold1 = 4;
+
+    const double threshold_abs1 = 10;
+    const double threshold_abs2 = 3;
+    bool check1(double ratio_a, double ratio_b) {
+        if (ratio_a >= 1) {
+            if (fabs(ratio_a - ratio_b) > threshold_abs1) {
+                return false;
+            }
+        } else {
+            if (fabs(1 / ratio_a - 1 / ratio_b) > threshold_abs1) {
+                return false;
             }
         }
-        request_datas.emplace(request_data);
-    }    
-}
-
-void Parse::print(unordered_map<string, SoldServer>& server_info, unordered_map<string, SoldVm>& VM_info, queue<vector<RequestData>> request_datas) {
-    for (auto& server : server_info) {
-        cout << server.second << endl;
+        return true;
     }
-    for (auto& VM : VM_info) {
-        cout << VM.second << endl;
-    }
-    int queue_len = request_datas.size();
-    for (int i = 0; i < queue_len; ++i) {
-        auto requests = request_datas.front();
-        for (auto request : requests) {
-            cout << request << endl;
+    bool check2(double ratio_a, double ratio_b) {
+        if (ratio_a >= 1) {
+            if (fabs(ratio_a - ratio_b) > threshold_abs1) {
+                return false;
+            }
+        } else {
+            if (fabs(1 / ratio_a - 1 / ratio_b) > threshold_abs1) {
+                return false;
+            }
         }
-        request_datas.pop();
+        return true;
     }
-}
+public:
+    bool StrongPurchasedServerAB(PurchasedServer* purchased_server, int cpu, int memory) {  //评价要不要插到双节点
+        if (purchased_server->AB_vm_id.size() == 0) {
+            return false;
+        }
+        return true;
+    }
+    bool WeakPurchasedServerAB(PurchasedServer* purchased_server, int cpu, int memory) {  //评价要不要插到双节点
+        
+        return true;
+    }
+    bool PurchasedServerA(PurchasedServer* purchased_server, int cpu, int memory) {  //评价要不要插到A节点
+        if (purchased_server->A_remain_cpu >= cpu && purchased_server->A_remain_memory >= memory) {
+            /*double ratio = 1.0 * purchased_server->A_remain_cpu / purchased_server->A_remain_memory;
+            if (purchased_server)
+            if (ratio > 1 && ratio < 10) {
+                if (1.0 * (purchased_server->A_remain_cpu - cpu) / (purchased_server->A_remain_memory - memory) > 20) {
+                    return false;
+                }
+                if (1.0 * (purchased_server->A_remain_cpu - cpu) / (purchased_server->A_remain_memory - memory) < 1 / 20) {
+                    return false;
+                }
+            }
+            if (ratio <= 1 && 1.0 / ratio < 10) {
+                if (1.0 / (purchased_server->A_remain_cpu - cpu) * (purchased_server->A_remain_memory - memory) > 20) {
+                    return false;
+                }
+                if (1.0 * (purchased_server->A_remain_cpu - cpu) / (purchased_server->A_remain_memory - memory) < 1 /20) {
+                    return false;
+                }
+            }*/
+            return true;
+        }
+        return false;
+    }
+    bool PurchasedServerB(PurchasedServer* purchased_server, int cpu, int memory) {  //评价要不要插到B节点
+        if (purchased_server->B_remain_cpu >= cpu && purchased_server->B_remain_memory >= memory) {
+            /*double ratio = 1.0 * purchased_server->B_remain_cpu / purchased_server->B_remain_memory;
+            if (ratio > 1 && ratio < 10) {
+                if (1.0 * (purchased_server->A_remain_cpu - cpu) / (purchased_server->A_remain_memory - memory) > 20) {
+                    return false;
+                }
+            }
+            if (ratio <= 1 && 1.0 / ratio < 10) {
+                if (1.0 / (purchased_server->A_remain_cpu - cpu) * (purchased_server->A_remain_memory - memory) > 20) {
+                    return false;
+                }
+            }*/
+            return true;
+        }
+        return false;
+    }
+public:
+    static bool CanMigrateTo(VmIdInfo *vm_info, PurchasedServer *original_server, PurchasedServer *target_server, char target_node) {
+        //if (target_server->A_vm_id.size() + target_server->B_vm_id.size() + target_server->AB_vm_id.size() <= 2) return false;
+        /*if (original_server == target_server) {
+            if (vm_id2info[vm_id].node == target_node) return false;
+            
+        }*/
+        int cpu = vm_info->cpu, memory = vm_info->memory;
+        int A_remain_cpu = target_server->A_remain_cpu, B_remain_cpu = target_server->B_remain_cpu;
+        int A_remain_memory = target_server->A_remain_memory, B_remain_memory = target_server->B_remain_memory;
+        bool fit_node_A = cpu <= A_remain_cpu && memory <= A_remain_memory;
+        bool fit_node_B = cpu <= B_remain_cpu && memory <= B_remain_memory;
+        if (target_node == 'C') {
+            return fit_node_A && fit_node_B;
+        } else if (target_node == 'A') {
+            if (!fit_node_A) return false;
+            else if (!fit_node_B) return true;
+            else return A_remain_cpu + A_remain_memory <= B_remain_cpu + B_remain_memory;
+        } else {
+            if (!fit_node_B) return false;
+            else if (!fit_node_A) return true;
+            else return A_remain_cpu + A_remain_memory >= B_remain_cpu + B_remain_memory;
+        }
+    }
+};
+class Cmp {
+public:
+    static bool SoldServers (SoldServer& a, SoldServer& b) {
+        return a.hardware_cost < b.hardware_cost;
+    }
+    /*static bool SoldServers (SoldServer& a, SoldServer& b) {
+        double x = a.hardware_cost
+        return a.hardware_cost < b.hardware_cost;
+    }*/
+    static bool ContinuousADD (AddData& a, AddData& b) {
+        /*if (a.deployment_way != b.deployment_way) {
+            return a.deployment_way > b.deployment_way;
+        } else {
+            return (a.cpu + a.memory) > (b.cpu + b.memory);
+        }*/
+        // if ((a.cpu + a.memory) * (a.deployment_way==1?1 : 1) > (b.cpu + b.memory) * (b.deployment_way == 1?1:  1)) return true;
+        // else if((a.cpu + a.memory) * (a.deployment_way==1?1 : 1)  ==  (b.cpu + b.memory) * (b.deployment_way == 1?1:  1)){
+        //     return fabs(log(1.0 * a.cpu / a.memory)) < fabs(log(1.0 * b.cpu / b.memory));
+        // }else{
+        //     return false;
+        // }
+        return (a.cpu + a.memory) * (a.deployment_way==1?1 : 1) > (b.cpu + b.memory) * (b.deployment_way == 1?1:  1);
+        // return (a.cpu + a.memory) * (a.deployment_way + 1) > (b.cpu + b.memory) * (b.deployment_way + 1);
+    }
 
-ostream& operator<<(ostream& os, const SoldServer& server) {
-    os << "server name : " << server.server_name << ", server cpu : " << server.cpu << ", server memory : " << server.memory
-        << ", server hardware cost : " << server.hardware_cost << ", server daily cost : " << server.daily_cost;
-    return os;
-}
-ostream& operator<<(ostream& os, const SoldVm& VM) {
-    os << "VM name : " << VM.vm_name << ", VM cpu : " << VM.cpu << ", VM memory : " << VM.memory
-        << ", VM deployment way : " << VM.deployment_way;
-    return os;
-}
-ostream& operator<<(ostream& os, const RequestData& request_data) {
-    if (request_data.operation == "add") {
-        os << request_data.operation << ' ' << request_data.vm_name << ' ' << request_data.vm_id << ' ' << request_data.duration 
-            << ' ' << request_data.user_price;
-    } else {
-        os << request_data.operation << ' ' << request_data.vm_id;
+    static bool CanDeployDouble (PurchasedServer* a, PurchasedServer* b) {
+        double surplus_ratio_a = (a->A_remain_cpu + a->A_remain_memory + a->B_remain_cpu + a->B_remain_memory) * 1.0 / (a->total_cpu + a->total_memory) * 2;
+        double surplus_ratio_b = (b->A_remain_cpu + b->A_remain_memory + b->B_remain_cpu + b->B_remain_memory) * 1.0 / (b->total_cpu + b->total_memory) * 2;
+        return surplus_ratio_a < surplus_ratio_b;
     }
-    return os;
-}
+    static bool CanDeploySingle (PurchasedServer* a, PurchasedServer* b) {
+        double surplus_ratio_a = (a->A_remain_cpu + a->A_remain_memory + a->B_remain_cpu + a->B_remain_memory) * 1.0 / (a->total_cpu + a->total_memory) * 2;
+        double surplus_ratio_b = (b->A_remain_cpu + b->A_remain_memory + b->B_remain_cpu + b->B_remain_memory) * 1.0 / (b->total_cpu + b->total_memory) * 2;
+        return surplus_ratio_a < surplus_ratio_b;
+    }
+};
 
 class Statistics {  //选计算虚拟机的统计量，再去掉劣势服务器，再计算去掉劣势服务器后的服务器统计量，再使用统计数据
 public:
@@ -431,7 +436,7 @@ vector<double> Statistics::linear_regression(vector<SoldServer>& sold_servers) {
     vector<double> coeff(3, 1);       
     vector<vector<double>> var_x(servers_num, vector<double>(3, 0));
     vector<double> var_hardware(servers_num, 0);
-    double alpha = 0.0000001;  //学习率；
+    double alpha = 0.00000001;  //学习率；
     int iters = 10000;   //迭代次数
     for (int i = 0; i < servers_num; ++i) {
         var_x[i][0] = sold_servers[i].cpu;
@@ -445,5 +450,3 @@ vector<double> Statistics::linear_regression(vector<SoldServer>& sold_servers) {
     coeff[1] = coeff[1] / sum;
     return coeff;
 }
-
-#endif

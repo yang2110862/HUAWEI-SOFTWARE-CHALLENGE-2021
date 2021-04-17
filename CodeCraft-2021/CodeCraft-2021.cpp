@@ -2149,9 +2149,10 @@ void revokeBuy(int vmID)
  * @param {RequestData} request 某台虚拟机的请求数据。
  * @return {int} 报价。
  */
-double per_memory = 0.7;
+double per_memory = 0.45;
 double cpu_mult = 2.326;
 double reward_andPunishment(const RequestData& request) {
+    
     return 0;
 }
 int CalculateMyOffer(const RequestData& request) {
@@ -2167,7 +2168,7 @@ int CalculateMyOffer(const RequestData& request) {
     }
     if (global_cost < request.user_offer) {
         // return (global_cost + request.user_offer) / 2;
-        return global_cost + (request.user_offer - global_cost) * 0.2;
+        return global_cost;
     } else {
         return -1;
     }
