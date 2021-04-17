@@ -2150,9 +2150,11 @@ void revokeBuy(int vmID)
  * @return {int} 报价。
  */
 double per_memory = 0.45;
+double high_per_memory = per_memory + 0.09;
+double low_per_memory = per_memory - 0.09;
 double cpu_mult = 2.326;
 double reward_andPunishment(const RequestData& request) {
-    
+
     return 0;
 }
 int CalculateMyOffer(const RequestData& request) {
@@ -2160,11 +2162,12 @@ int CalculateMyOffer(const RequestData& request) {
     SoldVm vm = vm_name2info[request.vm_name];
     double feed_back = reward_andPunishment(request);
     int global_cost;
+    double d_per_memory = low_per_memory + now_day * (high_per_memory - low_per_memory) / total_days_num; //动态memory
     if (vm.deployment_way == 1) {
-        global_cost = feed_back + vm.cpu * per_memory * cpu_mult * request.duration + vm.memory * per_memory * request.duration;
+        global_cost = feed_back + vm.cpu * d_per_memory * cpu_mult * request.duration + vm.memory * d_per_memory * request.duration;
         global_cost *= 2;
     } else {
-        global_cost = feed_back + vm.cpu * per_memory * cpu_mult * request.duration + vm.memory * per_memory * request.duration;
+        global_cost = feed_back + vm.cpu * d_per_memory * cpu_mult * request.duration + vm.memory * d_per_memory * request.duration;
     }
     if (global_cost < request.user_offer) {
         // return (global_cost + request.user_offer) / 2;
