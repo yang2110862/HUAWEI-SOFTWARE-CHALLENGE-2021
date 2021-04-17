@@ -1580,7 +1580,7 @@ void BuyAndDeployTwoVM(string vm_1_name, string vm_2_name, int vmID_1, int vmID_
     purchase_server->B_remain_memory = server_name2info[serverName].memory;
     purchase_server->server_name = server_name2info[serverName].server_name;
     int left_day = total_days_num - now_day +1;
-    purchase_server->hardware_avg_cost = 1.0*  server_name2info[serverName].hardware_cost / left_day / (2.0 * server_name2info[serverName].cpu +  2.0* server_name2info[serverName].memory);
+    purchase_server->hardware_avg_cost = 1.0*  server_name2info[serverName].hardware_cost / left_day / (2.0 * server_name2info[serverName].cpu * 2.3 +  2.0* server_name2info[serverName].memory);
     purchase_servers.emplace_back(purchase_server);
     purchase_infos[serverName].emplace_back(purchase_server);
     UpdateHardwareCost(purchase_server->server_name);
@@ -1733,7 +1733,7 @@ PurchasedServer *BuyNewServer(int deployment_way, int cpu, int memory)
     purchase_server->B_remain_memory = flag_sold_server->memory;
     purchase_server->server_name = flag_sold_server->server_name;
     int left_day = total_days_num - now_day+1;
-    purchase_server->hardware_avg_cost = 1.0*  flag_sold_server->hardware_cost / left_day / (2.0 * flag_sold_server->cpu +  2.0* flag_sold_server->memory);
+    purchase_server->hardware_avg_cost = 1.0*  flag_sold_server->hardware_cost / left_day / (2.0 * flag_sold_server->cpu*2.3 +  2.0* flag_sold_server->memory);
 
     purchase_servers.emplace_back(purchase_server);
     purchase_infos[flag_sold_server->server_name].emplace_back(purchase_server);
@@ -2342,24 +2342,24 @@ struct ReqCmp
 
 
 int SimulateDeploy(RequestData& req){
-    double a = 2.2;
+    double a = 1.98;
     double b = 0;
-
+    double over_rate = 0.7;
     string vm_name = req.vm_name;
     int deployment_way = vm_name2info[vm_name].deployment_way;
     int cpu = vm_name2info[vm_name].cpu;
     int memory = vm_name2info[vm_name].memory;
-    if(now_day > 4. / 5 * total_days_num) return -1;
+    
 
     pair< PurchasedServer *, char> res = SearchSuitPurchasedServer(deployment_way,cpu,memory,true);
     if(res.first != 0){
         //开机的里面找到了合适的
-        double total_used_resource = req.duration * (deployment_way+1) * (cpu+ memory);
-        double power_cost_perresource = 1.0 * res.first->daily_cost /  (2.0 * res.first->total_cpu  + 2.0 * res.first->total_memory);
+        double total_used_resource = req.duration * (deployment_way+1) * (cpu * 2.3+ memory);
+        double power_cost_perresource = 1.0 * res.first->daily_cost /  (2.0 * res.first->total_cpu * 2.3 + 2.0 * res.first->total_memory);
 
         int total_cost = total_used_resource * (a* power_cost_perresource + b* res.first->hardware_avg_cost);
         // int total_cost = total_used_resource * (power_cost_perresource + res.first->hardware_avg_cost);
-        if(total_cost  <0.8* req.user_offer ){
+        if(total_cost  < over_rate* req.user_offer ){
             SimulateDeployOnServer(res.first,deployment_way,res.second,cpu,memory,req.vm_id,vm_name);
             return (int)(total_cost);
         }else{
@@ -2371,10 +2371,10 @@ int SimulateDeploy(RequestData& req){
         //开机的里面没找到
         res = SearchSuitPurchasedServer(deployment_way,cpu,memory,false);
         if(res.first !=0 ){
-            double total_used_resource = req.duration * (deployment_way+1) * (cpu+ memory);
-            double power_cost_perresource = 1.0 * res.first->daily_cost /  (2.0 * res.first->total_cpu + 2.0 * res.first->total_memory);
+            double total_used_resource = req.duration * (deployment_way+1) * (cpu*2.3+ memory);
+            double power_cost_perresource = 1.0 * res.first->daily_cost /  (2.0 * res.first->total_cpu * 2.3 + 2.0 * res.first->total_memory);
             int total_cost = total_used_resource * (a*power_cost_perresource +b* res.first->hardware_avg_cost);
-            if(total_cost < 0.8* req.user_offer){
+            if(total_cost < over_rate* req.user_offer){
                 SimulateDeployOnServer(res.first,deployment_way,res.second,cpu,memory,req.vm_id,vm_name);
                 return (int)(total_cost);
             }else{
@@ -2382,16 +2382,17 @@ int SimulateDeploy(RequestData& req){
             }
         }else{
             //新买服务器
+            if(now_day > 4.0 / 5 * total_days_num) return -1;
             SoldServer* suitServer = SearchNewServer(deployment_way,cpu,memory);
             int left_day = total_days_num - now_day +1;
-            double hardware_cost_perday_perresource = 1.0 * suitServer->hardware_cost / left_day / (2.0 * suitServer->cpu + 2.0 * suitServer->memory);
-            double power_cost_perresource = 1.0 * suitServer->daily_cost /  (2.0 * suitServer->cpu + 2.0 * suitServer->memory);
-            double total_used_resource = req.duration * (deployment_way + 1) * (cpu + memory) ; 
+            double hardware_cost_perday_perresource = 1.0 * suitServer->hardware_cost / left_day / (2.0 * suitServer->cpu * 2.3 + 2.0 * suitServer->memory);
+            double power_cost_perresource = 1.0 * suitServer->daily_cost /  (2.0 * suitServer->cpu * 2.3 + 2.0 * suitServer->memory);
+            double total_used_resource = req.duration * (deployment_way + 1) * (cpu * 2.3 + memory) ; 
             int total_cost = total_used_resource * (b*hardware_cost_perday_perresource +a* power_cost_perresource);
             if(total_cost   > req.user_offer ){
                 return -1;
             }else{
-                if(total_cost<0.8 * req.user_offer) return -1;
+                if(total_cost< over_rate * req.user_offer) return -1;
                 PurchasedServer *purchase_server = new PurchasedServer;
                 purchase_server->total_cpu = suitServer->cpu;
                 purchase_server->total_memory = suitServer->memory;
