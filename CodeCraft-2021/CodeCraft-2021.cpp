@@ -2342,9 +2342,9 @@ struct ReqCmp
 
 
 int SimulateDeploy(RequestData& req){
-    double a = 1.98;
-    double b = 0;
-    double over_rate = 0.7;
+    double a = 1.0;
+    double b = 1.0;
+    double over_rate =1.0;
     string vm_name = req.vm_name;
     int deployment_way = vm_name2info[vm_name].deployment_way;
     int cpu = vm_name2info[vm_name].cpu;
@@ -2373,7 +2373,7 @@ int SimulateDeploy(RequestData& req){
         if(res.first !=0 ){
             double total_used_resource = req.duration * (deployment_way+1) * (cpu*2.3+ memory);
             double power_cost_perresource = 1.0 * res.first->daily_cost /  (2.0 * res.first->total_cpu * 2.3 + 2.0 * res.first->total_memory);
-            int total_cost = total_used_resource * (a*power_cost_perresource +b* res.first->hardware_avg_cost);
+            int total_cost = total_used_resource * (a*power_cost_perresource +b* res.first->hardware_avg_cost) ;
             if(total_cost < over_rate* req.user_offer){
                 SimulateDeployOnServer(res.first,deployment_way,res.second,cpu,memory,req.vm_id,vm_name);
                 return (int)(total_cost);
@@ -2382,31 +2382,32 @@ int SimulateDeploy(RequestData& req){
             }
         }else{
             //新买服务器
-            if(now_day > 4.0 / 5 * total_days_num) return -1;
+            // if(now_day > 3.5 / 5 * total_days_num) return -1;
             SoldServer* suitServer = SearchNewServer(deployment_way,cpu,memory);
             int left_day = total_days_num - now_day +1;
             double hardware_cost_perday_perresource = 1.0 * suitServer->hardware_cost / left_day / (2.0 * suitServer->cpu * 2.3 + 2.0 * suitServer->memory);
             double power_cost_perresource = 1.0 * suitServer->daily_cost /  (2.0 * suitServer->cpu * 2.3 + 2.0 * suitServer->memory);
             double total_used_resource = req.duration * (deployment_way + 1) * (cpu * 2.3 + memory) ; 
             int total_cost = total_used_resource * (b*hardware_cost_perday_perresource +a* power_cost_perresource);
-            if(total_cost   > req.user_offer ){
+            if(total_cost   > req.user_offer )
+            // if(false )
+            {
                 return -1;
             }else{
-                if(total_cost< over_rate * req.user_offer) return -1;
-                PurchasedServer *purchase_server = new PurchasedServer;
-                purchase_server->total_cpu = suitServer->cpu;
-                purchase_server->total_memory = suitServer->memory;
-                purchase_server->A_remain_cpu = suitServer->cpu;
-                purchase_server->A_remain_memory = suitServer->memory;
-                purchase_server->B_remain_cpu = suitServer->cpu;
-                purchase_server->daily_cost = suitServer->daily_cost;
-                purchase_server->B_remain_memory = suitServer->memory;
-                purchase_server->server_name = suitServer->server_name;
-                purchase_server->hardware_avg_cost = hardware_cost_perday_perresource;
+                // PurchasedServer *purchase_server = new PurchasedServer;
+                // purchase_server->total_cpu = suitServer->cpu;
+                // purchase_server->total_memory = suitServer->memory;
+                // purchase_server->A_remain_cpu = suitServer->cpu;
+                // purchase_server->A_remain_memory = suitServer->memory;
+                // purchase_server->B_remain_cpu = suitServer->cpu;
+                // purchase_server->daily_cost = suitServer->daily_cost;
+                // purchase_server->B_remain_memory = suitServer->memory;
+                // purchase_server->server_name = suitServer->server_name;
+                // purchase_server->hardware_avg_cost = hardware_cost_perday_perresource;
 
-                purchase_servers.emplace_back(purchase_server);
-                purchase_infos[suitServer->server_name].emplace_back(purchase_server);
-                SimulateDeployOnServer(purchase_server,deployment_way, deployment_way == 0? 'A':'C' ,cpu,memory,req.vm_id,req.vm_name  );
+                // purchase_servers.emplace_back(purchase_server);
+                // purchase_infos[suitServer->server_name].emplace_back(purchase_server);
+                // SimulateDeployOnServer(purchase_server,deployment_way, deployment_way == 0? 'A':'C' ,cpu,memory,req.vm_id,req.vm_name  );
                 return ( int)(total_cost);
             }
         }
@@ -2431,6 +2432,7 @@ int GiveMyOffers(vector<RequestData>& intraday_requests) {
 
     vector<RequestData> addRequests;
     for(auto& intraday_request : intraday_requests){
+
         if(intraday_request.operation== "add"){
             addRequests.emplace_back(intraday_request);
         }
@@ -2448,13 +2450,12 @@ int GiveMyOffers(vector<RequestData>& intraday_requests) {
     for(auto& request : intraday_requests){
         long long my_offer = -1;
         if(request.operation == "add"){
-                int cal_cost = SimulateDeploy(request);
-                if(cal_cost == -1){
-                    my_offer = -1;
-                }else{
-                    my_offer =  0.0 * (request.user_offer - cal_cost)+cal_cost;
-                }
-
+            int cal_cost = SimulateDeploy(request);
+            if(cal_cost == -1){
+                my_offer = -1;
+            }else{
+                my_offer =  0.1 * (request.user_offer - cal_cost)+cal_cost;
+            }
             cout << my_offer << endl;
     
             my_offers[request.vm_name].emplace_back(my_offer);
