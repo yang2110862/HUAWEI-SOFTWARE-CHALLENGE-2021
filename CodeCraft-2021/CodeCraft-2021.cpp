@@ -2150,8 +2150,9 @@ void revokeBuy(int vmID)
  * @return {int} 报价。
  */
 double per_memory = 0.45;
-double high_per_memory = per_memory + 0.09;
-double low_per_memory = per_memory - 0.09;
+double updown = 0.1;
+double high_per_memory = per_memory + updown;
+double low_per_memory = per_memory - updown;
 double cpu_mult = 2.326;
 double reward_andPunishment(const RequestData& request) {
 
