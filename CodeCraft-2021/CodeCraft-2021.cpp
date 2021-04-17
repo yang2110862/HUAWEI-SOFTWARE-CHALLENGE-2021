@@ -2150,9 +2150,12 @@ void revokeBuy(int vmID)
  * @return {int} 报价。
  */
 int CalculateMyOffer(RequestData request) {
-    int global_cost = CaculateTotalCost(request.vm_name, request.duration);
+    // int global_cost = CaculateTotalCost(request.vm_name, request.duration);
+    SoldVm vm = vm_name2info[request.vm_name];
+    int global_cost = vm.cpu * 428.0 * request.duration / (total_days_num + 1 - now_day) + vm.memory * 184.0 * request.duration / (total_days_num + 1 - now_day) + vm.cpu * 1.36 * request.duration + vm.memory * 0.62 * request.duration;
     if (global_cost < request.user_offer) {
-        return (global_cost + request.user_offer) / 2;
+        // return (global_cost + request.user_offer) / 2;
+        return 0.8 * global_cost + (request.user_offer - 0.8 * global_cost) * 0.2;
     } else {
         return -1;
     }
