@@ -321,10 +321,10 @@ vector<RequestData> ParseBidingRes(vector<pair<int,int>>& bidingRes,vector<Reque
             if(req.duration == 0 && biding_res_flag == 1) today_add_today_del_vmid.insert(req.vm_id);
             ++index;
         }else if(req.operation == "del"){
-            if (vmIDs.count(req.vm_id) != 0) {
+            if (vmIDs.find(req.vm_id) != vmIDs.end()) {
                 res.emplace_back(req);
             } else {
-                if (today_add_today_del_vmid.count(req.vm_id) != 0) {
+                if (today_add_today_del_vmid.find(req.vm_id) != today_add_today_del_vmid.end()) {
                     res.emplace_back(req);
                 }
             }
@@ -365,12 +365,7 @@ void UpdateHardwareCost(string serverName ,bool isRevoke = false){
     
 }
 
-double CaculateTotalCost(string vmName,int day){
-    int deployedment_way = vm_name2info[vmName].deployment_way;
-    int cpu = vm_name2info[vmName].cpu;
-    int memory = vm_name2info[vmName].memory;
-    return (power_cost_per_day_per_resource+hardware_cost_per_day_per_resource) * day * (cpu + memory) *(deployedment_way +1) ;
-}
+
 
 
 // 筛选出利用率较低的服务器，迁移走其中的虚拟机。
@@ -1492,6 +1487,7 @@ void DeployOnServer(PurchasedServer *flag_server, int deployment_way,char whichN
         vm_id_info.memory = memory;
         vm_id_info.node = 'C';
         vm_id_info.vm_id = vm_id;
+        
         vm_id2info[vm_id] = vm_id_info;
     }else{
         if(whichNode == 'A'){
@@ -1525,6 +1521,45 @@ void DeployOnServer(PurchasedServer *flag_server, int deployment_way,char whichN
     }
 }
 
+void SimulateDeployOnServer(PurchasedServer *flag_server, int deployment_way,char whichNode, int cpu, int memory, int vm_id, string &vm_name)
+{
+    /**
+     * @description: 向某服务器部署虚拟机
+     * @param {flag_server: 目标服务器}
+     * @return {*}
+     */
+    if (deployment_way == 1)
+    {
+        // 部署双节点虚拟机到指定服务器
+        if (flag_server->A_vm_id.size() + flag_server->B_vm_id.size() + flag_server->AB_vm_id.size() == 0)
+        {
+            from_off_2_start.insert(flag_server->server_id);
+        }
+        flag_server->A_remain_cpu -= cpu;
+        flag_server->A_remain_memory -= memory;
+        flag_server->B_remain_cpu -= cpu;
+        flag_server->B_remain_memory -= memory;
+        // flag_server->AB_vm_id.insert(vm_id);
+
+
+    }else{
+        if(whichNode == 'A'){
+            flag_server->A_remain_cpu -= cpu;
+            flag_server->A_remain_memory -= memory;
+            // flag_server->A_vm_id.insert(vm_id);
+
+          
+        }else if(whichNode == 'B'){
+            flag_server->B_remain_cpu -= cpu;
+            flag_server->B_remain_memory -= memory;
+            // flag_server->B_vm_id.insert(vm_id);
+
+          
+        }
+    }
+}
+
+
 void BuyAndDeployTwoVM(string vm_1_name, string vm_2_name, int vmID_1, int vmID_2, string serverName)
 {
 /**
@@ -1544,6 +1579,8 @@ void BuyAndDeployTwoVM(string vm_1_name, string vm_2_name, int vmID_1, int vmID_
     purchase_server->daily_cost = server_name2info[serverName].daily_cost;
     purchase_server->B_remain_memory = server_name2info[serverName].memory;
     purchase_server->server_name = server_name2info[serverName].server_name;
+    int left_day = total_days_num - now_day +1;
+    purchase_server->hardware_avg_cost = 1.0*  server_name2info[serverName].hardware_cost / left_day / (2.0 * server_name2info[serverName].cpu +  2.0* server_name2info[serverName].memory);
     purchase_servers.emplace_back(purchase_server);
     purchase_infos[serverName].emplace_back(purchase_server);
     UpdateHardwareCost(purchase_server->server_name);
@@ -1695,10 +1732,80 @@ PurchasedServer *BuyNewServer(int deployment_way, int cpu, int memory)
     purchase_server->daily_cost = flag_sold_server->daily_cost;
     purchase_server->B_remain_memory = flag_sold_server->memory;
     purchase_server->server_name = flag_sold_server->server_name;
+    int left_day = total_days_num - now_day+1;
+    purchase_server->hardware_avg_cost = 1.0*  flag_sold_server->hardware_cost / left_day / (2.0 * flag_sold_server->cpu +  2.0* flag_sold_server->memory);
+
     purchase_servers.emplace_back(purchase_server);
     purchase_infos[flag_sold_server->server_name].emplace_back(purchase_server);
     UpdateHardwareCost(purchase_server->server_name);
     return purchase_server;
+}
+
+SoldServer *SearchNewServer(int deployment_way, int cpu, int memory)
+{
+    /**
+     * @description: 购买新服务器并加入已购序列中
+     * @param {*}
+     * @return {刚刚购买的服务器PurchasedServer*}
+     */
+    SoldServer *flag_sold_server;
+    double min_dense_cost = DBL_MAX;
+
+    if (deployment_way == 1)
+    {
+        for (auto &sold_server : sold_servers)
+        {
+            if (sold_server.cpu >= cpu && sold_server.memory >= memory)
+            {
+                double dense_cost;
+                if (isDenseBuy == 1)
+                {
+                    // double use_rate = (1.0 *(cpu) / sold_server.cpu + 1.0 *(memory) / sold_server.memory) / 2;
+                    // double use_rate = max(1.0 *(cpu) / sold_server.cpu , 1.0 *(memory) / sold_server.memory) ;
+                    double _cpu_rate = 1.0 * cpu / sold_server.cpu;
+                    double _memory_rate = 1.0 * (memory) / sold_server.memory;
+                    // double use_rate = 1.0 * (_cpu_rate + _memory_rate) / 2;
+                    double use_rate = _cpu_rate * r1 + _memory_rate * r2;
+                    // dense_cost = 1.0 * sold_server.hardware_cost * use_rate;
+                    // dense_cost = 1.0 * (sold_server.hardware_cost) + 1.0* sold_server.daily_cost * (total_days_num - now_day) * use_rate;
+                    dense_cost = 1.0 * (sold_server.hardware_cost + sold_server.daily_cost * (total_days_num - now_day)) * use_rate;
+                }
+                else
+                {
+                    // dense_cost = sold_server.hardware_cost;
+                    dense_cost = sold_server.hardware_cost + sold_server.daily_cost * (total_days_num - now_day);
+                }
+                if (dense_cost < min_dense_cost)
+                {
+                    min_dense_cost = dense_cost;
+                    flag_sold_server = &sold_server;
+                }
+            }
+        }
+    }else{
+        for (auto &sold_server : sold_servers)
+        {
+            if (sold_server.cpu >= cpu && sold_server.memory >= memory)
+            {
+                double dense_cost;
+                if (true)
+                {
+                    double _cpu_rate = 1.0 * cpu / sold_server.cpu;
+                    double _memory_rate = 1.0 * (memory) / sold_server.memory;
+                    double use_rate = 0.5 * (_cpu_rate + _memory_rate);
+                    dense_cost = 1.0 * (sold_server.hardware_cost + sold_server.daily_cost * (total_days_num - now_day)) * use_rate;
+                }
+                
+                if (dense_cost < min_dense_cost)
+                {
+                    min_dense_cost = dense_cost;
+                    flag_sold_server = &sold_server;
+                }
+            }
+        }
+    }
+
+    return flag_sold_server;
 }
 
 string AddVm(AddData &add_data)
@@ -2083,6 +2190,7 @@ vector<int> GetAllResourceOfFutureNDays(int req_num)
     return {_total_cpu, _total_memory, _max_cpu, _max_memory};
 }
 
+
 SoldServer *SearchForContinueVM(int deployment_way, int cpu, int memory)
 {
     /**
@@ -2144,18 +2252,160 @@ void revokeBuy(int vmID)
     vmIDs.erase(vmID);
 }
 
+
+
+double CaculateTotalCost(string vmName,int day){
+    int deployedment_way = vm_name2info[vmName].deployment_way;
+    int cpu = vm_name2info[vmName].cpu;
+    int memory = vm_name2info[vmName].memory;
+
+
+    //从开机的机器里找有无可以容纳该请求的地方
+    pair<PurchasedServer*,char> searchRes =  SearchSuitPurchasedServer(deployedment_way,cpu,memory,true);
+    if(searchRes.first == 0){
+        searchRes = SearchSuitPurchasedServer(deployedment_way,cpu,memory,false);
+        if(searchRes.first == 0 ){
+            //系统内无合适的服务器，需要购买新的服务器
+            SoldServer* newServer = SearchNewServer(deployedment_way,cpu,memory);
+
+            double new_server_hardware_cost_per_day_per_resource = 1.0 * newServer->hardware_cost / (total_days_num - now_day) /(2* newServer->cpu + 2* newServer->memory);
+            double new_server_power_cost_per_day_per_resource = 1.0 * newServer->daily_cost / (2* newServer->cpu + 2* newServer->memory);
+            if(now_day < 2.0 / 3 * total_days_num){
+                return (new_server_hardware_cost_per_day_per_resource+new_server_power_cost_per_day_per_resource) * (day == 0 ?1:day) * (cpu + memory) *(deployedment_way +1);
+            }else{
+                return (new_server_hardware_cost_per_day_per_resource+new_server_power_cost_per_day_per_resource) * (day == 0 ?1:day) * (cpu + memory) *(deployedment_way +1) * 100;
+            }
+        }else{
+            return (power_cost_per_day_per_resource+hardware_cost_per_day_per_resource) * (day == 0 ?1:day) * (cpu + memory) *(deployedment_way +1) *1;
+        }
+    }else{
+        vector<int> allResouceAfterMigration = GetAllResourceOfOwnServers(true);
+        vector<int> allResourceNeed = GetAllResourceOfToday(intraday_requests);
+        if(allResouceAfterMigration[0] >2.0* allResourceNeed[0] &&allResouceAfterMigration[1] >2.0*allResourceNeed[1] ){
+            return (power_cost_per_day_per_resource+hardware_cost_per_day_per_resource) * (day == 0 ?1:day) * (cpu + memory) *(deployedment_way +1);
+        }
+        else{
+            searchRes = SearchSuitPurchasedServer(deployedment_way,cpu,memory,false);
+            if(searchRes.first == 0 ){
+                //系统内无合适的服务器，需要购买新的服务器
+                SoldServer* newServer = SearchNewServer(deployedment_way,cpu,memory);
+                
+                double new_server_hardware_cost_per_day_per_resource = 1.0 * newServer->hardware_cost / (total_days_num - now_day) /(2* newServer->cpu + 2* newServer->memory);
+                double new_server_power_cost_per_day_per_resource = 1.0 * newServer->daily_cost / (2* newServer->cpu + 2* newServer->memory);
+                if(now_day < 2.0 / 3 * total_days_num){
+                    return (new_server_hardware_cost_per_day_per_resource+new_server_power_cost_per_day_per_resource) * (day == 0 ?1:day) * (cpu + memory) *(deployedment_way +1);
+                }else{
+                    return (new_server_hardware_cost_per_day_per_resource+new_server_power_cost_per_day_per_resource) * (day == 0 ?1:day) * (cpu + memory) *(deployedment_way +1) * 100;
+                }
+                
+            }else{
+                return (power_cost_per_day_per_resource+hardware_cost_per_day_per_resource) * (day == 0 ?1:day) * (cpu + memory) *(deployedment_way +1) ;
+            }
+        }
+    }
+    return (power_cost_per_day_per_resource+hardware_cost_per_day_per_resource) * (day == 0 ?1:day) * (cpu + memory) *(deployedment_way +1) ;
+}
+
 /**
  * @brief 此函数用于计算我方对虚拟机的报价。
  * @param {RequestData} request 某台虚拟机的请求数据。
  * @return {int} 报价。
  */
 int CalculateMyOffer(RequestData& request) {
-    int global_cost = CaculateTotalCost(request.vm_name, request.duration);
+    double global_cost = CaculateTotalCost(request.vm_name, request.duration);
+
     if (global_cost < request.user_offer) {
-        return (global_cost + request.user_offer) / 2;
+        //可以接
+        int myOffer = int( (global_cost + request.user_offer) / 2);
+        //分析对手
+        if(myOffer < statistics[request.vm_name].first){
+            return myOffer;
+        }else{
+            if(request.user_offer > rival_lower_bounds[request.vm_name]){
+                return request.user_offer;
+            }else{
+                return int(statistics[request.vm_name].first * (0.95));
+            }
+        }
     } else {
         return -1;
     }
+}
+
+struct ReqCmp
+{
+    bool operator()(RequestData a, RequestData b) 
+    {
+        return a.vm_id < b.vm_id;
+    }
+};
+
+
+int SimulateDeploy(RequestData& req){
+    string vm_name = req.vm_name;
+    int deployment_way = vm_name2info[vm_name].deployment_way;
+    int cpu = vm_name2info[vm_name].cpu;
+    int memory = vm_name2info[vm_name].memory;
+    // if(now_day > 2.5 / 5 * total_days_num) return -1;
+
+    pair< PurchasedServer *, char> res = SearchSuitPurchasedServer(deployment_way,cpu,memory,true);
+    if(res.first != 0){
+        //开机的里面找到了合适的
+        double total_used_resource = req.duration * (deployment_way+1) * (cpu+ memory);
+        double power_cost_perresource = 1.0 * res.first->daily_cost /  (2.0 * res.first->total_cpu + 2.0 * res.first->total_memory);
+
+        int total_cost = total_used_resource * (power_cost_perresource + res.first->hardware_avg_cost);
+        if(total_cost < req.user_offer ){
+            SimulateDeployOnServer(res.first,deployment_way,res.second,cpu,memory,req.vm_id,vm_name);
+            return (int)(total_cost);
+        }else{
+            return -1;
+        }
+        
+    }
+    else{
+        //开机的里面没找到
+        res = SearchSuitPurchasedServer(deployment_way,cpu,memory,false);
+        if(res.first !=0 ){
+            double total_used_resource = req.duration * (deployment_way+1) * (cpu+ memory);
+            double power_cost_perresource = 1.0 * res.first->daily_cost /  (2.0 * res.first->total_cpu + 2.0 * res.first->total_memory);
+            int total_cost = total_used_resource * (power_cost_perresource + res.first->hardware_avg_cost);
+            if(total_cost < req.user_offer){
+                SimulateDeployOnServer(res.first,deployment_way,res.second,cpu,memory,req.vm_id,vm_name);
+                return (int)(total_cost);
+            }else{
+                return -1;
+            }
+        }else{
+            //新买服务器
+            SoldServer* suitServer = SearchNewServer(deployment_way,cpu,memory);
+            int left_day = total_days_num - now_day +1;
+            double hardware_cost_perday_perresource = 1.0 * suitServer->hardware_cost / left_day / (2.0 * suitServer->cpu + 2.0 * suitServer->memory);
+            double power_cost_perresource = 1.0 * suitServer->daily_cost /  (2.0 * suitServer->cpu + 2.0 * suitServer->memory);
+            double total_used_resource = req.duration * (deployment_way + 1) * (cpu + memory) ; 
+            int total_cost = total_used_resource * (hardware_cost_perday_perresource + power_cost_perresource);
+            if(total_cost  > req.user_offer || now_day >=2.0 /3 * total_days_num ){
+                return -1;
+            }else{
+                PurchasedServer *purchase_server = new PurchasedServer;
+                purchase_server->total_cpu = suitServer->cpu;
+                purchase_server->total_memory = suitServer->memory;
+                purchase_server->A_remain_cpu = suitServer->cpu;
+                purchase_server->A_remain_memory = suitServer->memory;
+                purchase_server->B_remain_cpu = suitServer->cpu;
+                purchase_server->daily_cost = suitServer->daily_cost;
+                purchase_server->B_remain_memory = suitServer->memory;
+                purchase_server->server_name = suitServer->server_name;
+                purchase_server->hardware_avg_cost = hardware_cost_perday_perresource;
+
+                purchase_servers.emplace_back(purchase_server);
+                purchase_infos[suitServer->server_name].emplace_back(purchase_server);
+                SimulateDeployOnServer(purchase_server,deployment_way, deployment_way == 0? 'A':'C' ,cpu,memory,req.vm_id,req.vm_name  );
+                return ( int)(total_cost);
+            }
+        }
+    }
+
 }
 
 /**
@@ -2164,16 +2414,55 @@ int CalculateMyOffer(RequestData& request) {
  * @return {int} add的请求数量，用于下一步读取竞争信息。
  */
 int GiveMyOffers(vector<RequestData>& intraday_requests) {
-    int num = 0;
-    for (auto& request : intraday_requests) {
-        if (request.operation == "add") {
-            int my_offer = CalculateMyOffer(request); //定价策略需要修改。
-            cout << my_offer << endl;
-            my_offers[request.vm_name].emplace_back(my_offer);
-            num++;
+
+    vector<PurchasedServer*> temp_purchase_servers;
+    for(auto purchase_server:purchase_servers){
+        PurchasedServer *temp = new PurchasedServer(*purchase_server);
+        temp_purchase_servers.emplace_back(temp);
+    }
+
+
+
+    vector<RequestData> addRequests;
+    for(auto& intraday_request : intraday_requests){
+        if(intraday_request.operation== "add"){
+            addRequests.emplace_back(intraday_request);
         }
     }
-    return num;
+
+    //按照请求的单位利润率排序
+    sort(addRequests.begin(),addRequests.end(),[](RequestData& a, RequestData& b){
+        return 1.0 * a.user_offer / (a.duration) / ( (vm_name2info[a.vm_name].deployment_way+1) * (vm_name2info[a.vm_name].cpu + vm_name2info[a.vm_name].memory) ) > 1.0 * b.user_offer / (b.duration) / ( (vm_name2info[b.vm_name].deployment_way+1) * (vm_name2info[b.vm_name].cpu + vm_name2info[b.vm_name].memory) );
+    });
+    
+    // set<RequestData,ReqCmp> suitReqs;
+    // suitReqs.insert(addRequests.begin(),addRequests.begin() + addRequests.size()* (0.6)  );
+    // suitReqs.insert(addRequests.begin(),addRequests.end() );
+
+    for(auto& request : intraday_requests){
+        long long my_offer = -1;
+        if(request.operation == "add"){
+                int cal_cost = SimulateDeploy(request);
+                if(cal_cost == -1){
+                    my_offer = -1;
+                }else{
+                    my_offer =  0.35 * (request.user_offer - cal_cost)+cal_cost;
+                }
+
+            cout << my_offer << endl;
+    
+            my_offers[request.vm_name].emplace_back(my_offer);
+        }
+        
+    }
+
+    for(int i = 0;i<temp_purchase_servers.size();i++){
+        *(purchase_servers[i]) = *(temp_purchase_servers[i]);
+    }
+
+    return addRequests.size();
+
+   
 }
 
 void SolveProblem()
@@ -2194,10 +2483,13 @@ void SolveProblem()
 
         from_off_2_start.erase(from_off_2_start.begin(), from_off_2_start.end());
         intraday_requests = request_datas.front();
-        request_datas.pop();
+        
         int add_nums = GiveMyOffers(intraday_requests);
         vector<pair<int, int>> compete_infos = ParseCompeteInfo(add_nums);
         intraday_requests = ParseBidingRes(compete_infos, intraday_requests);
+
+        request_datas.pop();
+
         // vector<MigrationInfo> migration_infos;
         vector<MigrationInfo> migration_infos = Migration();
         total_migration_num += migration_infos.size();
@@ -2443,7 +2735,7 @@ void SolveProblem()
                 {
                     int vm_id = intraday_requests[j].vm_id;
                     DeleteVm(vm_id);
-                    if (vm_id2info.count(vm_id) != 0)
+                    if (vm_id2info.find(vm_id) != vm_id2info.end())
                     {
                         // vm_id2info.erase(vm_id);
                     }

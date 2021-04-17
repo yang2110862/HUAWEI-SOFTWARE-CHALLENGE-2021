@@ -56,6 +56,9 @@ struct PurchasedServer {
     unordered_set<int> A_vm_id;
     unordered_set<int> B_vm_id;
     unordered_set<int> AB_vm_id;
+    double hardware_avg_cost;
+    double daily_avg_cost;
+
 };
 struct VmIdInfo {
     PurchasedServer* purchase_server;
