@@ -2454,7 +2454,7 @@ int GiveMyOffers(vector<RequestData>& intraday_requests) {
             if(cal_cost == -1){
                 my_offer = -1;
             }else{
-                my_offer =  0.1 * (request.user_offer - cal_cost)+cal_cost;
+                my_offer = (0.01 + 0.35 *(now_day - 1) / total_days_num)   * (request.user_offer - cal_cost)+cal_cost;
             }
             cout << my_offer << endl;
     
