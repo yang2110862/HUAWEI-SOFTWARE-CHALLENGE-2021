@@ -2150,7 +2150,7 @@ void revokeBuy(int vmID)
  * @return {int} 报价。
  */
 double per_memory = 0.45;
-double updown = 0.1;
+double updown = 0.10;
 double high_per_memory = per_memory + updown;
 double low_per_memory = per_memory - updown;
 double cpu_mult = 2.326;
