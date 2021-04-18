@@ -2359,7 +2359,7 @@ int SimulateDeploy(RequestData& req){
 
         int total_cost = total_used_resource * (a* power_cost_perresource + b* res.first->hardware_avg_cost);
         // int total_cost = total_used_resource * (power_cost_perresource + res.first->hardware_avg_cost);
-        if(total_cost  < over_rate* req.user_offer ){
+        if(total_cost  <= over_rate* req.user_offer ){
             SimulateDeployOnServer(res.first,deployment_way,res.second,cpu,memory,req.vm_id,vm_name);
             return (int)(total_cost);
         }else{
@@ -2374,7 +2374,7 @@ int SimulateDeploy(RequestData& req){
             double total_used_resource = req.duration * (deployment_way+1) * (cpu*2.3+ memory);
             double power_cost_perresource = 1.0 * res.first->daily_cost /  (2.0 * res.first->total_cpu * 2.3 + 2.0 * res.first->total_memory);
             int total_cost = total_used_resource * (a*power_cost_perresource +b* res.first->hardware_avg_cost) ;
-            if(total_cost < over_rate* req.user_offer){
+            if(total_cost <= over_rate* req.user_offer){
                 SimulateDeployOnServer(res.first,deployment_way,res.second,cpu,memory,req.vm_id,vm_name);
                 return (int)(total_cost);
             }else{
@@ -2382,7 +2382,7 @@ int SimulateDeploy(RequestData& req){
             }
         }else{
             //新买服务器
-            // if(now_day > 3.5 / 5 * total_days_num) return -1;
+            // if(now_day > 2.5 / 5 * total_days_num) return -1;
             SoldServer* suitServer = SearchNewServer(deployment_way,cpu,memory);
             int left_day = total_days_num - now_day +1;
             double hardware_cost_perday_perresource = 1.0 * suitServer->hardware_cost / left_day / (2.0 * suitServer->cpu * 2.3 + 2.0 * suitServer->memory);
@@ -2454,7 +2454,7 @@ int GiveMyOffers(vector<RequestData>& intraday_requests) {
             if(cal_cost == -1){
                 my_offer = -1;
             }else{
-                my_offer = (0.01 + 0.35 *(now_day - 1) / total_days_num)   * (request.user_offer - cal_cost)+cal_cost;
+                my_offer = (0.05 + 0.3 *(now_day - 1) / total_days_num)   * (request.user_offer - cal_cost)+cal_cost;
             }
             cout << my_offer << endl;
     
