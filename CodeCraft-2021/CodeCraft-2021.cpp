@@ -51,7 +51,7 @@ clock_t _start, _end;
 int isDenseBuy = 0; // 0--非密度购买  1--密度购买
 double _future_N_reqs_cpu_rate = 0;
 double _future_N_reqs_memory_rate = 0;
-double _migration_threshold = 0.024; //减小能增加迁移数量。
+double _migration_threshold = 0.023; //减小能增加迁移数量。
 
 double _near_full_threshold = 0.02; //增大能去掉更多的服务器，减少时间；同时迁移次数会有轻微减少，成本有轻微增加。
 double _near_full_threshold_2 = 0.2;
@@ -2418,7 +2418,7 @@ int SimulateDeploy(RequestData& req){
 }
 
 // double rate = 0.05;
-double _temp = 0.06;
+double _temp = 0.05;
 // double acc_rate = 0.30 / (total_days_num);
 
 /**
@@ -2464,11 +2464,11 @@ int GiveMyOffers(vector<RequestData>& intraday_requests) {
             }else{
                 // my_offer =  rate * (request.user_offer - cal_cost)+cal_cost;
                 
-                if(last_get_rate<0.6){
+                if(last_get_rate<0.5){
                     _temp = _temp / 2.0;
-                    if(_temp<0.06) _temp = 0.06;
+                    if(_temp<0.05) _temp = 0.05;
                 }else{
-                     _temp = _temp + 0.39 / (total_days_num) *1;
+                     _temp = _temp + 0.35 / (total_days_num) *1;
                 }
                
                 
