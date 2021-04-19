@@ -58,6 +58,8 @@ double _near_full_threshold_2 = 0.2;
 double k1 = 0.695, k2 = 1 - k1; //CPU和memory的加权系数
 double r1 = 0.695, r2 = 1 - r1; //CPU和memory剩余率的加权系数
 
+double last_get_rate = 1.0;
+vector<int> last_day_req;
 
 
 void init()
@@ -2415,13 +2417,17 @@ int SimulateDeploy(RequestData& req){
 
 }
 
+double rate = 0.05;
+double _temp = 0.05;
+double acc_rate = 0.30 / (total_days_num);
+
 /**
  * @brief 输出自己的报价，返回add请求数量。
  * @param {vector<RequestData>} intraday_requests 当天所有的请求数据。
  * @return {int} add的请求数量，用于下一步读取竞争信息。
  */
 int GiveMyOffers(vector<RequestData>& intraday_requests) {
-
+    last_day_req.erase(last_day_req.begin(),last_day_req.end());
     vector<PurchasedServer*> temp_purchase_servers;
     for(auto purchase_server:purchase_servers){
         PurchasedServer *temp = new PurchasedServer(*purchase_server);
@@ -2439,24 +2445,40 @@ int GiveMyOffers(vector<RequestData>& intraday_requests) {
     }
 
     //按照请求的单位利润率排序
-    sort(addRequests.begin(),addRequests.end(),[](RequestData& a, RequestData& b){
-        return 1.0 * a.user_offer / (a.duration) / ( (vm_name2info[a.vm_name].deployment_way+1) * (vm_name2info[a.vm_name].cpu + vm_name2info[a.vm_name].memory) ) > 1.0 * b.user_offer / (b.duration) / ( (vm_name2info[b.vm_name].deployment_way+1) * (vm_name2info[b.vm_name].cpu + vm_name2info[b.vm_name].memory) );
-    });
+    // sort(addRequests.begin(),addRequests.end(),[](RequestData& a, RequestData& b){
+    //     return 1.0 * a.user_offer / (a.duration) / ( (vm_name2info[a.vm_name].deployment_way+1) * (vm_name2info[a.vm_name].cpu + vm_name2info[a.vm_name].memory) ) > 1.0 * b.user_offer / (b.duration) / ( (vm_name2info[b.vm_name].deployment_way+1) * (vm_name2info[b.vm_name].cpu + vm_name2info[b.vm_name].memory) );
+    // });
     
     // set<RequestData,ReqCmp> suitReqs;
     // suitReqs.insert(addRequests.begin(),addRequests.begin() + addRequests.size()* (0.6)  );
     // suitReqs.insert(addRequests.begin(),addRequests.end() );
 
+    // rate += acc_rate;
     for(auto& request : intraday_requests){
-        long long my_offer = -1;
+        int my_offer = -1;
         if(request.operation == "add"){
             int cal_cost = SimulateDeploy(request);
             if(cal_cost == -1){
                 my_offer = -1;
+                last_day_req.emplace_back(-1);
             }else{
-                my_offer = (0.05 + 0.3 *(now_day - 1) / total_days_num)   * (request.user_offer - cal_cost)+cal_cost;
+                // my_offer =  rate * (request.user_offer - cal_cost)+cal_cost;
+                
+                if(last_get_rate<0.5){
+                    _temp = _temp / 2;
+                    if(_temp<0.05) _temp = 0.05;
+                }else{
+                     _temp = _temp + 0.30 / (total_days_num) *1;
+                }
+               
+                
+                my_offer = (_temp)   * (request.user_offer - cal_cost)+cal_cost;
+                
+                
+                
             }
             cout << my_offer << endl;
+            last_day_req.emplace_back(my_offer);
     
             my_offers[request.vm_name].emplace_back(my_offer);
         }
@@ -2470,6 +2492,26 @@ int GiveMyOffers(vector<RequestData>& intraday_requests) {
     return addRequests.size();
 
    
+}
+
+void Update_get_rate(vector<pair<int, int>>& compete_infos){
+    if(compete_infos.size() < 5) {
+        last_get_rate = 1.0;
+        return ;
+    }
+    // int total_num = compete_infos.size();
+    int total_num = 0;
+    int get_cnt = 0;
+    for(int i = 0;i<compete_infos.size();i++){
+        if(compete_infos[i].first == 1) get_cnt++;
+        if(last_day_req[i]!=-1) total_num++;
+    }
+
+    if(total_num == 0) last_get_rate = 1.0;
+    else{
+        last_get_rate = 1.0 * get_cnt / total_num;
+    }
+
 }
 
 void SolveProblem()
@@ -2493,6 +2535,9 @@ void SolveProblem()
         
         int add_nums = GiveMyOffers(intraday_requests);
         vector<pair<int, int>> compete_infos = ParseCompeteInfo(add_nums);
+
+        Update_get_rate(compete_infos);
+
         intraday_requests = ParseBidingRes(compete_infos, intraday_requests);
 
         request_datas.pop();
