@@ -2417,9 +2417,9 @@ int SimulateDeploy(RequestData& req){
 
 }
 
-double rate = 0.05;
-double _temp = 0.05;
-double acc_rate = 0.30 / (total_days_num);
+// double rate = 0.05;
+double _temp = 0.06;
+// double acc_rate = 0.30 / (total_days_num);
 
 /**
  * @brief 输出自己的报价，返回add请求数量。
@@ -2464,11 +2464,11 @@ int GiveMyOffers(vector<RequestData>& intraday_requests) {
             }else{
                 // my_offer =  rate * (request.user_offer - cal_cost)+cal_cost;
                 
-                if(last_get_rate<0.5){
-                    _temp = _temp / 2;
-                    if(_temp<0.05) _temp = 0.05;
+                if(last_get_rate<0.6){
+                    _temp = _temp / 2.0;
+                    if(_temp<0.06) _temp = 0.06;
                 }else{
-                     _temp = _temp + 0.30 / (total_days_num) *1;
+                     _temp = _temp + 0.39 / (total_days_num) *1;
                 }
                
                 
@@ -2477,7 +2477,8 @@ int GiveMyOffers(vector<RequestData>& intraday_requests) {
                 
                 
             }
-            cout << my_offer << endl;
+            if(my_offer > request.user_offer) cout<<request.user_offer<<endl;
+            else cout << my_offer << endl;
             last_day_req.emplace_back(my_offer);
     
             my_offers[request.vm_name].emplace_back(my_offer);
@@ -2495,7 +2496,7 @@ int GiveMyOffers(vector<RequestData>& intraday_requests) {
 }
 
 void Update_get_rate(vector<pair<int, int>>& compete_infos){
-    if(compete_infos.size() < 5) {
+    if(compete_infos.size() < 10) {
         last_get_rate = 1.0;
         return ;
     }
@@ -2507,7 +2508,7 @@ void Update_get_rate(vector<pair<int, int>>& compete_infos){
         if(last_day_req[i]!=-1) total_num++;
     }
 
-    if(total_num == 0) last_get_rate = 1.0;
+    if(total_num < 10) last_get_rate = 1.0;
     else{
         last_get_rate = 1.0 * get_cnt / total_num;
     }
