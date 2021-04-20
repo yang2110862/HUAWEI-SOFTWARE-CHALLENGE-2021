@@ -2504,7 +2504,7 @@ int GiveMyOffers(vector<RequestData>& intraday_requests) {
     }else{
         if(last_get_rate == 1.0) _temp = _temp;
         else{
-            _temp = _temp + 26.0 / (total_days_num) *1;
+            _temp = _temp + 28.0 / (total_days_num) *1;
         }
     }
 
@@ -2513,13 +2513,13 @@ int GiveMyOffers(vector<RequestData>& intraday_requests) {
     }
 
     bool give_user_offer = false;
-    if (now_day > 0.9 * total_days_num && compete_infos.size() > 10) {
-        int neg_one_num = 0;
-        for (auto compete_info : compete_infos) {
-            if (compete_info.second == -1) neg_one_num++;
-        }
-        if (neg_one_num > 0.94 * compete_infos.size()) give_user_offer = true;
-    }
+    // if (now_day > 0.8 * total_days_num && compete_infos.size() > 10) {
+    //     int neg_one_num = 0;
+    //     for (auto compete_info : compete_infos) {
+    //         if (compete_info.second == -1) neg_one_num++;
+    //     }
+    //     if (neg_one_num > 0.92 * compete_infos.size()) give_user_offer = true;
+    // }
 
     for(auto& request : intraday_requests){
         int my_offer = -1;
@@ -2531,7 +2531,8 @@ int GiveMyOffers(vector<RequestData>& intraday_requests) {
             }else{
                 my_offer = (1 + _temp)*cal_cost;
                 if(give_user_offer){
-                    my_offer = request.user_offer;
+                    my_offer = request.user_offer-2;
+                    if(my_offer < 0) my_offer = request.user_offer;
                 }
 
                 // my_offer = _temp*(request.user_offer - cal_cost) + cal_cost;
