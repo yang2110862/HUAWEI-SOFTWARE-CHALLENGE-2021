@@ -21,6 +21,7 @@ unordered_map<string, pair<double, double>> statistics; //保存对手对于某�
 unordered_map<string, int> valid_data_sizes; //保存对手对于某种虚拟机报价数据的有效数据量（即报价不为-1的）。
 unordered_map<string, int> rival_lower_bounds; //保存对手对于某种虚拟机的成本下界。
 vector<pair<int, int>> compete_infos;
+int add_req_num = 0;
 
 
 int count_continue_buy = 0;
@@ -2383,7 +2384,7 @@ int SimulateDeploy(RequestData& req){
             }
         }else{
             //新买服务器
-            // if(now_day > 2.5 / 5 * total_days_num) return -1;
+            if(now_day > 4.0 / 5 * total_days_num) return -1;
             SoldServer* suitServer = SearchNewServer(deployment_way,cpu,memory);
             int left_day = total_days_num - now_day +1;
             double hardware_cost_perday_perresource = 1.0 * suitServer->hardware_cost / left_day / (2.0 * suitServer->cpu * 2.3 + 2.0 * suitServer->memory);
@@ -2416,6 +2417,8 @@ int SimulateDeploy(RequestData& req){
 
 }
 
+// double last_ratio = 0.05; //前一天的定价比例。
+int price_rise = 0; //前一天的涨价额。
 /**
  * @brief 输出自己的报价，返回add请求数量。
  * @param {vector<RequestData>} intraday_requests 当天所有的请求数据。
@@ -2456,6 +2459,18 @@ int GiveMyOffers(vector<RequestData>& intraday_requests) {
         }
         if (neg_one_num > 0.9 * compete_infos.size()) give_user_offer = true;
     }
+
+    int offer_got_num = 0;
+    for (auto compete_info : compete_infos) {
+        if (compete_info.first = 1) offer_got_num++;
+    }
+    /* if (add_req_num < 3) {}
+    else */ if (2 * offer_got_num < compete_infos.size()) {
+        price_rise = round(price_rise / 1.2);
+    } else {
+        price_rise += 2;
+    }
+
     int add_req_num = 0;
     for(auto& request : intraday_requests){
         int my_offer = -1;
@@ -2463,11 +2478,11 @@ int GiveMyOffers(vector<RequestData>& intraday_requests) {
             add_req_num++;
             int cal_cost = SimulateDeploy(request);
             if(cal_cost == -1){
-                my_offer = -1; //可换为用户报价。
+                my_offer = -1;
             } else if (give_user_offer) {
                 my_offer = request.user_offer;
             } else {
-                my_offer = (0.05 + 0.3 *(now_day - 1) / total_days_num)   * (request.user_offer - cal_cost)+cal_cost;
+                my_offer = min(price_rise + cal_cost, request.user_offer);
             }
             cout << my_offer << endl;
             my_offers[request.vm_name].emplace_back(my_offer);
@@ -2504,8 +2519,8 @@ void SolveProblem()
         from_off_2_start.erase(from_off_2_start.begin(), from_off_2_start.end());
         intraday_requests = request_datas.front();
         
-        int add_nums = GiveMyOffers(intraday_requests);
-        compete_infos = ParseCompeteInfo(add_nums);
+        add_req_num = GiveMyOffers(intraday_requests);
+        compete_infos = ParseCompeteInfo(add_req_num);
         intraday_requests = ParseBidingRes(compete_infos, intraday_requests);
 
         request_datas.pop();
