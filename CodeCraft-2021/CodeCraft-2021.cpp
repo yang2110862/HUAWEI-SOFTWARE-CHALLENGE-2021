@@ -2372,10 +2372,8 @@ int SimulateDeploy(RequestData& req){
         double power_total_used_resource = req.duration * (deployment_way + 1) * (cpu * 2.25 + memory) ; 
         double power_cost_perresource = 1.0 * res.first->daily_cost /  (2.0 * res.first->total_cpu * 2.25 + 2.0 * res.first->total_memory) / 0.95;
 
-        // int total_cost = total_used_resource * (a_start* power_cost_perresource + b_start* res.first->hardware_avg_cost);
         int total_cost = power_total_used_resource * a_start* power_cost_perresource +hardware_total_used_resource* b_start* res.first->hardware_avg_cost;
-        // int total_cost = total_used_resource * (power_cost_perresource + res.first->hardware_avg_cost);
-
+        // int total_cost = (power_total_used_resource * a_start* power_cost_perresource +hardware_total_used_resource* b_start* res.first->hardware_avg_cost ) * (1- 0.01 / (total_days_num - now_day +1)*req.duration );
         if(total_cost  <= over_rate* req.user_offer ){
             // if(now_day < 1.0 / 10 * total_days_num && req.user_offer >=30000){
             //     total_cost = 0.85 * total_cost;
@@ -2404,8 +2402,10 @@ int SimulateDeploy(RequestData& req){
             double power_total_used_resource = req.duration * (deployment_way + 1) * (cpu * 2.25 + memory) ; 
             double power_cost_perresource = 1.0 * res.first->daily_cost /  (2.0 * res.first->total_cpu * 2.25 + 2.0 * res.first->total_memory) / 0.95;
             // int total_cost = total_used_resource * (a_off*power_cost_perresource +b_off* res.first->hardware_avg_cost) ;
-            long long total_cost = power_total_used_resource * a_off*power_cost_perresource + hardware_total_used_resource* b_off* res.first->hardware_avg_cost;
-            
+            int total_cost = power_total_used_resource * a_off*power_cost_perresource + hardware_total_used_resource* b_off* res.first->hardware_avg_cost;
+            // int total_cost = (power_total_used_resource * a_start* power_cost_perresource +hardware_total_used_resource* b_start* res.first->hardware_avg_cost ) * (1- 0.01 / (total_days_num - now_day +1)*req.duration );
+
+
             if(now_day > 4.9 / 5 * total_days_num){
                 total_cost = req.duration * res.first->daily_cost + hardware_total_used_resource* b_off* res.first->hardware_avg_cost;
             }
@@ -2428,6 +2428,7 @@ int SimulateDeploy(RequestData& req){
             double power_total_used_resource = req.duration * (deployment_way + 1) * (cpu * 2.25 + memory) ; 
             // int total_cost = hardware_total_used_resource * (b_new*hardware_cost_perday_perresource +a_new* power_cost_perresource);
             long long total_cost = hardware_total_used_resource * b_new*hardware_cost_perday_perresource + power_total_used_resource * a_new* power_cost_perresource;
+            // long long total_cost = (hardware_total_used_resource * b_new*hardware_cost_perday_perresource + power_total_used_resource * a_new* power_cost_perresource) * (1- 0.01 / (total_days_num - now_day +1)*req.duration );
 
             // if(now_day > 4.0 / 5 * total_days_num){
             //     hardware_total_used_resource =  req.duration * ( 2 ) * (suitServer->cpu * 2.3 + suitServer->memory) ; 
@@ -2515,13 +2516,14 @@ int GiveMyOffers(vector<RequestData>& intraday_requests) {
     }else{
         if(last_get_rate == 1.0) _temp = _temp;
         else{
-            _temp = _temp + 30.0 / (total_days_num) *1;
+            _temp = _temp + 6.0 / (total_days_num) *1;
         }
     }
 
-    // if(now_day > 4.5 / 5 * total_days_num){
-    //     _temp = 2.0;
-    // }
+
+    if(now_day > 3.8 / 5 * total_days_num){
+        _temp = 20.0;
+    }
 
     bool give_user_offer = false;
     
@@ -2543,11 +2545,15 @@ int GiveMyOffers(vector<RequestData>& intraday_requests) {
                 my_offer = -1;
                 last_day_req.emplace_back(-1);
             }else{
-                my_offer = (1 + _temp)*cal_cost;
-                if(give_user_offer){
-                    my_offer = request.user_offer-1;
-                    if(my_offer < 0) my_offer = request.user_offer;
-                }
+                if(now_day < 1.5 / 10 * total_days_num){
+                    my_offer = cal_cost;
+                    _temp = 0;
+                } 
+                else my_offer = (1.0 + _temp)*cal_cost;
+                // if(give_user_offer){
+                //     my_offer = request.user_offer-1;
+                //     if(my_offer < 0) my_offer = request.user_offer;
+                // }
 
                 // my_offer = cal_cost;
             }
@@ -2606,7 +2612,7 @@ void UpdateHardWareCostOfPurchasedServers(){
             }
         }
         
-        double avg = 1.0 * sum / cnt;
+        double avg = 1.000 * sum / cnt;
         for(auto& server:purchase_servers){
             if(server->server_name == server_name){
                 server->hardware_avg_cost = avg;
