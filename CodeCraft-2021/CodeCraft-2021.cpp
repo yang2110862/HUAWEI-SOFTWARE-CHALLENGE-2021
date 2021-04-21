@@ -7,6 +7,8 @@ unordered_map<int, VmIdInfo> vm_id2info;
 unordered_set<int> vmIDs;
 
 queue<vector<RequestData>> request_datas;
+
+set<string> purchase_server_type;
 vector<PurchasedServer *> purchase_servers;
 unordered_map<string, vector<PurchasedServer *>> purchase_infos;
 
@@ -1587,6 +1589,8 @@ void BuyAndDeployTwoVM(string vm_1_name, string vm_2_name, int vmID_1, int vmID_
     purchase_server->hardware_avg_cost = 1.0*  server_name2info[serverName].hardware_cost / left_day / (2.0 * server_name2info[serverName].cpu * 2.3 +  2.0* server_name2info[serverName].memory)/ 0.95;
     purchase_servers.emplace_back(purchase_server);
     purchase_infos[serverName].emplace_back(purchase_server);
+    purchase_server_type.insert(serverName);
+
     UpdateHardwareCost(purchase_server->server_name);
 
     if(vm_name2info[vm_1_name].deployment_way == 1 && vm_name2info[vm_2_name].deployment_way == 1){
@@ -1738,9 +1742,9 @@ PurchasedServer *BuyNewServer(int deployment_way, int cpu, int memory)
     purchase_server->server_name = flag_sold_server->server_name;
     int left_day = total_days_num - now_day+1;
     purchase_server->hardware_avg_cost = 1.0*  flag_sold_server->hardware_cost / left_day / (2.0 * flag_sold_server->cpu*2.3 +  2.0* flag_sold_server->memory)/ 0.95;
-
     purchase_servers.emplace_back(purchase_server);
     purchase_infos[flag_sold_server->server_name].emplace_back(purchase_server);
+    purchase_server_type.insert(flag_sold_server->server_name);
     UpdateHardwareCost(purchase_server->server_name);
     return purchase_server;
 }
@@ -2428,7 +2432,7 @@ int SimulateDeploy(RequestData& req){
             // if(now_day > 4.0 / 5 * total_days_num){
             //     hardware_total_used_resource =  req.duration * ( 2 ) * (suitServer->cpu * 2.3 + suitServer->memory) ; 
             //     total_cost = req.duration * suitServer->daily_cost + hardware_total_used_resource* b_off*hardware_cost_perday_perresource;
-            // }            
+            // }
 
 
             if(total_cost   > req.user_offer )
@@ -2452,11 +2456,23 @@ int SimulateDeploy(RequestData& req){
                 // purchase_server->daily_cost = suitServer->daily_cost;
                 // purchase_server->B_remain_memory = suitServer->memory;
                 // purchase_server->server_name = suitServer->server_name;
-                // purchase_server->hardware_avg_cost = hardware_cost_perday_perresource;
+                // double sum = 0;
+                // int cnt = 0;
+                // for(auto& server:purchase_servers){
+                //     if(purchase_server->server_name == server->server_name){
+                //         cnt++;
+                //         sum+=server->hardware_avg_cost;
+                //     }
+                // }
+                // if(cnt < 5){
+                //     return ( int)(total_cost);
+                // }
+                // purchase_server->hardware_avg_cost = 1.0 * sum / cnt;
 
                 // purchase_servers.emplace_back(purchase_server);
                 // purchase_infos[suitServer->server_name].emplace_back(purchase_server);
                 // SimulateDeployOnServer(purchase_server,deployment_way, deployment_way == 0? 'A':'C' ,cpu,memory,req.vm_id,req.vm_name  );
+                
                 return ( int)(total_cost);
             }
         }
@@ -2503,9 +2519,9 @@ int GiveMyOffers(vector<RequestData>& intraday_requests) {
         }
     }
 
-    if(now_day > 4.5 / 5 * total_days_num){
-        _temp = 2.0;
-    }
+    // if(now_day > 4.5 / 5 * total_days_num){
+    //     _temp = 2.0;
+    // }
 
     bool give_user_offer = false;
     
@@ -2519,8 +2535,9 @@ int GiveMyOffers(vector<RequestData>& intraday_requests) {
 
     for(auto& request : intraday_requests){
         int my_offer = -1;
+        int cal_cost;
         if(request.operation == "add"){
-            int cal_cost = SimulateDeploy(request);
+            cal_cost = SimulateDeploy(request);
 
             if(cal_cost == -1){
                 my_offer = -1;
@@ -2532,11 +2549,16 @@ int GiveMyOffers(vector<RequestData>& intraday_requests) {
                     if(my_offer < 0) my_offer = request.user_offer;
                 }
 
+                // my_offer = cal_cost;
             }
+
             if(my_offer > request.user_offer && request.user_offer>=1){
                 cout<<request.user_offer-1<<endl;
             }
             else cout << my_offer << endl;
+
+            // cout<<my_offer<<endl;
+
             last_day_req.emplace_back(my_offer);
     
             my_offers[request.vm_name].emplace_back(my_offer);
@@ -2571,6 +2593,28 @@ void Update_get_rate(vector<pair<int, int>>& compete_infos){
         last_get_rate = 1.0 * get_cnt / total_num;
     }
 
+}
+
+void UpdateHardWareCostOfPurchasedServers(){
+    for(auto& server_name:purchase_server_type){
+        double sum = 0;
+        int cnt = 0;
+        for(auto& server:purchase_servers){
+            if(server->server_name == server_name){
+                sum+=server->hardware_avg_cost;
+                cnt++;
+            }
+        }
+        
+        double avg = 1.0 * sum / cnt;
+        for(auto& server:purchase_servers){
+            if(server->server_name == server_name){
+                server->hardware_avg_cost = avg;
+            }
+        }
+        
+        
+    }
 }
 
 void SolveProblem()
@@ -2854,6 +2898,8 @@ void SolveProblem()
             }
         }
         Numbering(); //给购买了的服务器编号
+        UpdateHardWareCostOfPurchasedServers();
+
 #ifndef PRINTINFO
         Print(vm_ids, migration_infos);
 #endif
